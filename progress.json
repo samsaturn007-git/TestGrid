@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T21:56:23+00:00",
+  "updated_at": "2026-11-19T22:04:39+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -103,7 +103,7 @@
         },
         "T2": {
           "label": "Implement create-run API with validation, engine allowlist and fixture-profile guard.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement idempotency with canonical hash, 202/200/409 semantics and concurrency safety.",
