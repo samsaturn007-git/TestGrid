@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T15:28:57+00:00",
+  "updated_at": "2026-11-19T15:29:08+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -44,7 +44,7 @@
     "PRD-01": {
       "title": "Monorepo, reproducible local environment, and owned demo shop",
       "filename": "prds/PRD-01-monorepo-and-fixture.md",
-      "status": "not_started",
+      "status": "in_progress",
       "deps": [
         "PRD-00"
       ],
