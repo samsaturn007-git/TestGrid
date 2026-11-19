@@ -53,7 +53,7 @@ Not pinned yet (pinned in their own PRD, after checking the official source that
 |---|---|---|---|
 | Node | 26.0.0 | **26.13.1** ✓ matches pin | `brew upgrade node` |
 | JDK 21 | openjdk@21 21.0.11 | **21.0.13.1** ✓ (Homebrew build of the 21.0.13.1 respin) | `brew upgrade openjdk@21` |
-| Docker engine | none | OrbStack 2.2.5 installed; **you must open the app once** to accept its terms and start the engine | `brew install --cask orbstack` |
+| Docker engine | none | OrbStack 2.2.5 running ✓. Docker Engine 29.8.2 in an aarch64 VM with 10 CPUs and 7.8 GiB memory (within the ≤ 8 GiB budget); `docker run --rm hello-world` succeeds | `brew install --cask orbstack`, then first launch by the developer |
 | `docker compose` | broken symlink | Docker Compose v5.5.0 ✓ | fixed by the OrbStack install |
 
 | Corepack / pnpm | `pnpm` 10.34.5 and Corepack 0.34.1 came from an old nvm Node 20 install; four dangling `pnpm`/`pnpx`/`yarn`/`yarnpkg` links in `/opt/homebrew/bin` pointed to a removed Node 24 | Corepack **0.36.0** under Node 26 (`/opt/homebrew/bin/corepack`), `pnpm` shim → **12.21.0** ✓ | removed the dangling links, `npm install -g corepack@0.36.0`, `corepack enable pnpm` |
