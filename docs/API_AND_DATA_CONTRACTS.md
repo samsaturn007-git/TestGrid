@@ -170,6 +170,14 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 }
 ```
 
+**Create-run validation (PRD-02)**
+- Required: `suiteKey`, `targets` (1–3, no duplicates), `trigger`, `idempotencyKey` (1–200 of `A-Z a-z 0-9 . _ : -`). `fixture`, `sharding` and `source` are optional; `fixture` needs both `mode` and `seed` (0 … 2³¹−1).
+- `source.commitSha` is 7–64 lowercase hex, `source.branch` uses git ref characters only (no `:` and no `..`), `source.ciRef` is `<system>:<id>` such as `gh:123456/1`. None of them can hold a URL.
+- `400 validation-failed` until their PRDs: `executor: BROWSERSTACK` (PRD-09), `trigger: RERUN` (use the rerun endpoint, PRD-05), any sharding other than `NONE` with 1 shard (PRD-11).
+- `422 fixture-not-allowed` when `TESTGRID_PROFILE` is not exactly `local`, or the mode isn't in the suite's `fixtureModes`.
+- A body over 64 KB is `400 validation-failed`. JSON is parsed strictly: unknown fields, duplicate keys, strings for numbers and numbers for enums are all rejected.
+- A new run gets one target per entry with `target_key = local:<engine>:0`, all `QUEUED`, plus one `RUN_CREATED` event, in one transaction.
+
 **Idempotency**
 - `request_hash` is the sha256 of the canonical JSON, with keys sorted and targets sorted, and `idempotencyKey` excluded.
 - The insert relies on the unique constraint: `INSERT … ON CONFLICT DO NOTHING`, then `SELECT`.

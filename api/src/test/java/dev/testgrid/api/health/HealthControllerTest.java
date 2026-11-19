@@ -31,6 +31,9 @@ class HealthControllerTest {
 
   @Test
   void unknownPathIsNotFound() throws Exception {
-    mvc.perform(get("/api/v1/runs")).andExpect(status().isNotFound());
+    mvc.perform(get("/api/v1/no-such-route"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value("https://testgrid.local/problems/not-found"));
   }
 }
