@@ -4,7 +4,7 @@
 
 **Rule:** where documents disagree, the contracts win and the other document is fixed in the same PR (ARCHITECTURE preamble, AGENTS rule 5).
 
-**Result: 0 open contradictions.** Re-run `bash tools/vocab_check.sh` whenever a doc or PRD changes.
+**Result: 0 open contradictions; 1 open scope item (N7, PRD-02 start, 2026-11-20).** Re-run `bash tools/vocab_check.sh` whenever a doc or PRD changes.
 
 ## 1. Vocabulary sign-off (contracts §2)
 
@@ -45,3 +45,4 @@ None of these is a contradiction; each is recorded so nobody "fixes" it the wron
 | N4 | ARCHITECTURE §9 lists `worker` in the `default` Compose profile; PRD-01 FR-8 Compose has only `postgres`, `api`, `web`, `demo-shop`. | ARCHITECTURE §9 vs PRD-01 | Staged delivery, not a conflict: the worker service joins the default profile in PRD-03. | Closed (staging) |
 | N5 | AGENTS standard says Java 21; this machine's default `java` is 26.0.1. | AGENTS vs local env | Environment gap, not a doc conflict. Repo pins Java 21 (`docs/VERSIONS.md`); PRD-01 selects JDK 21 per repo. | Closed (env action tracked in VERSIONS §2) |
 | N6 | `make smoke` in PRD-01 runs the spec "directly against demo-shop" while the manifest arrives in PRD-03. | PRD-01 FR-7, contracts §10 | Consistent: PRD-01 FR-7 says the spec moves into the manifest in PRD-03. | Closed |
+| N7 | PRD-02 FR-2 seeds suites from `worker/manifest/suites.json`, validated by its JSON Schema, but the manifest and schema are created in PRD-03 FR-1 / T1. The suite `revision` (sha256 of spec files + manifest entry) also means the API must read the spec files, while the API image is built from `api/` only. | PRD-02 FR-2 vs PRD-03 FR-1, contracts §3 `suites.revision`, §10 | Found 2026-11-20 at PRD-02 start. Ruling pending from the developer. | Open |

@@ -8,7 +8,7 @@
 |---|---|---:|---|---|---|
 | [PRD-00](prds/PRD-00-governance.md) | done | 6/6 | 4–6 h | — | [docs/evidence/PRD-00.md](docs/evidence/PRD-00.md) |
 | [PRD-01](prds/PRD-01-monorepo-and-fixture.md) | done | 7/7 | 10–16 h | PRD-00 | [docs/evidence/PRD-01.md](docs/evidence/PRD-01.md) |
-| [PRD-02](prds/PRD-02-domain-and-api.md) | not_started | 0/6 | 14–20 h | PRD-01 | — |
+| [PRD-02](prds/PRD-02-domain-and-api.md) | in_progress | 0/6 | 14–20 h | PRD-01 | — |
 | [PRD-03](prds/PRD-03-single-worker-runner.md) | not_started | 0/7 | 14–22 h | PRD-02 | — |
 | [PRD-04](prds/PRD-04-durable-queue.md) | not_started | 0/7 | 20–30 h | PRD-03 | — |
 | [PRD-05](prds/PRD-05-live-dashboard.md) | not_started | 0/7 | 14–20 h | PRD-04 | — |
@@ -34,7 +34,7 @@
 - **Optional:** PRD-14 to PRD-15.
 
 ## Next action
-Start [PRD-02](prds/PRD-02-domain-and-api.md) and open `CODEX_PLAYBOOK.md`.
+Continue [PRD-02](prds/PRD-02-domain-and-api.md) (in_progress); complete unfinished checkboxes and add genuine evidence.
 
 ## Progress update commands
 
