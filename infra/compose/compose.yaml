@@ -1,0 +1,112 @@
+# TestGrid local environment — PRD-01 `default` services.
+# Run through the root Makefile (make up / down / reset / logs). Every published port
+# binds to 127.0.0.1 only. Resource limits follow docs/VERSIONS.md §3.
+name: testgrid
+
+x-hardening: &hardening
+  security_opt: ['no-new-privileges:true']
+  cap_drop: [ALL]
+
+services:
+  postgres:
+    image: postgres:18.7-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-testgrid}
+      POSTGRES_USER: ${POSTGRES_USER:-testgrid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    # Postgres needs a few capabilities to chown its data dir on first start,
+    # so it gets no-new-privileges but not cap_drop: ALL. Hardened in PRD-12.
+    security_opt: ['no-new-privileges:true']
+    networks: [internal]
+    mem_limit: 512m
+    cpus: 1.0
+
+  api:
+    build:
+      context: ../../api
+    image: testgrid/api:dev
+    environment:
+      API_PORT: '8080'
+      JAVA_TOOL_OPTIONS: '-XX:MaxRAMPercentage=75'
+    ports:
+      - '127.0.0.1:${API_PORT:-8080}:8080'
+    depends_on:
+      # No DB access until PRD-02; the ordering is already the one PRD-02 needs.
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8080/healthz']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
+    <<: *hardening
+    networks: [edge, internal]
+    mem_limit: 768m
+    cpus: 1.5
+
+  web:
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+    image: testgrid/web:dev
+    ports:
+      - '127.0.0.1:${WEB_PORT:-3000}:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8080/healthz']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    <<: *hardening
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [edge]
+    mem_limit: 256m
+    cpus: 0.5
+
+  demo-shop:
+    build:
+      context: ../..
+      dockerfile: demo-shop/Dockerfile
+    image: testgrid/demo-shop:dev
+    environment:
+      # Safe default: fixtures are off unless .env says exactly "enabled".
+      DEMO_SHOP_FIXTURES: ${DEMO_SHOP_FIXTURES:-disabled}
+    ports:
+      # PRD-01 only: published on loopback so `make smoke` can drive the shop from the
+      # host. PRD-03 runs the worker inside `internal` and removes this port and `edge`.
+      - '127.0.0.1:${DEMO_SHOP_PORT:-4173}:4173'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4173/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    <<: *hardening
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [internal, edge]
+    mem_limit: 256m
+    cpus: 0.5
+
+networks:
+  edge: {}
+  internal:
+    internal: true
+
+volumes:
+  pgdata: {}
