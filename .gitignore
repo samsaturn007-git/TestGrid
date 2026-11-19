@@ -1,0 +1,53 @@
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Environment and secrets (never commit real values; .env.example is the only template) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+
+# --- Java / Maven (api/) ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+hs_err_pid*
+replay_pid*
+
+# --- Node / pnpm ---
+node_modules/
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+dist/
+build/
+coverage/
+.vite/
+.eslintcache
+
+# --- Playwright ---
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# --- Local runtime data ---
+artifacts-data/
+*.log
+tmp/
+
+# --- Python tooling ---
+__pycache__/
+*.pyc
+progress.json.tmp

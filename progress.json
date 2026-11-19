@@ -1,0 +1,673 @@
+{
+  "project": "TestGrid",
+  "version": 2,
+  "updated_at": "2026-11-19T15:22:54+00:00",
+  "prds": {
+    "PRD-00": {
+      "title": "Product definition, ADRs and delivery governance",
+      "filename": "prds/PRD-00-governance.md",
+      "status": "in_progress",
+      "deps": [],
+      "priority": "P0",
+      "estimate": "4–6 h",
+      "gate": "G0",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Read and confirm MASTER_PRD plus contract and security documents; record the conflict register.",
+          "done": false
+        },
+        "T2": {
+          "label": "Create ADR-001 to ADR-004 with considered alternatives.",
+          "done": false
+        },
+        "T3": {
+          "label": "Write the risk register (top 8) with mitigation and verifying test IDs.",
+          "done": false
+        },
+        "T4": {
+          "label": "Define the clean-checkout demo acceptance walkthrough.",
+          "done": false
+        },
+        "T5": {
+          "label": "Confirm version pinning and resource-budget limits from official sources.",
+          "done": false
+        },
+        "T6": {
+          "label": "Bootstrap the repository: PR template, ADR index, branch and commit conventions.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-01": {
+      "title": "Monorepo, reproducible local environment, and owned demo shop",
+      "filename": "prds/PRD-01-monorepo-and-fixture.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-00"
+      ],
+      "priority": "P0",
+      "estimate": "10–16 h",
+      "gate": "G1",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Initialize monorepo, pnpm workspace, Maven wrapper, lint/format/typecheck and health commands.",
+          "done": false
+        },
+        "T2": {
+          "label": "Build the owned demo-shop UI and API with stable test IDs and the fake payment rule.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement fixture sessions and modes PASS, PRODUCT_DEFECT, AUTOMATION_FLAKE, SELECTOR_DRIFT, TIMEOUT.",
+          "done": false
+        },
+        "T4": {
+          "label": "Write the checkout-smoke Playwright spec with six tagged cases.",
+          "done": false
+        },
+        "T5": {
+          "label": "Create Docker Compose, healthchecks, `.env.example` with safe fake values and the Makefile.",
+          "done": false
+        },
+        "T6": {
+          "label": "Add readiness scripts and setup docs for Linux/macOS plus Windows (WSL2) notes.",
+          "done": false
+        },
+        "T7": {
+          "label": "Add GitHub CI for format, lint, typecheck, unit and Chromium smoke.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-02": {
+      "title": "PostgreSQL domain model, REST API, migrations and idempotent run creation",
+      "filename": "prds/PRD-02-domain-and-api.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-01"
+      ],
+      "priority": "P0",
+      "estimate": "14–20 h",
+      "gate": "G1",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Write Flyway migrations, constraints, indexes and manifest seeding with schema validation.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement create-run API with validation, engine allowlist and fixture-profile guard.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement idempotency with canonical hash, 202/200/409 semantics and concurrency safety.",
+          "done": false
+        },
+        "T4": {
+          "label": "Implement run list (keyset cursor) and run detail with aggregate truth-table function.",
+          "done": false
+        },
+        "T5": {
+          "label": "Add Problem Details errors, OpenAPI generation, TS client types and CI drift check.",
+          "done": false
+        },
+        "T6": {
+          "label": "Write Testcontainers repository/controller tests incl. concurrent duplicates and restart persistence.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-03": {
+      "title": "Single Playwright worker and end-to-end first run",
+      "filename": "prds/PRD-03-single-worker-runner.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-02"
+      ],
+      "priority": "P0",
+      "estimate": "14–22 h",
+      "gate": "G1",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Create worker package, manifest loader with schema validation, and two registered suites.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement service-token internal API: claims/next, start, heartbeat, complete with DB state transitions.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement safe Playwright spawning, JSON reporter parsing and case mapping by tag.",
+          "done": false
+        },
+        "T4": {
+          "label": "Write first happy-path run end to end and the PRODUCT_DEFECT failure path.",
+          "done": false
+        },
+        "T5": {
+          "label": "Add timeout/cancel/shutdown process-group cleanup and error-class mapping.",
+          "done": false
+        },
+        "T6": {
+          "label": "Add structured log correlation and token-redaction test.",
+          "done": false
+        },
+        "T7": {
+          "label": "Run on Chromium, Firefox and WebKit and document platform limitations.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-04": {
+      "title": "RabbitMQ, transactional outbox, dispatcher, bounded workers and lease recovery",
+      "filename": "prds/PRD-04-durable-queue.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-03"
+      ],
+      "priority": "P0",
+      "estimate": "20–30 h",
+      "gate": "G2",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Add migrations for outbox, worker registry, scheduler settings and dispatch columns.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement capacity-aware FIFO dispatcher and outbox publisher with publisher confirms.",
+          "done": false
+        },
+        "T3": {
+          "label": "Declare topology; implement consumer manual ack, retry queue and DLQ policy.",
+          "done": false
+        },
+        "T4": {
+          "label": "Implement reaper, bounded retries with backoff/jitter and stale-generation rejection.",
+          "done": false
+        },
+        "T5": {
+          "label": "Implement worker registry/draining and run cancellation with race handling.",
+          "done": false
+        },
+        "T6": {
+          "label": "Create Testcontainers integration tests: cap, duplicate message, worker kill, broker restart, ack-after-complete crash, cancel race.",
+          "done": false
+        },
+        "T7": {
+          "label": "Document failure guarantees, operator runbook (stuck runs, DLQ replay) and timing defaults.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-05": {
+      "title": "React run dashboard, browser matrix, live state and accessible UX",
+      "filename": "prds/PRD-05-live-dashboard.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-04"
+      ],
+      "priority": "P0",
+      "estimate": "14–20 h",
+      "gate": "G2",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Build accessible app shell, routing, design tokens and StatusBadge for every status.",
+          "done": false
+        },
+        "T2": {
+          "label": "Connect suites view and new-run dialog posting with an idempotency key.",
+          "done": false
+        },
+        "T3": {
+          "label": "Build run list with URL-synced filters and cursor pagination; add API filters.",
+          "done": false
+        },
+        "T4": {
+          "label": "Build run detail: browser matrix, attempts list, case table, cancel and rerun.",
+          "done": false
+        },
+        "T5": {
+          "label": "Implement SSE endpoint (replay, NOTIFY, ping) and client hook with reconnect, resync and polling fallback.",
+          "done": false
+        },
+        "T6": {
+          "label": "Build overview and workers pages from real API data.",
+          "done": false
+        },
+        "T7": {
+          "label": "Add Vitest/Testing Library unit tests, axe accessibility checks and Playwright E2E for the dashboard.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-06": {
+      "title": "Screenshots, Playwright traces, logs, timeline and secure artifact retrieval",
+      "filename": "prds/PRD-06-artifacts-and-timeline.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-05"
+      ],
+      "priority": "P0",
+      "estimate": "12–18 h",
+      "gate": "G2",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Create ArtifactStore interface, local implementation with traversal/symlink defences, optional S3 adapter.",
+          "done": false
+        },
+        "T2": {
+          "label": "Add artifact migrations and bounded streaming upload with MIME sniffing and sha256.",
+          "done": false
+        },
+        "T3": {
+          "label": "Capture screenshot/trace/log bundle in the worker with redaction and canary secret.",
+          "done": false
+        },
+        "T4": {
+          "label": "Expose content and signed-link endpoints with 404/410 semantics.",
+          "done": false
+        },
+        "T5": {
+          "label": "Build timeline API and UI plus failure detail drawer with artifact states.",
+          "done": false
+        },
+        "T6": {
+          "label": "Implement purge and orphan-sweeper jobs; write redaction, expiry and failure-handling tests.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-07": {
+      "title": "Failure fingerprints, flaky-test analytics, case history and run comparison",
+      "filename": "prds/PRD-07-failure-intelligence.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-06"
+      ],
+      "priority": "P1",
+      "estimate": "16–24 h",
+      "gate": "G3",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Implement `fp_v1` normalization and hashing with unit tests incl. collision and stability cases.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement rule-table classifier with confidence, evidence and audited human override.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement rolling case-health window, labels and case history API/UI.",
+          "done": false
+        },
+        "T4": {
+          "label": "Implement run comparison API with last-green shortcut and compare UI.",
+          "done": false
+        },
+        "T5": {
+          "label": "Build failure groups list/detail UI with evidence and occurrences.",
+          "done": false
+        },
+        "T6": {
+          "label": "Create seeded truth dataset and evaluation harness.",
+          "done": false
+        },
+        "T7": {
+          "label": "Publish confusion matrix, precision/recall per category and known ambiguous cases.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-08": {
+      "title": "CLI, quality gate, flaky quarantine and GitHub Actions deployment veto",
+      "filename": "prds/PRD-08-ci-quality-gates.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-07"
+      ],
+      "priority": "P0",
+      "estimate": "14–20 h",
+      "gate": "G3",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Implement versioned policy model, evaluator, rule results and boundary tests.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement quarantine API, expiry, auto/suggest modes and audit events.",
+          "done": false
+        },
+        "T3": {
+          "label": "Build CLI with run/status/gate/compare, polling deadline and documented exit codes.",
+          "done": false
+        },
+        "T4": {
+          "label": "Add CI-scoped API token and protect write endpoints used by the CLI.",
+          "done": false
+        },
+        "T5": {
+          "label": "Create GitHub Actions gate workflow with step summary, artifacts and deploy veto.",
+          "done": false
+        },
+        "T6": {
+          "label": "Build quality panel, policy and quarantine UI.",
+          "done": false
+        },
+        "T7": {
+          "label": "Write passing/failing/infra/quarantined scripted examples and document CI security.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-09": {
+      "title": "Executor abstraction and BrowserStack Automate adapter (live run optional)",
+      "filename": "prds/PRD-09-browserstack-adapter.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-08"
+      ],
+      "priority": "P1",
+      "estimate": "8–14 h",
+      "gate": "G3",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Research and document current BrowserStack SDK and REST API from official docs.",
+          "done": false
+        },
+        "T2": {
+          "label": "Create executor abstraction and refactor local executor; add capability-profile allowlist.",
+          "done": false
+        },
+        "T3": {
+          "label": "Build HTTP mock and contract tests for success/401/403/429/timeout/partial.",
+          "done": false
+        },
+        "T4": {
+          "label": "Implement opt-in SDK launch with budget guard and external-session recording.",
+          "done": false
+        },
+        "T5": {
+          "label": "Implement metadata client with rate limiting/retries and status mapping table.",
+          "done": false
+        },
+        "T6": {
+          "label": "Add UI profile selector, cloud badge, session links and error messages.",
+          "done": false
+        },
+        "T7": {
+          "label": "Record live evidence if credentials exist; otherwise mark the live path unverified.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-10": {
+      "title": "Chaos lab: prove recovery from real failures",
+      "filename": "prds/PRD-10-chaos-and-recovery.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-09"
+      ],
+      "priority": "P1",
+      "estimate": "12–20 h",
+      "gate": "G4",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Add fault injection hooks and profile safety gate with a negative test.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement drills D1–D5 (worker kill, duplicates, ack crash, broker restart).",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement drills D6–D10 (API/DB restart, zombie worker, store down, launch failure).",
+          "done": false
+        },
+        "T4": {
+          "label": "Build invariant validator I1–I9 and repeat-each-drill runner with recovery timing.",
+          "done": false
+        },
+        "T5": {
+          "label": "Expose chaos scoreboard/timeline in UI and exported report.",
+          "done": false
+        },
+        "T6": {
+          "label": "Run every drill ≥10 times (or document resource limits), store raw logs and write evidence.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-11": {
+      "title": "Duration-aware scheduling, smart sharding and transparent benchmarks",
+      "filename": "prds/PRD-11-adaptive-scheduler.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-10"
+      ],
+      "priority": "P1",
+      "estimate": "16–24 h",
+      "gate": "G4",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Add duration_stats rollup, prediction with fallbacks, and scheduler interface in the dispatcher.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement FIFO and LPT_AGING schedulers with a documented max-wait bound.",
+          "done": false
+        },
+        "T3": {
+          "label": "Unit/property tests: ordering, starvation bound, cap and lease invariants unchanged, priority inversion.",
+          "done": false
+        },
+        "T4": {
+          "label": "Implement sharding modes with LPT bin-packing, case assignments and rerun-failed-cases.",
+          "done": false
+        },
+        "T5": {
+          "label": "Implement reproducible synthetic workload generator and benchmark runner.",
+          "done": false
+        },
+        "T6": {
+          "label": "Run ≥5 paired trials per cell; publish raw CSV, plots, method, caveats and honest result.",
+          "done": false
+        },
+        "T7": {
+          "label": "Add scheduler/shard UI and benchmark chart if it will not delay core evidence.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-12": {
+      "title": "Security hardening, observability stack, load baseline and deployable demo",
+      "filename": "prds/PRD-12-security-and-deploy.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-11"
+      ],
+      "priority": "P0",
+      "estimate": "16–24 h",
+      "gate": "G4",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Add scoped user tokens, separate filter chains, CORS and rate limits.",
+          "done": false
+        },
+        "T2": {
+          "label": "Harden Docker Compose (non-root, read-only, caps, limits, network split) and artifact storage isolation.",
+          "done": false
+        },
+        "T3": {
+          "label": "Add security/negative tests and CI scans (gitleaks, Trivy, dependency audit, CodeQL).",
+          "done": false
+        },
+        "T4": {
+          "label": "Add OpenTelemetry tracing end to end, Prometheus metrics, Grafana dashboard and alert rules.",
+          "done": false
+        },
+        "T5": {
+          "label": "Run k6 and NoopExecutor load baselines; document hardware and resource caps.",
+          "done": false
+        },
+        "T6": {
+          "label": "Build static read-only demo from recorded real data with hosting instructions.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-13": {
+      "title": "Documentation, reproducible release, demos and resume proof",
+      "filename": "prds/PRD-13-portfolio-and-release.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-12"
+      ],
+      "priority": "P0",
+      "estimate": "8–12 h",
+      "gate": "G5",
+      "optional": false,
+      "tasks": {
+        "T1": {
+          "label": "Write reviewer-first README and architecture decision summary.",
+          "done": false
+        },
+        "T2": {
+          "label": "Build `make demo` reviewer path and evidence index.",
+          "done": false
+        },
+        "T3": {
+          "label": "Create screenshots, GIF and 3–4 minute demo video; redact secrets.",
+          "done": false
+        },
+        "T4": {
+          "label": "Publish raw performance, chaos and classification evidence with links.",
+          "done": false
+        },
+        "T5": {
+          "label": "Generate API docs, operations/troubleshooting page and accessibility notes.",
+          "done": false
+        },
+        "T6": {
+          "label": "Write honest feature matrix, interview one-pager/Q&A and truthful resume bullets.",
+          "done": false
+        },
+        "T7": {
+          "label": "Run from-clean-clone reviewer acceptance test and tag the release.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-14": {
+      "title": "OPTIONAL: screenshot baselines, visual diffs and approval workflow",
+      "filename": "prds/PRD-14-visual-regression-optional.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-13"
+      ],
+      "priority": "P2 OPTIONAL",
+      "estimate": "8–14 h",
+      "gate": "Optional",
+      "optional": true,
+      "tasks": {
+        "T1": {
+          "label": "Choose and document image-diff approach and licenses.",
+          "done": false
+        },
+        "T2": {
+          "label": "Implement baseline schema, versioning and storage.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement deterministic diff evaluation and thresholds.",
+          "done": false
+        },
+        "T4": {
+          "label": "Build 3-pane UI with permissioned approval and audit log.",
+          "done": false
+        },
+        "T5": {
+          "label": "Test stable, noisy and real-regression fixtures.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    },
+    "PRD-15": {
+      "title": "OPTIONAL: evidence-grounded failure explainer",
+      "filename": "prds/PRD-15-ai-assistance-optional.md",
+      "status": "not_started",
+      "deps": [
+        "PRD-13"
+      ],
+      "priority": "P2 OPTIONAL",
+      "estimate": "6–12 h",
+      "gate": "Optional",
+      "optional": true,
+      "tasks": {
+        "T1": {
+          "label": "Write threat/privacy review and consent/settings.",
+          "done": false
+        },
+        "T2": {
+          "label": "Build redaction and evidence-bounded prompt/response schema.",
+          "done": false
+        },
+        "T3": {
+          "label": "Implement offline mock and opt-in provider adapter with cost caps.",
+          "done": false
+        },
+        "T4": {
+          "label": "Show linked sources/confidence and feedback controls.",
+          "done": false
+        },
+        "T5": {
+          "label": "Evaluate cases incl. prompt injection and document unsupported conclusions.",
+          "done": false
+        }
+      },
+      "evidence": null,
+      "blocker": null
+    }
+  }
+}
