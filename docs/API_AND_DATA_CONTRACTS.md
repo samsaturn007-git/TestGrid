@@ -87,11 +87,11 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | Table | Key columns and constraints |
 |---|---|
 | `projects` [02] | `id`, `slug UNIQUE`, `name`, `owner_id NULL` |
-| `suites` [02] | `id`, `project_id`, `suite_key`, `revision` (sha256 of spec files plus manifest entry, 12 hex), `display_name`, `enabled`, `timeout_ms`, `playwright_retries`, `allowed_engines text[]`; `UNIQUE(project_id, suite_key, revision)` |
+| `suites` [02] | `id`, `project_id`, `suite_key`, `revision` (12 hex, algorithm in §10), `display_name`, `enabled`, `is_current`, `timeout_ms`, `playwright_retries`, `allowed_engines text[]`, `fixture_modes text[]`; `UNIQUE(project_id, suite_key, revision)`; **partial unique index `UNIQUE(project_id, suite_key) WHERE is_current`** (old revisions are kept, one is current); `UNIQUE(project_id, id)` so `runs` can reference `(project_id, suite_id)` |
 | `test_cases` [02] | `id`, `suite_id`, `case_key`, `title`, `tag` (`@case-key`), `critical bool`, `expected_duration_ms NULL`; `UNIQUE(suite_id, case_key)` |
-| `runs` [02] | `id`, `project_id`, `suite_id`, `status`, `trigger`, `fixture_mode NULL`, `fixture_seed NULL`, `commit_sha NULL`, `branch NULL`, `ci_ref NULL`, `idempotency_key`, `request_hash`, `sharding_mode`, `shard_count`, `cancel_requested_at NULL`, `parent_run_id NULL` (rerun link, PRD-05), `queued_at`, `started_at NULL`, `finished_at NULL`, `version`; `UNIQUE(project_id, idempotency_key)` |
-| `run_targets` [02] | `id`, `run_id`, `target_key` (e.g. `local:chromium:0`), `executor`, `engine`, `profile_key NULL`, `shard_index`, `shard_count`, `status`, `attempt_count`, `max_attempts`, `not_before NULL`, `dispatch_generation int`, `dispatched_at NULL`, `predicted_ms NULL`, `queued_at`, `finished_at NULL`, `version`; `UNIQUE(run_id, target_key)` |
-| `run_events` [02] | `id bigserial`, `run_id`, `target_id NULL`, `attempt_id NULL`, `type`, `schema_version`, `payload jsonb`, `occurred_at`. Append-only; written in the same transaction as the state change it describes |
+| `runs` [02] | `id`, `project_id`, `suite_id`, `status`, `trigger`, `fixture_mode NULL`, `fixture_seed NULL`, `commit_sha NULL`, `branch NULL`, `ci_ref NULL`, `idempotency_key`, `request_hash`, `sharding_mode`, `shard_count`, `cancel_requested_at NULL`, `parent_run_id NULL` (rerun link, PRD-05), `queued_at`, `started_at NULL`, `finished_at NULL`, `version`; `UNIQUE(project_id, idempotency_key)`; FK `(project_id, suite_id) → suites(project_id, id)`; `finished_at` is set exactly when `status` is terminal |
+| `run_targets` [02] | `id`, `run_id`, `target_key` (e.g. `local:chromium:0`), `executor`, `engine`, `profile_key NULL`, `shard_index`, `shard_count`, `status`, `attempt_count`, `max_attempts`, `not_before NULL`, `dispatch_generation int`, `dispatched_at NULL`, `predicted_ms NULL`, `queued_at`, `finished_at NULL`, `version`; `UNIQUE(run_id, target_key)`; `finished_at` is set exactly when `status` is terminal |
+| `run_events` [02] | `id bigserial`, `run_id`, `target_id NULL`, `attempt_id NULL`, `type`, `schema_version`, `payload jsonb`, `occurred_at`. Append-only (a trigger rejects `UPDATE` and `DELETE`); written in the same transaction as the state change it describes |
 | `attempts` [03] | `id`, `target_id`, `attempt_no`, `worker_id`, `status`, `lease_token_hash bytea`, `leased_until`, `last_heartbeat_at`, `claimed_at`, `started_at NULL`, `finished_at NULL`, `error_class NULL`, `error_detail_redacted NULL`, `completion_key NULL`; `UNIQUE(target_id, attempt_no)`; **partial unique index `UNIQUE(target_id) WHERE status IN ('CLAIMED','RUNNING')`**, which makes the database enforce one active attempt per target |
 | `case_results` [03] | `id`, `attempt_id`, `case_key`, `status`, `duration_ms`, `retry_count`, `error_class NULL`, `error_message_redacted NULL`, `fingerprint_id NULL`; `UNIQUE(attempt_id, case_key)`. Written only inside the completion transaction |
 | `workers` [04] | `id`, `name`, `version`, `executor`, `engines text[]`, `slots`, `state ACTIVE / DRAINING / LOST`, `started_at`, `last_seen_at` |
@@ -112,7 +112,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 **Required indexes** (the evidence must check them with `EXPLAIN`):
 - `runs(project_id, queued_at DESC, id DESC)`
 - `runs(project_id, status)`
-- `run_targets(run_id)`
+- `run_targets(run_id)` (served by the `UNIQUE(run_id, target_key)` index, whose leading column is `run_id`)
 - `run_targets(status, not_before) WHERE status = 'QUEUED'`
 - `attempts(target_id, attempt_no DESC)`
 - `attempts(leased_until) WHERE status IN ('CLAIMED','RUNNING')`
@@ -302,8 +302,14 @@ The manifest lives in `worker/manifest/suites.json` and is validated by a JSON S
 }]}
 ```
 
+- The JSON Schema is `packages/contracts/schema/suite-manifest.schema.json` (draft 2020-12, unknown fields rejected). Beyond the schema, the API also rejects duplicate `suiteKey` or `caseKey`, a `tag` other than `@<caseKey>`, duplicate JSON keys, and spec files that don't resolve to a regular file under `worker/suites/` (symlinks included).
+- `enabled` is optional (default `true`); `expectedDurationMs` per case is optional.
 - `baseUrlRef` points to a worker setting that is on an allowlist; the manifest never contains a URL.
-- The revision is computed from the spec files and the manifest entry, never typed by hand.
+- The revision is computed from the spec files and the manifest entry, never typed by hand:
+  - Input, as UTF-8: the line `testgrid-suite-revision/v1`, then the canonical JSON of the manifest entry as written (defaults not applied), then for each `specFiles` entry in manifest order its path on one line and the lowercase sha256 hex of its bytes on the next. Every line ends with `\n`.
+  - Canonical JSON: object keys sorted by UTF-16 code unit (JavaScript's default sort), array order kept, no whitespace, integers only, strings escaped as `JSON.stringify` does.
+  - Revision: the first 12 hex characters of the sha256 of that input. `ManifestLoaderTest.revisionFollowsTheDocumentedAlgorithm` pins it; the PRD-03 worker must reproduce it exactly.
+  - Spec files are checked out with LF line endings (`.gitattributes`), so the bytes don't depend on the platform.
 
 ---
 
