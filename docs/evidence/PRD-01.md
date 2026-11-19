@@ -1,10 +1,10 @@
 # Evidence — PRD-01
 
 **PRD:** `prds/PRD-01-monorepo-and-fixture.md`  
-**Branch / commits:** `prd-01/monorepo` — `27976d9` (T1), `d8ed0ae` (T2+T3), `8df4307` (T4), `47bbbb3` (T5), `089d4b4` (T6), `7b5b8a3` (T7), `3e5296e` (mode-matrix fix)  
-**Reviewer:** developer (pending review)  
+**Branch / commits:** `prd-01/monorepo` — `27976d9` (T1), `d8ed0ae` (T2+T3), `8df4307` (T4), `47bbbb3` (T5), `089d4b4` (T6), `7b5b8a3` (T7), `3e5296e` (mode-matrix fix), `e04b519` (evidence); PR https://github.com/samsaturn007-git/TestGrid/pull/1  
+**Reviewer:** developer — review and explain-back pending  
 **Date:** 2026-11-19 (UTC)  
-**Outcome:** blocked — AC-5 needs a GitHub Actions run, which needs the branch pushed (developer decision). Everything else was run locally; see below.
+**Outcome:** pass. All five ACs have observable proof; closing with `tools/progress.py done` still waits on the developer's review and explain-back answers.
 
 All commands below ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1, OrbStack / Docker 29.8.2, Compose 5.5.0, Node 26.13.1, pnpm 12.21.0, JDK 21.0.13.1, Playwright 1.65.1 with Chromium Headless Shell 159.0.8154.6). Every test is **live** (real Express server, real Chromium, real containers) unless marked otherwise. No paid service and no credential was used.
 
@@ -16,7 +16,7 @@ All commands below ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1,
 | AC-2 | Yes | — | `scripts/mode-matrix.sh` (`make modes`): `make reset`, then every mode 3× with `/__fixture/reset` before each run. `PASS` 6/6 passed. `PRODUCT_DEFECT` fails only `@cart-total` with `Expected: "$80.99" \| Received: "$82.99"` on all 3 runs. `SELECTOR_DRIFT` fails `@checkout-happy-path` and `@card-declined` with `TimeoutError: locator.click: Timeout 5000ms exceeded.`, a locator error, not an assertion. Every mode was `identical x3`. Output in "Mode matrix" below. |
 | AC-3 | Yes | — | Server level: `demo-shop/test/fixtures.test.ts` › "AC-3 fixture session isolation" runs 10 PASS + 10 PRODUCT_DEFECT sessions with interleaved concurrent requests (every PASS total `8099`, every defect total `8299`), plus a hanging TIMEOUT session that doesn't block a PASS order. Browser level: `worker/fixture-checks/isolation.spec.ts` (`make fixture-checks`) runs 4 concurrent Chromium contexts (2× PRODUCT_DEFECT → `$82.99`, 2× PASS → `$80.99`). |
 | AC-4 | Yes | — | No paid service or credential: `.env.example` holds fake values only; nothing calls an external host. Pinned: exact npm versions plus `pnpm-lock.yaml`; image tags `postgres:18.7-bookworm`, `eclipse-temurin:21.0.13_9-{jdk,jre}-noble`, `node:26.13.1-bookworm-slim`, `nginxinc/nginx-unprivileged:1.30.6-alpine3.24`; Maven 3.9.16 via wrapper 3.3.4; CI actions pinned to SHAs (`docs/VERSIONS.md` §1.1). Fixtures disabled → 404: unit test "AC-4 fixtures disabled" (4 routes → 404, shop still works), **and** the container restarted with `DEMO_SHOP_FIXTURES=disabled` answers 404 on all `/__fixture/*` routes (output below). |
-| AC-5 | **Not yet** | — | `.github/workflows/ci.yml` exists (`pull_request` + push to `main`, `permissions: contents: read`, SHA-pinned actions, no secrets). It has **not run**: the branch is not pushed. A run link goes here after the push. |
+| AC-5 | Yes | — | GitHub Actions run https://github.com/samsaturn007-git/TestGrid/actions/runs/44576078151 (PR #1, `pull_request` on `e04b519`), conclusion **success** on fresh `ubuntu-24.04` runners: job *check + unit tests* (make check, make test, vocab check) and job *compose up + Chromium smoke* (make up, make smoke, fixture isolation, fixtures-disabled 404). Workflow: `permissions: contents: read`, SHA-pinned actions, no secrets. Log excerpt below. |
 
 ## Tasks completed
 
@@ -28,7 +28,7 @@ All commands below ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1,
 | T4 | `8df4307` | `worker/suites/checkout-smoke.spec.ts` with the 6 tags; `pnpm --filter worker exec playwright test --project=chromium`. |
 | T5 | `47bbbb3` | `infra/compose/compose.yaml`, Dockerfiles, `.env.example`, `Makefile`, `scripts/health.sh`. |
 | T6 | `089d4b4`, `3e5296e` | `scripts/doctor.sh`, `scripts/mode-matrix.sh`, `scripts/summarize-playwright.mjs`, `docs/SETUP.md` (macOS, Linux, WSL2), README quick start. |
-| T7 | `7b5b8a3` | `.github/workflows/ci.yml`. Written but **not run yet** (AC-5). |
+| T7 | `7b5b8a3` | `.github/workflows/ci.yml`; green on its first run (AC-5). |
 
 ## Changed files
 
@@ -147,6 +147,26 @@ $ make fixture-checks
   1 passed (891ms)
 ```
 
+### AC-5: GitHub Actions run 44576078151 (fresh runner)
+
+```text
+$ gh run view 44576078151 --json status,conclusion,jobs
+{"conclusion":"success","jobs":[{"conclusion":"success","name":"compose up + Chromium smoke"},{"conclusion":"success","name":"check + unit tests"}],"status":"completed"}
+
+check + unit tests (17:20:20Z → 17:21:09Z)
+  worker test:    ℹ tests 5   ℹ pass 5   ℹ fail 0
+  demo-shop test: ℹ tests 42  ℹ pass 42  ℹ fail 0
+  vocab_check OK
+compose up + Chromium smoke (17:20:20Z → 17:22:32Z)
+  all services healthy in 78s          # cold build on a fresh runner, including image pulls
+  api        OK   http://127.0.0.1:8080/healthz {"status":"UP"}
+  web        OK   http://127.0.0.1:3000/healthz {"status":"ok"}
+  demo-shop  OK   http://127.0.0.1:4173/healthz {"status":"ok","fixtures":"enabled"}
+  6 passed (2.9s)                      # make smoke, Chromium
+  1 passed (1.8s)                      # fixture isolation (AC-3)
+  POST /__fixture/session with fixtures disabled -> 404
+```
+
 ### AC-4: container with fixtures disabled
 
 ```text
@@ -184,7 +204,6 @@ Received: 404
 
 ## Skipped or mocked tests
 
-- **AC-5 CI run:** not run. The workflow needs the branch on GitHub, and pushing is the developer's call (CLAUDE.md §4).
 - Nothing is mocked. The node:test suites start the real Express app on an ephemeral port; Playwright drives real Chromium. Firefox/WebKit are out of scope until PRD-03 (E2E-002).
 
 ## Screenshots / demo / raw data links
