@@ -42,6 +42,7 @@ Exact versions in `package.json` files (no `^`), resolved in the single `pnpm-lo
 | google-java-format | 2.0.0 | via Spotless |
 | Spring Boot starters | `spring-boot-starter-webmvc`, `spring-boot-starter-webmvc-test` (4.1.2 BOM) | project generated with start.spring.io for Boot 4.1.2 / Java 21 |
 | Maven | **3.9.16** (pin kept) | Spring Initializr now generates 3.10.1 (GA on Maven Central, 2026-11-11). This repo keeps the 3.9.16 pin from §1. Moving to 3.10.x needs a separate, deliberate update. |
+| API build-stage image | `maven:3.9.16-eclipse-temurin-21-noble` (checked 2026-11-20; image built 2026-09-26, ships JDK 21.0.12.1) | Build stage only, so no Maven distribution is downloaded during `docker build`. The wrapper's `wget` of it failed repeatedly on GitHub runners (runs 44617903084, 44618887379). Maven 3.9.16 matches the wrapper pin. The runtime stage stays on `eclipse-temurin:21.0.13_9-jre-noble`, and both target Java 21 bytecode. [Docker Hub maven tags](https://hub.docker.com/_/maven/tags?name=3.9.16-eclipse-temurin-21) |
 | Web image | `nginxinc/nginx-unprivileged:1.30.6-alpine3.24` | newest *stable*-line tag on Docker Hub (nginx.org stable is 1.30.7; the image lags one patch). Runs as non-root on port 8080. [Docker Hub tags](https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags) |
 | Corepack in images | 0.36.0 (`npm install -g corepack@0.36.0`) | Node 26 images no longer bundle Corepack (checked: `node:26.13.1-bookworm-slim` has no `corepack`) |
 
