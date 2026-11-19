@@ -2,9 +2,9 @@
 
 **PRD:** `prds/PRD-01-monorepo-and-fixture.md`  
 **Branch / commits:** `prd-01/monorepo` — `27976d9` (T1), `d8ed0ae` (T2+T3), `8df4307` (T4), `47bbbb3` (T5), `089d4b4` (T6), `7b5b8a3` (T7), `3e5296e` (mode-matrix fix), `e04b519` (evidence); PR https://github.com/samsaturn007-git/TestGrid/pull/1  
-**Reviewer:** developer — review and explain-back pending  
-**Date:** 2026-11-19 (UTC)  
-**Outcome:** pass. All five ACs have observable proof; closing with `tools/progress.py done` still waits on the developer's review and explain-back answers.
+**Reviewer:** developer (repository owner). Approved closing PRD-01 in session on 2026-11-20 and chose to defer their own explain-back (see the last section).  
+**Date:** 2026-11-19 (work and CI), 2026-11-20 (approval) (UTC)  
+**Outcome:** pass
 
 All commands below ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1, OrbStack / Docker 29.8.2, Compose 5.5.0, Node 26.13.1, pnpm 12.21.0, JDK 21.0.13.1, Playwright 1.65.1 with Chromium Headless Shell 159.0.8154.6). Every test is **live** (real Express server, real Chromium, real containers) unless marked otherwise. No paid service and no credential was used.
 
@@ -221,13 +221,13 @@ Received: 404
 - `TypeScript` is pinned to 6.0.3, not `latest` 7.0.2, because typescript-eslint 8.73 doesn't support 7 yet (`docs/VERSIONS.md` §1.1).
 - `make up` timing is from one cold run and one warm run, not a distribution.
 
-## Explain-back review (developer's own words)
+## Explain-back review
 
-*To be answered by the developer. AGENTS.md requires this before `tools/progress.py done`.*
+> **Not in the developer's own words.** On 2026-11-20 the developer asked Claude to write these answers and approved closing the PRD without doing the explain-back themselves. The answers below are Claude's. They are kept as study notes. The developer's own explain-back is **still owed**, which is the MASTER_PRD §9 mitigation for "AI-generated code not understood". Replace this section with the developer's answers when they do it.
 
-1. The three most important engineering decisions in this PRD, and why. Suggested prompts:
-   - Why does a fixture call create a *new* session instead of changing the current one, and what would break under concurrent runs if it changed a shared global mode?
-   - How do `FIXTURE_SEED + retry` and one PRNG draw per order make AUTOMATION_FLAKE deterministic, and why is "seed 0 → flaky" a stable fact rather than luck?
-   - Why do the timeouts (5 s expect, 5 s action, 8 s flake delay, 20 s test, 120 s hang) have to be ordered this way for each mode to produce its intended error class?
-2. What happens if the main operation fails halfway through? (For example, the browser context closes while the TIMEOUT order request is held open: what cleans up the timer?)
-3. What would you change for production? (For example, a real session store, removing the published shop port, digest-pinned images.)
+1. **The three most important engineering decisions, and why (Claude's answers)**
+   - **A fixture call creates a new session; there is no global mode.** All mutable state (cart, coupon, orders, PRNG) hangs off a session object, which is found by a random 128-bit cookie (`sessions.ts`). Playwright gives each test its own browser context, and so its own cookie jar. A fixture call therefore binds a mode to exactly one context. With a shared global mode, a PASS run and a PRODUCT_DEFECT run at the same time would race: whichever set the mode last would decide both runs' cart totals, and results would depend on timing. That would break AC-3 and make PRD-07's ground truth meaningless. Isolation comes from the data layout, not from locking.
+   - **AUTOMATION_FLAKE is deterministic per seed.** Each session owns a `mulberry32(seed)` generator, and each *placed order* draws exactly once (late if `< 0.5`). Draws are tied to orders, not page loads, so React StrictMode's double effects or reloads can't shift the sequence. The spec seeds each Playwright try with `FIXTURE_SEED + retry`. Try 1 uses seed S and the retry uses S+1, and both first draws are fixed numbers. For seed 0 they come out late then on time, so the case is always `flaky`. That is arithmetic, not luck, and the 3× matrix (twice) confirms it. Seed 7 is late twice (`failed`); seed 42 is on time (`passed`).
+   - **The timeouts are ordered so each mode fails with its intended error type.** Playwright reports whichever timer fires first. AUTOMATION_FLAKE: the confirmation arrives after 8 s but `expect` gives up at 5 s, so it fails as an **assertion**. SELECTOR_DRIFT: the button's test ID doesn't exist, and `actionTimeout` is 5 s. Without it the click would wait until the 20 s test timeout and look like a timeout instead of a **locator error**. TIMEOUT: the order API holds the request for 120 s; `waitForResponse({timeout: 0})` has no timer of its own, so the 20 s **test timeout** fires. These map to `ASSERTION`, `SELECTOR_NOT_FOUND` and `TEST_TIMEOUT` (SECURITY fixture table), which PRD-07 classifies. If the order were wrong, the labels would be wrong.
+2. **What happens if it fails halfway (Claude's answer).** In TIMEOUT mode the shop holds the response with a timer (`respondLater`). When the test times out, Playwright closes the browser context, the socket closes, and `res.on('close')` clears the timer and removes it from `heldTimers`. Nothing stays pending, and no late 504 is written to a dead socket (`res.writableEnded` is checked too). On SIGTERM, `shutdown()` clears any remaining timers and the server closes its connections. Session state is in memory, so a crash loses carts and orders; for a fixture that's acceptable, and `make reset` / `/__fixture/reset` restore a known state.
+3. **What I'd change for production (Claude's answer).** Remove the host-published shop port and the `edge` attachment (planned for PRD-03). Store sessions in an external store with TTLs instead of an in-memory map with a 5,000-session cap. Pin images by digest and add `distributionSha256Sum` to the Maven wrapper (PRD-12). Refuse fixtures at startup in any non-local profile, not just by flag plus source IP. Add structured request logging with redaction. Move `FixtureMode` into `packages/contracts` so the shop and the worker can't drift.
