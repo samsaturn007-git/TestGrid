@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T15:29:08+00:00",
+  "updated_at": "2026-11-19T21:01:37+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -44,7 +44,7 @@
     "PRD-01": {
       "title": "Monorepo, reproducible local environment, and owned demo shop",
       "filename": "prds/PRD-01-monorepo-and-fixture.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [
         "PRD-00"
       ],
@@ -55,34 +55,34 @@
       "tasks": {
         "T1": {
           "label": "Initialize monorepo, pnpm workspace, Maven wrapper, lint/format/typecheck and health commands.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Build the owned demo-shop UI and API with stable test IDs and the fake payment rule.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement fixture sessions and modes PASS, PRODUCT_DEFECT, AUTOMATION_FLAKE, SELECTOR_DRIFT, TIMEOUT.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Write the checkout-smoke Playwright spec with six tagged cases.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Create Docker Compose, healthchecks, `.env.example` with safe fake values and the Makefile.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Add readiness scripts and setup docs for Linux/macOS plus Windows (WSL2) notes.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Add GitHub CI for format, lint, typecheck, unit and Chromium smoke.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-01.md",
       "blocker": null
     },
     "PRD-02": {

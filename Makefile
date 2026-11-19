@@ -1,0 +1,84 @@
+# TestGrid root commands (PRD-01 FR-2). Written for GNU Make 3.81 (macOS default).
+SHELL := /bin/bash
+.SHELLFLAGS := -eu -o pipefail -c
+.DEFAULT_GOAL := help
+
+# The repo needs JDK 21; on the reference Mac the default `java` is 26 (CLAUDE.md §3).
+# Use Homebrew's openjdk@21 when it exists; elsewhere (CI, Linux) keep JAVA_HOME as set.
+BREW_JDK21 := /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+ifneq ($(wildcard $(BREW_JDK21)),)
+export JAVA_HOME := $(BREW_JDK21)
+endif
+
+COMPOSE := docker compose -f infra/compose/compose.yaml --env-file .env
+MVNW := cd api && ./mvnw -B -q
+FIXTURE_MODE ?= PASS
+FIXTURE_SEED ?= 42
+export FIXTURE_MODE FIXTURE_SEED
+
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api smoke fixture-checks modes doctor health clean
+
+help: ## List the available commands
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+env:
+	@test -f .env || { cp .env.example .env; echo "created .env from .env.example (fake local values)"; }
+
+install: ## Install Node dependencies from the lockfile
+	pnpm install --frozen-lockfile
+
+up: env ## Build and start postgres, api, web and demo-shop; wait until healthy
+	@start=$$(date +%s); \
+	$(COMPOSE) up -d --build --wait --wait-timeout 180; \
+	echo "all services healthy in $$(( $$(date +%s) - start ))s"
+	@bash scripts/health.sh
+
+down: ## Stop the environment (keeps the database volume)
+	$(COMPOSE) down --remove-orphans
+
+reset: env ## Stop, delete volumes and start again from a clean state
+	$(COMPOSE) down --volumes --remove-orphans
+	@$(MAKE) --no-print-directory up
+
+logs: ## Follow service logs
+	$(COMPOSE) logs -f --tail=200
+
+ps: ## Show service status and health
+	$(COMPOSE) ps
+
+check: ## Format check, lint and typecheck (TypeScript and Java)
+	pnpm format:check
+	pnpm lint
+	pnpm typecheck
+	$(MVNW) spotless:check compile
+
+format: ## Apply Prettier and Spotless formatting
+	pnpm format
+	$(MVNW) spotless:apply
+
+test: test-node test-api ## Unit and integration tests (no Docker needed)
+
+test-node:
+	pnpm test
+
+test-api:
+	$(MVNW) verify
+
+smoke: ## Health checks plus the checkout-smoke spec on Chromium (FIXTURE_MODE=PASS by default)
+	@bash scripts/health.sh
+	pnpm --filter worker exec playwright test --project=chromium
+
+fixture-checks: ## Browser-level fixture isolation check (AC-3)
+	pnpm --filter worker exec playwright test --project=fixture-checks
+
+modes: ## Run every fixture mode 3 times after a reset and compare results (AC-2)
+	bash scripts/mode-matrix.sh
+
+doctor: ## Check the local toolchain against docs/VERSIONS.md
+	@bash scripts/doctor.sh
+
+health: ## curl every service health endpoint
+	@bash scripts/health.sh
+
+clean: ## Remove build output and test reports
+	rm -rf demo-shop/dist web/dist worker/test-results worker/playwright-report api/target

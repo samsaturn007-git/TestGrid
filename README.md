@@ -2,9 +2,29 @@
 
 **Mission:** design, build, test and present a reliability-first, observable cross-browser test orchestration platform as a flagship SDE I portfolio project.
 
-- **Status:** planning package only. No application code is claimed to exist, and every PRD and task starts as `not_started`.
+- **Status:** PRD-00 done; PRD-01 (monorepo, local environment, demo shop) in progress. Live progress: `python3 tools/progress.py status`.
 - **v2 (2026-11-19):** every PRD is deepened with functional requirements, API, data and UI specs, and test-ID-linked acceptance criteria. Four showcase features are folded in: run comparison, flaky quarantine, smart sharding and an observability stack. See `CHANGES_v2.md`.
 - **Scope:** a solo developer, strong in web development and a beginner in DSA, working part-time alongside interview preparation.
+
+## Run it locally
+
+```bash
+make doctor && make install && make up
+pnpm --filter worker exec playwright install chromium
+make smoke
+```
+
+Full setup (macOS, Linux, Windows WSL2), fixture modes and troubleshooting: `docs/SETUP.md`.
+
+| Folder | Contents |
+|---|---|
+| `api/` | Spring Boot 4 / Java 21 API (Maven wrapper). PRD-01: `/healthz` only |
+| `web/` | React + Vite dashboard placeholder (real UI in PRD-05) |
+| `demo-shop/` | Owned demo shop: React SPA + Express API with per-session fixture modes |
+| `worker/` | Playwright `checkout-smoke` spec (orchestrated worker in PRD-03) |
+| `cli/`, `chaos/`, `packages/contracts/` | Placeholders for PRD-08, PRD-10 and PRD-02/03 |
+| `infra/compose/` | Docker Compose for the local environment |
+| `scripts/` | `doctor.sh`, `health.sh`, `mode-matrix.sh` |
 
 ## Where to begin
 

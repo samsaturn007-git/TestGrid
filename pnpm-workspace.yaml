@@ -1,0 +1,7 @@
+packages:
+  - demo-shop
+  - web
+  - worker
+  - cli
+  - chaos
+  - packages/*
