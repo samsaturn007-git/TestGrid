@@ -47,6 +47,23 @@ Not pinned yet (pinned in their own PRD, after checking the official source that
 | Python | 3.14.5 | 3.9+ | OK for `tools/progress.py` |
 | git / gh | 2.54.0 / 2.96.0 (authenticated) | — | OK |
 
+### Toolchain fixes applied 2026-11-19 (after PRD-00 sign-off)
+
+| Tool | Before | After | Command |
+|---|---|---|---|
+| Node | 26.0.0 | **26.13.1** ✓ matches pin | `brew upgrade node` |
+| JDK 21 | openjdk@21 21.0.11 | **21.0.13.1** ✓ (Homebrew build of the 21.0.13.1 respin) | `brew upgrade openjdk@21` |
+| Docker engine | none | OrbStack 2.2.5 installed; **you must open the app once** to accept its terms and start the engine | `brew install --cask orbstack` |
+| `docker compose` | broken symlink | Docker Compose v5.5.0 ✓ | fixed by the OrbStack install |
+
+Side effect: Homebrew also upgraded a dependent formula, `opencode` 1.15.10 → 2.3.2.
+
+**Using JDK 21 in this repo** (the global default `java` stays 26). Run this before Maven commands; PRD-01's Makefile will set it automatically:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+```
+
 ## 3. Resource budget
 
 Planning limits, enforced as `mem_limit` / `cpus` in Compose from PRD-01 and hardened in PRD-12. Measured usage replaces these numbers once it exists.
