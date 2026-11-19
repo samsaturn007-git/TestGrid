@@ -1,0 +1,63 @@
+=== PASS seed=42: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         expected   passed             
+@cart-total            expected   passed             
+@checkout-happy-path   expected   passed             
+stats: expected=6 unexpected=0 flaky=0 skipped=0
+exit=0
+=== PRODUCT_DEFECT seed=42: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         expected   passed             
+@cart-total            unexpected failed>failed      Error: expect(locator).toHaveText(expected) failed | Expected: "$80.99" | Received: "$82.99"
+@checkout-happy-path   expected   passed             
+stats: expected=5 unexpected=1 flaky=0 skipped=0
+exit=1
+=== SELECTOR_DRIFT seed=42: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         unexpected failed>failed      TimeoutError: locator.click: Timeout 5000ms exceeded.
+@cart-total            expected   passed             
+@checkout-happy-path   unexpected failed>failed      TimeoutError: locator.click: Timeout 5000ms exceeded.
+stats: expected=4 unexpected=2 flaky=0 skipped=0
+exit=1
+=== TIMEOUT seed=42: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         unexpected timedOut>timedOut  Test timeout of 20000ms exceeded.
+@cart-total            expected   passed             
+@checkout-happy-path   unexpected timedOut>timedOut  Test timeout of 20000ms exceeded.
+stats: expected=4 unexpected=2 flaky=0 skipped=0
+exit=1
+=== AUTOMATION_FLAKE seed=0: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         expected   passed             
+@cart-total            expected   passed             
+@checkout-happy-path   flaky      failed>passed      Error: expect(locator).toBeVisible() failed | Expected: visible
+stats: expected=5 unexpected=0 flaky=1 skipped=0
+exit=0
+=== AUTOMATION_FLAKE seed=7: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         expected   passed             
+@cart-total            expected   passed             
+@checkout-happy-path   unexpected failed>failed      Error: expect(locator).toBeVisible() failed | Expected: visible
+stats: expected=5 unexpected=1 flaky=0 skipped=0
+exit=1
+=== AUTOMATION_FLAKE seed=42: identical x3
+@add-to-cart           expected   passed             
+@apply-coupon          expected   passed             
+@browse-catalog        expected   passed             
+@card-declined         expected   passed             
+@cart-total            expected   passed             
+@checkout-happy-path   expected   passed             
+stats: expected=6 unexpected=0 flaky=0 skipped=0
+exit=0
