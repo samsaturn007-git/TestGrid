@@ -1,0 +1,12 @@
+# Planning docs are hand-written Markdown; Prettier formats code and config only.
+*.md
+pnpm-lock.yaml
+progress.json
+BACKLOG.csv
+MANIFEST.sha256
+api/
+**/dist/
+**/node_modules/
+**/test-results/
+**/playwright-report/
+**/blob-report/
