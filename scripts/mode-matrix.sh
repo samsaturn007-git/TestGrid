@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # PRD-01 AC-2 / NFR: run checkout-smoke in every fixture mode, 3 times each, starting
 # from `make reset`, and check that repeated runs give identical per-case results.
-# Output: one summary file per run plus a verdict, under $OUT (default worker/test-results/modes).
+# Output: one summary file per run plus a verdict, under $OUT (default tmp/mode-matrix, git-ignored).
 # Exit 0 = every mode was identical across its repeats, 1 = a mode drifted.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-OUT=${OUT:-worker/test-results/modes}
+OUT=${OUT:-tmp/mode-matrix}
 REPEATS=${REPEATS:-3}
 SHOP=http://127.0.0.1:$(/usr/bin/grep -E '^DEMO_SHOP_PORT=' .env 2>/dev/null | cut -d= -f2 || echo 4173)
 
