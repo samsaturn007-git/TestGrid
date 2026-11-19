@@ -183,6 +183,10 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 - The insert relies on the unique constraint: `INSERT … ON CONFLICT DO NOTHING`, then `SELECT`.
 - Same hash → replay the original run. Different hash → `409`.
 - This has to hold when two identical requests arrive concurrently (test API-004).
+- Normalisation before hashing (PRD-02): null fields are dropped and `sharding` defaults to `{"mode":"NONE","shards":1}`, so leaving out a default and spelling it out hash the same. Canonical JSON is the §10 form.
+- Keys are unique per project. Order of checks: field validation (`400`) first, then the key. A known key is answered before the manifest checks, so a retry still replays after the suite's revision has changed.
+- Under concurrency the `INSERT … ON CONFLICT DO NOTHING` waits for the other transaction holding the same key. If it commits, the waiting request reads that run and replays it or returns `409`. If it rolls back, the waiting request inserts its own run.
+- Both `202` and the `200` replay carry `Location: /api/v1/runs/{runId}`. A `409` names the existing run in `detail`.
 
 ---
 

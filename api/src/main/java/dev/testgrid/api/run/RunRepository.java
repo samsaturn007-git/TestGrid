@@ -75,7 +75,25 @@ public class RunRepository {
         .optional();
   }
 
-  public UUID insertRun(NewRun run) {
+  public record ExistingRun(UUID id, byte[] requestHash) {}
+
+  public Optional<ExistingRun> findByIdempotencyKey(UUID projectId, String idempotencyKey) {
+    return jdbc.sql(
+            "SELECT id, request_hash FROM runs WHERE project_id = :p AND idempotency_key = :key")
+        .param("p", projectId)
+        .param("key", idempotencyKey)
+        .query(
+            (rs, i) -> new ExistingRun(rs.getObject("id", UUID.class), rs.getBytes("request_hash")))
+        .optional();
+  }
+
+  /**
+   * Inserts the run unless the project already has one with this idempotency key. Under READ
+   * COMMITTED, if another transaction holds an uncommitted row with the same key, this statement
+   * waits for it: on commit it does nothing (empty result), on rollback it inserts. The unique
+   * constraint, not application code, decides the winner (contracts §4, API-004).
+   */
+  public Optional<UUID> insertRunIfAbsent(NewRun run) {
     CreateRunRequest.Fixture fixture = run.fixture();
     CreateRunRequest.Source source = run.source();
     return jdbc.sql(
@@ -85,6 +103,7 @@ public class RunRepository {
                               sharding_mode, shard_count)
             VALUES (:p, :suite, 'QUEUED', :trigger, :mode, :seed, :sha, :branch, :ciRef,
                     :key, :hash, :sharding, :shards)
+            ON CONFLICT (project_id, idempotency_key) DO NOTHING
             RETURNING id
             """)
         .param("p", run.projectId())
@@ -100,7 +119,7 @@ public class RunRepository {
         .param("sharding", run.sharding().mode().name())
         .param("shards", run.sharding().shards())
         .query(UUID.class)
-        .single();
+        .optional();
   }
 
   public void insertTarget(UUID runId, String targetKey, Executor executor, Engine engine) {

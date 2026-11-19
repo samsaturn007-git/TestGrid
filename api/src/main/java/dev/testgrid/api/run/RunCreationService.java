@@ -8,6 +8,7 @@ import dev.testgrid.api.domain.Trigger;
 import dev.testgrid.api.problem.ApiProblemException;
 import dev.testgrid.api.problem.FieldError;
 import dev.testgrid.api.problem.ProblemType;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -34,16 +35,27 @@ public class RunCreationService {
     this.mapper = mapper;
   }
 
+  /** {@code replay} is true when the key was already used with the same request. */
+  public record Result(RunResponse run, boolean replay) {}
+
   /**
    * The run, its targets and the {@code RUN_CREATED} event commit together or not at all, so a
-   * rejected or failed request leaves nothing behind (AC-3).
+   * rejected or failed request leaves nothing behind (AC-3). A known idempotency key is answered
+   * before the manifest checks, so a retry still replays after the suite has changed.
    */
   @Transactional
-  public RunResponse create(UUID projectId, CreateRunRequest request) {
+  public Result create(UUID projectId, CreateRunRequest request) {
     if (!runs.projectExists(projectId)) {
       throw new ApiProblemException(ProblemType.NOT_FOUND, "project " + projectId + " not found");
     }
     checkShape(request);
+    byte[] requestHash = RunRequestHash.of(request, mapper);
+
+    var existing = runs.findByIdempotencyKey(projectId, request.idempotencyKey());
+    if (existing.isPresent()) {
+      return replayOrConflict(projectId, request, existing.get(), requestHash);
+    }
+
     RunRepository.CurrentSuite suite =
         runs.findCurrentSuite(projectId, request.suiteKey())
             .filter(RunRepository.CurrentSuite::enabled)
@@ -55,8 +67,8 @@ public class RunCreationService {
     checkEngines(request, suite);
     checkFixture(request, suite);
 
-    UUID runId =
-        runs.insertRun(
+    var inserted =
+        runs.insertRunIfAbsent(
             new RunRepository.NewRun(
                 projectId,
                 suite.id(),
@@ -64,8 +76,15 @@ public class RunCreationService {
                 request.fixture(),
                 request.source(),
                 request.idempotencyKey(),
-                RunRequestHash.of(request, mapper),
+                requestHash,
                 request.shardingOrDefault()));
+    if (inserted.isEmpty()) {
+      // A concurrent request with the same key committed first; our INSERT waited for it.
+      RunRepository.ExistingRun winner =
+          runs.findByIdempotencyKey(projectId, request.idempotencyKey()).orElseThrow();
+      return replayOrConflict(projectId, request, winner, requestHash);
+    }
+    UUID runId = inserted.get();
 
     List<String> targetKeys = new ArrayList<>();
     for (CreateRunRequest.Target target : request.targets()) {
@@ -81,7 +100,25 @@ public class RunCreationService {
     payload.put("targetKeys", targetKeys);
     runs.insertRunEvent(runId, EventType.RUN_CREATED, mapper.writeValueAsString(payload));
 
-    return runs.findRun(projectId, runId).orElseThrow();
+    return new Result(runs.findRun(projectId, runId).orElseThrow(), false);
+  }
+
+  private Result replayOrConflict(
+      UUID projectId,
+      CreateRunRequest request,
+      RunRepository.ExistingRun existing,
+      byte[] requestHash) {
+    if (!MessageDigest.isEqual(existing.requestHash(), requestHash)) {
+      throw new ApiProblemException(
+          ProblemType.IDEMPOTENCY_CONFLICT,
+          "idempotency key "
+              + request.idempotencyKey()
+              + " was already used for run "
+              + existing.id()
+              + " with a different request",
+          List.of(new FieldError("idempotencyKey", "already used with a different request")));
+    }
+    return new Result(runs.findRun(projectId, existing.id()).orElseThrow(), true);
   }
 
   static String targetKey(CreateRunRequest.Target target) {

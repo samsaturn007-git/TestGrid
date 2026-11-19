@@ -20,11 +20,23 @@ public class RunController {
     this.creation = creation;
   }
 
-  /** 202: the run is queued, not executed. Idempotent replay (200 / 409) arrives in T3. */
+  public static final String REPLAY_HEADER = "Idempotent-Replay";
+
+  /**
+   * 202 for a new run (queued, not executed); 200 with {@code Idempotent-Replay: true} when the
+   * same key and request were seen before; 409 when the key was used with a different request.
+   */
   @PostMapping("/projects/{projectId}/runs")
   public ResponseEntity<RunResponse> create(
       @PathVariable UUID projectId, @Valid @RequestBody CreateRunRequest request) {
-    RunResponse run = creation.create(projectId, request);
-    return ResponseEntity.accepted().location(URI.create(run.links().self())).body(run);
+    RunCreationService.Result result = creation.create(projectId, request);
+    URI location = URI.create(result.run().links().self());
+    if (result.replay()) {
+      return ResponseEntity.ok()
+          .header(REPLAY_HEADER, "true")
+          .location(location)
+          .body(result.run());
+    }
+    return ResponseEntity.accepted().location(location).body(result.run());
   }
 }

@@ -42,7 +42,7 @@ public class ManifestSeeder implements ApplicationRunner {
 
   @Override
   public void run(ApplicationArguments args) {
-    List<LoadedSuite> suites = loader.load(properties.root());
+    List<LoadedSuite> suites = loader.load(properties.rootPath());
     seed(LocalProject.ID, suites);
   }
 
