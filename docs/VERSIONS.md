@@ -56,7 +56,11 @@ Not pinned yet (pinned in their own PRD, after checking the official source that
 | Docker engine | none | OrbStack 2.2.5 installed; **you must open the app once** to accept its terms and start the engine | `brew install --cask orbstack` |
 | `docker compose` | broken symlink | Docker Compose v5.5.0 ✓ | fixed by the OrbStack install |
 
+| Corepack / pnpm | `pnpm` 10.34.5 and Corepack 0.34.1 came from an old nvm Node 20 install; four dangling `pnpm`/`pnpx`/`yarn`/`yarnpkg` links in `/opt/homebrew/bin` pointed to a removed Node 24 | Corepack **0.36.0** under Node 26 (`/opt/homebrew/bin/corepack`), `pnpm` shim → **12.21.0** ✓ | removed the dangling links, `npm install -g corepack@0.36.0`, `corepack enable pnpm` |
+
 Side effect: Homebrew also upgraded a dependent formula, `opencode` 1.15.10 → 2.3.2.
+
+Corepack 0.34.1 cannot launch pnpm 12, because pnpm 12 ships a native binary instead of `pnpm.cjs`. It also leaves a broken entry in `~/.cache/node/corepack/v1/pnpm/12.21.0`, so delete that folder if you see `Cannot find module …/pnpm.cjs`.
 
 **Using JDK 21 in this repo** (the global default `java` stays 26). Run this before Maven commands; PRD-01's Makefile will set it automatically:
 
