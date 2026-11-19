@@ -1,12 +1,12 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T15:22:54+00:00",
+  "updated_at": "2026-11-19T15:28:57+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
       "filename": "prds/PRD-00-governance.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [],
       "priority": "P0",
       "estimate": "4–6 h",
@@ -15,30 +15,30 @@
       "tasks": {
         "T1": {
           "label": "Read and confirm MASTER_PRD plus contract and security documents; record the conflict register.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Create ADR-001 to ADR-004 with considered alternatives.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Write the risk register (top 8) with mitigation and verifying test IDs.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Define the clean-checkout demo acceptance walkthrough.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Confirm version pinning and resource-budget limits from official sources.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Bootstrap the repository: PR template, ADR index, branch and commit conventions.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-00.md",
       "blocker": null
     },
     "PRD-01": {
