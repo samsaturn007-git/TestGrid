@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T21:39:18+00:00",
+  "updated_at": "2026-11-19T21:56:23+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -99,7 +99,7 @@
       "tasks": {
         "T1": {
           "label": "Write Flyway migrations, constraints, indexes and manifest seeding with schema validation.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement create-run API with validation, engine allowlist and fixture-profile guard.",
