@@ -1,6 +1,6 @@
 # ADR-004: Dispatch and scheduling ownership — the DB dispatcher decides, the broker only transports
 
-**Date:** 2026-11-19 | **Status:** Proposed (accepted once the developer signs off in `docs/evidence/PRD-00.md`)
+**Date:** 2026-11-19 | **Status:** Accepted (developer sign-off 2026-11-19, recorded in `docs/evidence/PRD-00.md`)
 
 ## Context
 - PRD-04 introduces RabbitMQ; PRD-11 introduces duration-aware scheduling (`LPT_AGING`) and must be benchmarked against `FIFO`.

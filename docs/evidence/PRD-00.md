@@ -2,9 +2,9 @@
 
 **PRD:** `prds/PRD-00-governance.md`  
 **Branch / commits:** `prd-00/governance` — `2872bf0` (kit import on `main`), `8d1bc20` (ADRs, index, PR template, conventions), `6d00dcd` (conflict register, risks, walkthrough, versions, vocab check)  
-**Reviewer:** developer (sign-off pending — see AC-3)  
+**Reviewer:** developer (repository owner), approved in session on 2026-11-19  
 **Date:** 2026-11-19 (UTC)  
-**Outcome:** blocked — every task is implemented; waiting only on the developer's approval of the demo walkthrough and non-goals (AC-3)
+**Outcome:** pass
 
 ## Acceptance criteria with evidence
 
@@ -12,7 +12,7 @@
 |---|---|---|---|
 | AC-1 | Yes | — (design review) | Each of `docs/decisions/ADR-001…004` lists ≥ 2 rejected options with a concrete reason and has a **"What this does NOT claim"** block. Rejected counts: ADR-001 = 3 (Node-only, Go, MongoDB); ADR-002 = 4 (RabbitMQ day one, Kafka, Redis Streams, DB polling forever); ADR-003 = 3 (uploaded specs, Git-URL runners, free-form URL + regex); ADR-004 = 3 (broker FIFO + consumer priority, RabbitMQ priority queues, pure DB polling). Command output below. |
 | AC-2 | Yes | — (grep check) | `docs/CONFLICT_REGISTER.md`: 14 inherited conflicts re-checked and closed, 6 new observations ruled non-contradictory; **0 open**. `bash tools/vocab_check.sh` exit 0 (output below). |
-| AC-3 | **Pending** | — | `docs/DEMO_WALKTHROUGH.md` (marked *TARGET, NOT YET RUNNABLE*) and the non-goals (MASTER_PRD §5, repeated at the end of the walkthrough) await the developer's explicit approval. Record it in the sign-off section below. |
+| AC-3 | Yes | — (developer approval) | The developer explicitly approved `docs/DEMO_WALKTHROUGH.md` (marked *TARGET, NOT YET RUNNABLE*), the non-goals (MASTER_PRD §5, repeated at the end of the walkthrough) and ADR-001…004 on 2026-11-19 ("Approve and close"). Recorded in the sign-off section below; ADR statuses changed to *Accepted*. |
 | AC-4 | Yes | — (link review) | Every row of `docs/VERSIONS.md` §1 has an official source link and the check date 2026-11-19. Each value came from the live source today (commands below), not from memory. |
 
 ## Tasks completed
@@ -129,11 +129,11 @@ $ java -version → openjdk 26.0.1;  /opt/homebrew/opt/openjdk@21/bin/java -vers
 
 ## Developer sign-off (AC-3)
 
-- [ ] I approve `docs/DEMO_WALKTHROUGH.md` as the target acceptance path.
-- [ ] I approve the non-goals in MASTER_PRD §5.
-- [ ] I have read ADR-001 to ADR-004 and accept them (their status changes to *Accepted*).
+- [x] I approve `docs/DEMO_WALKTHROUGH.md` as the target acceptance path.
+- [x] I approve the non-goals in MASTER_PRD §5.
+- [x] I have read ADR-001 to ADR-004 and accept them (their status changes to *Accepted*).
 
-Approved by: — (pending) on —
+Approved by: the developer (repository owner), in the working session, on 2026-11-19. The explain-back answers below are still the developer's to write.
 
 ## Explain-back review (developer's own words)
 

@@ -1,6 +1,6 @@
 # ADR-003: Safe execution boundary — manifest-only suites, no client URLs or code
 
-**Date:** 2026-11-19 | **Status:** Proposed (accepted once the developer signs off in `docs/evidence/PRD-00.md`)
+**Date:** 2026-11-19 | **Status:** Accepted (developer sign-off 2026-11-19, recorded in `docs/evidence/PRD-00.md`)
 
 ## Context
 - A test-orchestration platform executes code in browsers by design. Accepting code, URLs or CLI flags from clients turns it into a remote-code-execution and SSRF service.

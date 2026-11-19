@@ -1,6 +1,6 @@
 # ADR-001: Stack — Spring Boot API, Node Playwright worker, PostgreSQL as canonical state
 
-**Date:** 2026-11-19 | **Status:** Proposed (accepted once the developer signs off in `docs/evidence/PRD-00.md`)
+**Date:** 2026-11-19 | **Status:** Accepted (developer sign-off 2026-11-19, recorded in `docs/evidence/PRD-00.md`)
 
 ## Context
 - TestGrid needs an orchestrator that owns every state transition (runs, targets, attempts, leases, quality outcomes) and a worker that drives real browsers.

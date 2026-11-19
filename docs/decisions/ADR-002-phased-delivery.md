@@ -1,6 +1,6 @@
 # ADR-002: Phased delivery — single polling worker first, then RabbitMQ with a transactional outbox
 
-**Date:** 2026-11-19 | **Status:** Proposed (accepted once the developer signs off in `docs/evidence/PRD-00.md`)
+**Date:** 2026-11-19 | **Status:** Accepted (developer sign-off 2026-11-19, recorded in `docs/evidence/PRD-00.md`)
 
 ## Context
 - A solo, part-time developer must reach a runnable end-to-end path (G1) early, or the project risks stalling in infrastructure.

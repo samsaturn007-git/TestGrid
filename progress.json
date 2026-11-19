@@ -1,12 +1,12 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T15:27:01+00:00",
+  "updated_at": "2026-11-19T15:28:57+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
       "filename": "prds/PRD-00-governance.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [],
       "priority": "P0",
       "estimate": "4–6 h",
@@ -38,7 +38,7 @@
           "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-00.md",
       "blocker": null
     },
     "PRD-01": {

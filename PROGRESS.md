@@ -2,11 +2,11 @@
 
 > Generated from `progress.json` by `python3 tools/progress.py report`. Status is user/agent-reported and requires independent evidence verification.
 
-**Core PRDs complete:** 0/14  |  **Core checklist progress:** 6/93 tasks (6.5%)
+**Core PRDs complete:** 1/14  |  **Core checklist progress:** 6/93 tasks (6.5%)
 
 | PRD | Status | Task progress | Effort | Dependencies | Evidence |
 |---|---|---:|---|---|---|
-| [PRD-00](prds/PRD-00-governance.md) | in_progress | 6/6 | 4–6 h | — | — |
+| [PRD-00](prds/PRD-00-governance.md) | done | 6/6 | 4–6 h | — | [docs/evidence/PRD-00.md](docs/evidence/PRD-00.md) |
 | [PRD-01](prds/PRD-01-monorepo-and-fixture.md) | not_started | 0/7 | 10–16 h | PRD-00 | — |
 | [PRD-02](prds/PRD-02-domain-and-api.md) | not_started | 0/6 | 14–20 h | PRD-01 | — |
 | [PRD-03](prds/PRD-03-single-worker-runner.md) | not_started | 0/7 | 14–22 h | PRD-02 | — |
@@ -34,7 +34,7 @@
 - **Optional:** PRD-14 to PRD-15.
 
 ## Next action
-Continue [PRD-00](prds/PRD-00-governance.md) (in_progress); complete unfinished checkboxes and add genuine evidence.
+Start [PRD-01](prds/PRD-01-monorepo-and-fixture.md) and open `CODEX_PLAYBOOK.md`.
 
 ## Progress update commands
 
