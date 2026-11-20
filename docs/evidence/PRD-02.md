@@ -1,10 +1,10 @@
 # Evidence — PRD-02
 
 **PRD:** `prds/PRD-02-domain-and-api.md`  
-**Branch / commits:** `prd-02/domain-api` — `71528a1` (start), `367e8b9` (setup), `5371c80` (T1), `b7cea96` (T2), `ad8a0e1` (T3), `414dbe9` (T4), `ce7115d` + `d38e90b` (T5), `76ffa4e` (T6); tracker ticks `adc18c4`, `b10490f`, `bd87d89`, `ad1712d`, `2930a36`. Not pushed yet.  
-**Reviewer:** developer (repository owner). Review pending.  
+**Branch / commits:** `prd-02/domain-api` — `71528a1` (start), `367e8b9` (setup), `5371c80` (T1), `b7cea96` (T2), `ad8a0e1` (T3), `414dbe9` (T4), `ce7115d` + `d38e90b` (T5), `76ffa4e` (T6); `06ecf02` (evidence); tracker ticks `adc18c4`, `b10490f`, `bd87d89`, `ad1712d`, `2930a36`, `83c9ceb`. PR https://github.com/samsaturn007-git/TestGrid/pull/3  
+**Reviewer:** developer (repository owner). On 2026-11-20 the developer asked Claude to confirm CI, write the explain-back and close PRD-02 on their behalf (see the last section).  
 **Date:** 2026-11-19 → 2026-11-20 (UTC)  
-**Outcome:** pass (all six ACs verified locally; awaiting developer review and the first GitHub Actions run of this branch)
+**Outcome:** pass (all six ACs verified locally and in GitHub Actions run 44720764249)
 
 All commands ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1, OrbStack / Docker 29.8.2, Compose 5.5.0, JDK 21.0.13.1, Node 26.13.1, pnpm 12.21.0). Every API test is **live** against PostgreSQL 18.7 in Testcontainers (`postgres:18.7-bookworm`, the Compose image) unless marked otherwise. No paid service and no credential was used.
 
@@ -17,7 +17,7 @@ All commands ran on the reference machine (Apple M4, 16 GiB, macOS 27.2.1, OrbSt
 | AC-3 | Yes | API-003 | `CreateRunApiTest`: unknown suite → `422 unknown-suite`; engine outside `allowedEngines` → `422 engine-not-allowed`; mode the suite doesn't declare → `422 fixture-not-allowed`; unknown field (top-level and nested) → `400 validation-failed` naming the field; 201-character branch → `400`; URL-like `branch` / `ciRef` → `400`. `FixtureOutsideLocalProfileTest`: any fixture with `TESTGRID_PROFILE` unset → `422 fixture-not-allowed`. Every rejection asserts 0 runs, 0 targets and 0 events afterwards. |
 | AC-4 | Yes | API-005 | `RunQueryApiTest.api005PagingWhileFiftyRunsAreInsertedHasNoDuplicatesOrGaps`: 50 runs over 10 timestamps (ties broken by `id`), paged 7 at a time while 50 more are created through the API between pages; 8 pages, result equals the original 50 in order, no duplicates. `RunListExplainTest` (5,000 runs, `ANALYZE`d): both page queries are an `Index Scan using runs_project_queued_at_id` with the row comparison as the index condition and no sort (plan below and in `docs/evidence/raw/prd-02-explain-runs-list.txt`). |
 | AC-5 | Yes | — | `RunAggregateTest`: all 1,463 combinations of the 11 reachable target states (status × with/without attempt) for 1–3 targets, plus all 584 plain status combinations (8 + 64 + 512), against an independently written oracle; 18 readable example rows; empty input rejected. |
-| AC-6 | Yes (local) | — | Renaming `RunSummary.targetCount` → `targetTotal` without regenerating makes `make contracts-check` exit 2 with the diff in `api/openapi.yaml` and `packages/contracts/src/api.ts`; reverting it exits 0 (`docs/evidence/raw/prd-02-contract-drift.txt`). `make contracts-check` is the exact CI step (`.github/workflows/ci.yml`). The first GitHub run of it happens when this branch is pushed. |
+| AC-6 | Yes | — | Renaming `RunSummary.targetCount` → `targetTotal` without regenerating makes `make contracts-check` exit 2 with the diff in `api/openapi.yaml` and `packages/contracts/src/api.ts`; reverting it exits 0 (`docs/evidence/raw/prd-02-contract-drift.txt`). `make contracts-check` is the exact CI step (`.github/workflows/ci.yml`); on GitHub it ran and passed on the committed tree (run 44720764249, below). The failing case was demonstrated locally, not by pushing a broken commit. |
 
 ## Tasks completed
 
@@ -97,6 +97,23 @@ run.RunQueryApiTest                           tests=7   errors=0 skipped=0 failu
 run.RunRequestHashTest                        tests=3   errors=0 skipped=0 failures=0
 TOTAL                                         tests=131 errors=0 skipped=0 failures=0
 ```
+
+### GitHub Actions run 44720764249 (PR #3, fresh `ubuntu-24.04` runners)
+
+```text
+$ gh run view 44720764249 --json conclusion,headSha,event,jobs
+conclusion: success   event: pull_request   headSha: 83c9ceb05e56d79095a6afe9af8cd9415ec23435
+check + unit tests            success   (1m46s)
+  make check (format, lint, typecheck)                         success
+  make test (node:test + ./mvnw verify)                        success   # Testcontainers: tc.postgres:18.7-bookworm containers created on the runner
+  Contract drift check (OpenAPI spec and TypeScript types)     success   "contracts-check OK: api/openapi.yaml and packages/contracts/src/api.ts match the code"
+compose up + Chromium smoke   success   (2m23s)
+  Run survives an API restart (PRD-02 AC-1)                    success   "restart-check OK"
+  make smoke (FIXTURE_MODE=PASS)                               success   "6 passed (3.2s)"
+  Fixture isolation (AC-3)                                     success   "1 passed (2.0s)"
+```
+
+Run: https://github.com/samsaturn007-git/TestGrid/actions/runs/44720764249
 
 ### Concurrency tests can fail (T3 mutation check)
 
@@ -207,7 +224,7 @@ and no suite row is written.
 - `RunCreationAtomicityTest` uses a Mockito spy only to inject the fault; the database and transaction are real.
 - Everything else is live: real PostgreSQL 18.7 (Testcontainers), real HTTP for `ConcurrentIdempotencyTest` and `RestartPersistenceTest`, real Compose for `make restart-check` and the demo.
 - The chunked-body path of the 64 KB limit (no `Content-Length`) has no dedicated test; only a declared length over 64 KB is tested.
-- GitHub Actions has not run this branch yet (not pushed). The new CI steps (`make contracts-check`, `make restart-check`) have only been run locally.
+- The AC-6 failing case (drift → exit 2) was shown locally with the same `make contracts-check` that CI runs; no deliberately broken commit was pushed to GitHub.
 
 ## Screenshots / demo / raw data links
 
@@ -230,18 +247,40 @@ and no suite row is written.
 - **Log lines outside a request show `[ ]`** for the empty trace and request IDs (cosmetic).
 - **`GET /runs` filters** (`status`, `suiteKey`, `branch`, `trigger`) are PRD-05; only `limit` and `cursor` exist.
 
-## Explain-back review (developer's own words)
+## Explain-back review
 
-PRD-02's definition of done includes: "the developer can explain the idempotency and pagination design without AI." Please answer these yourself before closing the PRD; they are deliberately not pre-filled.
+> **Not in the developer's own words.** On 2026-11-20 the developer asked Claude to do the remaining closing steps: confirm CI, write these answers and approve the evidence. The answers below are Claude's and are kept as study notes. PRD-02's definition of done says "the developer can explain the idempotency and pagination design without AI"; that is **still owed**, as is the PRD-01 explain-back (MASTER_PRD §9, "AI-generated code not understood"). Replace this section with the developer's own answers when they do it.
 
-1. **The three most important engineering decisions in this PRD, and why.** Suggested topics: why the unique constraint plus `ON CONFLICT DO NOTHING` (not a "check, then insert" in Java) is what makes API-004 hold; why keyset pagination on `(queued_at, id)` can't skip or repeat rows while runs are inserted, and why `id` is needed; why the invariants live in the schema rather than only in the service.
+1. **The three most important engineering decisions, and why (Claude's answers)**
+   - **The database decides idempotency, not Java.** A "SELECT the key, then INSERT" in application code has a gap: two requests both see no row and both insert. You get either a duplicate run or a `500` from the unique violation. Instead, `UNIQUE(project_id, idempotency_key)` plus `INSERT … ON CONFLICT DO NOTHING` makes Postgres serialise the two requests on the index entry.
+     - The second `INSERT` waits for the first transaction. If that commits, `DO NOTHING` fires, and the next statement reads the winner (READ COMMITTED takes a new snapshot per statement). It then compares the stored sha256 of the canonical request: same hash gives a `200` replay, a different hash gives `409`. If the first rolls back, the second simply inserts.
+     - The "key already used?" read before the insert is only a shortcut. It lets replays skip the manifest checks, but correctness doesn't depend on it.
+     - `IdempotencyRaceTest` proves the waiting really happens (`pg_stat_activity` shows the lock wait). Removing `ON CONFLICT` made all 8 concurrency tests fail.
+     - Trade-off: the hash leaves out the key, sorts the targets, and drops nulls and spelled-out defaults. Changing those rules later would turn honest retries into `409`s, so they are written into contracts §4.
+   - **Keyset pagination on `(queued_at DESC, id DESC)`.** The cursor is the last row's position, and the next page is everything strictly after it in that order.
+     - `id` makes the order total: several runs can share a `queued_at`, and without a tiebreak a page boundary could fall in the middle of a tie, skipping or repeating rows. The test uses 10 timestamps × 5 runs for exactly this.
+     - New runs get `queued_at = now()`, which is later than every existing row, so they land before page 1 and can't push older rows across a boundary. With `OFFSET` they would, giving duplicates.
+     - Each page is an index range scan of `limit + 1` rows, however deep the client is (the `EXPLAIN` evidence).
+     - The cursor stores microseconds because that is Postgres's precision, so a rounded timestamp can't skip a row.
+     - Caveat: `now()` is the transaction start time. A slow transaction that started earlier but commits after a page was read can land behind the cursor. That run is new, not one of the rows the client was paging through, so it doesn't count as a gap in the original list, but the client won't see it in this pass.
+   - **Invariants live in the schema.** These are all DDL:
+     - canonical enum spellings
+     - `finished_at` set exactly when a status is terminal
+     - a run's suite belongs to the run's project (composite FK)
+     - at most one current revision per suite key (partial unique index)
+     - append-only `run_events` (trigger)
 
-   _To be written by the developer._
-
-2. **What happens if the main operation fails halfway through?** For example: the database connection drops after the run row is inserted but before `RUN_CREATED`; or two identical requests arrive and the first one's transaction rolls back.
-
-   _To be written by the developer._
-
-3. **What would you change for production?**
-
-   _To be written by the developer._
+     Every later writer is held to them, whether it's the PRD-03 completion path, the PRD-04 reaper or hand-written SQL, not only this service. `SchemaConstraintsTest` writes straight to the tables to prove it. Trade-off: a new enum value needs a migration, which is intended, because it keeps the database aligned with contracts §2.
+2. **What happens if it fails halfway (Claude's answer).**
+   - **Connection lost after the run row, before `RUN_CREATED`:** the run, targets and event are one transaction, so nothing was committed and Postgres discards the work when the connection dies. The client sees a `500` or a dropped connection. The key was never committed, so a retry with the same key creates the run normally (`RunCreationAtomicityTest`).
+   - **Commit succeeded but the response was lost:** the retry gets `200` with `Idempotent-Replay: true` and the original run ID. This is the case idempotency exists for.
+   - **Two identical requests, and the first one rolls back:** the second was waiting on the first's uncommitted index entry. Once that row is gone, its `INSERT` goes ahead and it returns `202`. No orphan run or half-made targets are left.
+   - **API dies during startup:** each Flyway migration runs in its own Postgres transaction. Manifest seeding is one transaction under an advisory lock, so two instances can't interleave. An invalid manifest stops startup before anything is seeded. A restart is safe: the schema is up to date and the seeder reports `unchanged` (`make restart-check`).
+3. **What I'd change for production (Claude's answer).**
+   - **Access:** put real authentication behind `CallerScope` (tokens in PRD-03/08/12). Add `429 rate-limited`. Put `/v3/api-docs` behind auth or off public ingress.
+   - **Database:** a least-privilege runtime role, separate from the migration owner, that can't run DDL or disable the append-only trigger. Statement timeouts and pool sizing from measured load.
+   - **Migrations:** run Flyway as a separate deploy step instead of on every API start once there are several instances.
+   - **Suite revision:** include the `support/` files the specs import, or ship the manifest as a built artifact with its own hash.
+   - **Health:** add a readiness probe that checks the database, alongside the liveness `/healthz`.
+   - **Cursors:** sign them (HMAC) if clients shouldn't be able to forge positions, and add a composite index for each PRD-05 filter so filtered pages stay index scans.
+   - **Retention:** decide how long idempotency keys live. Today they live as long as the run, which is fine at this scale.
