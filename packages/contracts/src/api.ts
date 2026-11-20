@@ -92,6 +92,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every attempt per target with its case results, newest attempt first */
+        get: operations["getRunResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/suites/{suiteId}": {
         parameters: {
             query?: never;
@@ -113,6 +130,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AttemptResults: {
+            attempt: components["schemas"]["AttemptSummary"];
+            caseResults: components["schemas"]["CaseResult"][];
+            errorDetail: string | null;
+        };
+        AttemptSummary: {
+            /** Format: int32 */
+            attemptNo: number;
+            /** Format: date-time */
+            claimedAt: string;
+            /** @enum {string|null} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastHeartbeatAt: string | null;
+            leaseExpired: boolean;
+            /** Format: date-time */
+            leasedUntil: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            status: "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED" | "ABANDONED";
+            workerId: string;
+        };
+        CaseResult: {
+            caseKey: string;
+            /** Format: int32 */
+            durationMs: number;
+            /** @enum {string|null} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
+            errorMessage: string | null;
+            /** Format: int32 */
+            retryCount: number;
+            /** @enum {string} */
+            status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
+        };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
             idempotencyKey: string;
@@ -204,6 +260,23 @@ export interface components {
             /** @enum {string} */
             trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
         };
+        RunResults: {
+            /** Format: uuid */
+            runId: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            targets: components["schemas"]["RunResultsTarget"][];
+        };
+        RunResultsTarget: {
+            attempts: components["schemas"]["AttemptResults"][];
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "QUEUED" | "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            targetKey: string;
+        };
         RunSummary: {
             /** Format: date-time */
             finishedAt: string | null;
@@ -238,6 +311,7 @@ export interface components {
             finishedAt: string | null;
             /** Format: uuid */
             id: string;
+            latestAttempt: components["schemas"]["AttemptSummary"] | null;
             /** Format: int32 */
             maxAttempts: number;
             /** Format: date-time */
@@ -484,6 +558,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getRunResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResults"];
                 };
             };
             /** @description not-found */
