@@ -2,14 +2,14 @@
 
 > Generated from `progress.json` by `python3 tools/progress.py report`. Status is user/agent-reported and requires independent evidence verification.
 
-**Core PRDs complete:** 3/14  |  **Core checklist progress:** 21/93 tasks (22.6%)
+**Core PRDs complete:** 3/14  |  **Core checklist progress:** 22/93 tasks (23.7%)
 
 | PRD | Status | Task progress | Effort | Dependencies | Evidence |
 |---|---|---:|---|---|---|
 | [PRD-00](prds/PRD-00-governance.md) | done | 6/6 | 4–6 h | — | [docs/evidence/PRD-00.md](docs/evidence/PRD-00.md) |
 | [PRD-01](prds/PRD-01-monorepo-and-fixture.md) | done | 7/7 | 10–16 h | PRD-00 | [docs/evidence/PRD-01.md](docs/evidence/PRD-01.md) |
 | [PRD-02](prds/PRD-02-domain-and-api.md) | done | 6/6 | 14–20 h | PRD-01 | [docs/evidence/PRD-02.md](docs/evidence/PRD-02.md) |
-| [PRD-03](prds/PRD-03-single-worker-runner.md) | in_progress | 2/7 | 14–22 h | PRD-02 | — |
+| [PRD-03](prds/PRD-03-single-worker-runner.md) | in_progress | 3/7 | 14–22 h | PRD-02 | — |
 | [PRD-04](prds/PRD-04-durable-queue.md) | not_started | 0/7 | 20–30 h | PRD-03 | — |
 | [PRD-05](prds/PRD-05-live-dashboard.md) | not_started | 0/7 | 14–20 h | PRD-04 | — |
 | [PRD-06](prds/PRD-06-artifacts-and-timeline.md) | not_started | 0/6 | 12–18 h | PRD-05 | — |

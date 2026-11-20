@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T11:14:07+00:00",
+  "updated_at": "2026-11-20T11:21:55+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -147,7 +147,7 @@
         },
         "T3": {
           "label": "Implement safe Playwright spawning, JSON reporter parsing and case mapping by tag.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Write first happy-path run end to end and the PRODUCT_DEFECT failure path.",
