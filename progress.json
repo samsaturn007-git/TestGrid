@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T11:21:55+00:00",
+  "updated_at": "2026-11-20T11:47:49+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -151,15 +151,15 @@
         },
         "T4": {
           "label": "Write first happy-path run end to end and the PRODUCT_DEFECT failure path.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Add timeout/cancel/shutdown process-group cleanup and error-class mapping.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Add structured log correlation and token-redaction test.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Run on Chromium, Firefox and WebKit and document platform limitations.",
