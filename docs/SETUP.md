@@ -91,3 +91,23 @@ Each Playwright try creates a fresh fixture session with seed `FIXTURE_SEED + re
 | `fixture session must be created` in smoke output | `.env` has `DEMO_SHOP_FIXTURES` other than `enabled`; fix it and `make up` |
 | Port already in use | change `API_PORT` / `WEB_PORT` / `DEMO_SHOP_PORT` in `.env` |
 | `Executable doesn't exist` from Playwright | `pnpm --filter worker exec playwright install chromium` |
+
+## Worker and end-to-end runs (PRD-03)
+
+`make up` also builds and starts the `worker` container (`mcr.microsoft.com/playwright:v1.65.1-noble`, a ~3.6 GiB image on arm64; the first build downloads it). It claims work from the API's internal port, which is never published, and reaches the demo-shop over the `internal` network.
+
+```bash
+make e2e                                    # PASS, PRODUCT_DEFECT, SELECTOR_DRIFT, TIMEOUT, catalog-regression on Chromium
+make e2e ENGINES="chromium firefox webkit"  # needs TESTGRID_WORKER_ENGINES=chromium,firefox,webkit in .env, then `make up`
+make kill-check                             # kill -9 the worker mid-run: the lease expires visibly, nothing passes
+make sigterm-check                          # graceful stop: 20 s grace, then INFRA_ERROR / WORKER_SHUTDOWN
+```
+
+Old `.env` files need `TESTGRID_WORKER_TOKEN` (copy the fake value from `.env.example`); Compose refuses to start without it.
+
+**Engine notes (checked on the reference Mac, OrbStack, arm64 image, 2026-11-20)**
+- **Firefox needs a writable `HOME`.** The worker's root filesystem is read-only, so `/home/pwuser` is a tmpfs owned by `pwuser` (uid 1001). With a root-owned home, Firefox exits with "Could not find profile folder" and the target is reported as `INFRA_ERROR / BROWSER_LAUNCH` (never as a pass).
+- **Browser sandboxes are off or degraded inside the container.** Firefox logs `Sandbox: CanCreateUserNamespace() clone() failure: EPERM` (no user namespaces with `cap_drop: ALL` and `no-new-privileges`), and Playwright starts Chromium with `--no-sandbox` by default. The container (non-root, read-only, no capabilities, internal network, resource limits) is the isolation boundary. Only checked-in suites run against the allowlisted demo-shop (ADR-003).
+- **WebKit is Playwright's Linux WebKit build**, not Safari on macOS; rendering and timing can differ from a real Safari.
+- **One worker, one slot:** a three-engine run executes its targets one after another. Parallel workers arrive in PRD-04.
+- CI runs the Chromium e2e on `ubuntu-24.04` (amd64 image); the three-engine run is local and on demand.

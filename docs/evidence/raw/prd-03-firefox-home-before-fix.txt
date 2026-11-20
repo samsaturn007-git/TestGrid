@@ -1,0 +1,22 @@
+# First three-engine run, before the HOME fix (run c54af260-cb04-4d5f-a475-fc6d3679dcbf, catalog-regression PASS)
+# Firefox target reported honestly as INFRA_ERROR / BROWSER_LAUNCH, 0 case results; Chromium and WebKit PASSED.
+run status: INFRA_ERROR
+local:chromium:0 PASSED None cases 12
+local:firefox:0 INFRA_ERROR BROWSER_LAUNCH cases 0
+Error: browserType.launch: Failed to launch the browser process.
+Browser logs:
+
+<launching> /ms-playwright/firefox-1572/firefox/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-VcKmTS -juggler-pipe -silent
+<launched> pid=7922
+[pid=7922][err] [7922] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+[pid=7922][err] *** You are running in headless mode.
+[pid=7922][err] Could not find profile folder.
+[pid=7922] <process did exit: exitCode=1, signal=null>
+[pid=7922] starting temporary directories cleanup
+Call log:
+  - <launching> /ms-playwright/firefox-1572/firefox/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-VcKmTS -juggler-pipe -silent
+  - <launched> pid=7922
+  - [pid=7922][err] [7922] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+  - [pid=7922][err] *** You are running in headless mode.
+  - [pid=7922][err] Could not find
+local:webkit:0 PASSED None cases 12

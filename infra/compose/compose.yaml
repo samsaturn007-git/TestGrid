@@ -92,8 +92,8 @@ services:
       # Safe default: fixtures are off unless .env says exactly "enabled".
       DEMO_SHOP_FIXTURES: ${DEMO_SHOP_FIXTURES:-disabled}
     ports:
-      # PRD-01 only: published on loopback so `make smoke` can drive the shop from the
-      # host. PRD-03 runs the worker inside `internal` and removes this port and `edge`.
+      # Loopback only, for the host-side `make smoke`, `make fixture-checks` and `make modes`
+      # (CONFLICT_REGISTER N9). The worker reaches the shop over `internal`, not this port.
       - '127.0.0.1:${DEMO_SHOP_PORT:-4173}:4173'
     healthcheck:
       test:
@@ -134,7 +134,11 @@ services:
     stop_grace_period: 40s
     <<: *hardening
     read_only: true
-    tmpfs: [/tmp, /home/pwuser]
+    # The root filesystem is read-only; browsers write profiles under HOME (Firefox refuses
+    # to start without a writable one), so HOME is a tmpfs owned by pwuser (uid 1001).
+    tmpfs:
+      - /tmp
+      - /home/pwuser:uid=1001,gid=1001,mode=0700
     shm_size: 512m
     # Internal network only: the worker reaches the API's worker port and the demo-shop.
     networks: [internal]

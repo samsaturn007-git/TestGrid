@@ -83,7 +83,7 @@ async function runScenario(s) {
       .join(' ');
     console.log(
       `  ${target.targetKey} attempt ${latest?.attempt.attemptNo} ${target.status}` +
-        ` cases=${cases.length} ${summary || '(all PASSED)'}`,
+        ` cases=${cases.length} ${summary || (cases.length ? '(all PASSED)' : `${latest?.attempt.errorClass ?? ''}`)}`,
     );
   }
   const secs = ((Date.now() - started) / 1000).toFixed(1);
