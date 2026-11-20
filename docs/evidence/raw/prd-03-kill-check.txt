@@ -1,0 +1,35 @@
+created run e23855b3-9646-4da2-a6d4-360e1e082920 (TIMEOUT fixture: the attempt runs for ~40 s)
+target RUNNING; sending SIGKILL to the worker container
+ Container testgrid-worker-1 Killing 
+ Container testgrid-worker-1 Killed 
+waiting 35 s for the 30 s lease to run out (no heartbeats now)
+--- GET /api/v1/runs/e23855b3-9646-4da2-a6d4-360e1e082920
+run status: RUNNING | target status: RUNNING | finishedAt: None
+attempt 1 RUNNING worker worker-1 leasedUntil 2026-11-20T11:45:32.593076Z leaseExpired True
+--- database (DB clock)
+ attempt | target  |   run   | lease_expired | expired_for_s | case_results 
+---------+---------+---------+---------------+---------------+--------------
+ RUNNING | RUNNING | RUNNING | t             |            10 |            0
+(1 row)
+
+restarting the worker (the expired attempt stays as it is until PRD-04 adds the reaper)
+ Container testgrid-api-1 Running 
+ Container testgrid-demo-shop-1 Running 
+ Container testgrid-postgres-1 Running 
+ Container testgrid-postgres-1 Waiting 
+ Container testgrid-postgres-1 Healthy 
+ Container testgrid-api-1 Waiting 
+ Container testgrid-demo-shop-1 Waiting 
+ Container testgrid-demo-shop-1 Healthy 
+ Container testgrid-api-1 Healthy 
+ Container testgrid-worker-1 Starting 
+ Container testgrid-worker-1 Started 
+ Container testgrid-worker-1 Waiting 
+ Container testgrid-postgres-1 Waiting 
+ Container testgrid-api-1 Waiting 
+ Container testgrid-demo-shop-1 Waiting 
+ Container testgrid-demo-shop-1 Healthy 
+ Container testgrid-api-1 Healthy 
+ Container testgrid-worker-1 Healthy 
+ Container testgrid-postgres-1 Healthy 
+kill-check OK

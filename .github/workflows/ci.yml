@@ -49,7 +49,7 @@ jobs:
         run: make contracts-check
 
   smoke:
-    name: compose up + Chromium smoke
+    name: compose up + Chromium smoke and worker e2e
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -68,6 +68,8 @@ jobs:
         run: make up
       - name: Run survives an API restart (PRD-02 AC-1)
         run: make restart-check
+      - name: Worker end-to-end on Chromium (PRD-03 E2E-001, AC-1, AC-2)
+        run: make e2e
       - name: Install Chromium for Playwright
         run: pnpm --filter worker exec playwright install --with-deps chromium
       - name: make smoke (FIXTURE_MODE=PASS)

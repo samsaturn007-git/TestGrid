@@ -18,7 +18,7 @@ FIXTURE_SEED ?= 42
 export TG_FIXTURE_MODE := $(FIXTURE_MODE)
 export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e kill-check doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e kill-check sigterm-check doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -91,6 +91,9 @@ e2e: ## Submit runs through the API and check the worker's real results (PRD-03;
 
 kill-check: ## kill -9 the worker mid-run; the lease must expire visibly, nothing passes (PRD-03 AC-4)
 	@bash scripts/kill-check.sh
+
+sigterm-check: ## SIGTERM the worker mid-run; grace period, then INFRA_ERROR/WORKER_SHUTDOWN (PRD-03 FR-6)
+	@bash scripts/sigterm-check.sh
 
 doctor: ## Check the local toolchain against docs/VERSIONS.md
 	@bash scripts/doctor.sh

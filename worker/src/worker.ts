@@ -70,7 +70,7 @@ async function runAttempt(opts: WorkerOptions, claim: Claim, traceId: string): P
     runId: claim.runId,
     targetId: claim.targetId,
     attemptId: claim.attemptId,
-    workerId: opts.workerId,
+    // workerId is already on every line through the logger's base fields.
     traceId,
   });
   log.info(
