@@ -45,6 +45,25 @@ public class AttemptRepository {
       String revision,
       int timeoutMs) {}
 
+  static final String CLAIM_NEXT =
+      """
+      SELECT t.id AS target_id, t.run_id, t.engine, t.attempt_count,
+             r.fixture_mode, r.fixture_seed,
+             s.id AS suite_id, s.suite_key, s.revision, s.timeout_ms
+      FROM run_targets t
+      JOIN runs r ON r.id = t.run_id
+      JOIN suites s ON s.id = r.suite_id
+      WHERE t.status = 'QUEUED'
+        AND (t.not_before IS NULL OR t.not_before <= now())
+        AND t.executor = :executor
+        AND t.engine IN (:engines)
+        AND t.attempt_count < t.max_attempts
+        AND r.cancel_requested_at IS NULL
+      ORDER BY t.queued_at, t.id
+      LIMIT 1
+      FOR UPDATE OF t SKIP LOCKED
+      """;
+
   /**
    * The oldest eligible QUEUED target for these engines, locked for this transaction. SKIP LOCKED
    * makes concurrent claimers step over a row another transaction is claiming instead of waiting
@@ -52,24 +71,7 @@ public class AttemptRepository {
    * partial index {@code run_targets_queued}.
    */
   public Optional<ClaimableTarget> lockNextClaimable(Executor executor, List<Engine> engines) {
-    return jdbc.sql(
-            """
-            SELECT t.id AS target_id, t.run_id, t.engine, t.attempt_count,
-                   r.fixture_mode, r.fixture_seed,
-                   s.id AS suite_id, s.suite_key, s.revision, s.timeout_ms
-            FROM run_targets t
-            JOIN runs r ON r.id = t.run_id
-            JOIN suites s ON s.id = r.suite_id
-            WHERE t.status = 'QUEUED'
-              AND (t.not_before IS NULL OR t.not_before <= now())
-              AND t.executor = :executor
-              AND t.engine IN (:engines)
-              AND t.attempt_count < t.max_attempts
-              AND r.cancel_requested_at IS NULL
-            ORDER BY t.queued_at, t.id
-            LIMIT 1
-            FOR UPDATE OF t SKIP LOCKED
-            """)
+    return jdbc.sql(CLAIM_NEXT)
         .param("executor", executor.name())
         .param("engines", engines.stream().map(Engine::wireName).toList())
         .query((rs, i) ->

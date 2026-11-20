@@ -1,0 +1,31 @@
+-- POST /internal/v1/claims/next, 5000 targets, 10 QUEUED (ANALYZEd)
+Limit  (cost=54.12..54.13 rows=1 width=191) (actual time=0.030..0.031 rows=1.00 loops=1)
+  Buffers: shared hit=53
+  ->  LockRows  (cost=54.12..54.16 rows=3 width=191) (actual time=0.030..0.030 rows=1.00 loops=1)
+        Buffers: shared hit=53
+        ->  Sort  (cost=54.12..54.13 rows=3 width=191) (actual time=0.028..0.028 rows=1.00 loops=1)
+              Sort Key: t.queued_at, t.id
+              Sort Method: quicksort  Memory: 26kB
+              Buffers: shared hit=52
+              ->  Nested Loop  (cost=0.56..54.11 rows=3 width=191) (actual time=0.010..0.024 rows=10.00 loops=1)
+                    Buffers: shared hit=52
+                    ->  Nested Loop  (cost=0.42..53.58 rows=3 width=117) (actual time=0.008..0.019 rows=10.00 loops=1)
+                          Buffers: shared hit=32
+                          ->  Index Scan using run_targets_queued on run_targets t  (cost=0.14..28.68 rows=3 width=59) (actual time=0.004..0.006 rows=10.00 loops=1)
+                                Index Cond: (status = 'QUEUED'::text)
+                                Filter: ((attempt_count < max_attempts) AND (executor = 'LOCAL'::text) AND (engine = ANY ('{chromium,firefox,webkit}'::text[])) AND ((not_before IS NULL) OR (not_before <= now())))
+                                Index Searches: 1
+                                Buffers: shared hit=2
+                          ->  Index Scan using runs_pkey on runs r  (cost=0.28..8.30 rows=1 width=74) (actual time=0.001..0.001 rows=1.00 loops=10)
+                                Index Cond: (id = t.run_id)
+                                Filter: (cancel_requested_at IS NULL)
+                                Index Searches: 10
+                                Buffers: shared hit=30
+                    ->  Index Scan using suites_pkey on suites s  (cost=0.15..0.17 rows=1 width=90) (actual time=0.000..0.000 rows=1.00 loops=10)
+                          Index Cond: (id = r.suite_id)
+                          Index Searches: 10
+                          Buffers: shared hit=20
+Planning:
+  Buffers: shared hit=168 read=1
+Planning Time: 0.207 ms
+Execution Time: 0.043 ms
