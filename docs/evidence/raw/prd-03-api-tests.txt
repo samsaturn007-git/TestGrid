@@ -6,7 +6,8 @@ db.SchemaConstraintsTest                      tests=14  errors=0 skipped=0 failu
 domain.RunAggregateTest                       tests=21  errors=0 skipped=0 failures=0
 domain.TargetOutcomeTest                      tests=2   errors=0 skipped=0 failures=0
 health.HealthControllerTest                   tests=2   errors=0 skipped=0 failures=0
-internal.ClaimConcurrencyTest                 tests=6   errors=0 skipped=0 failures=0
+internal.ClaimConcurrencyTest                 tests=7   errors=0 skipped=0 failures=0
+internal.ClaimExplainTest                     tests=1   errors=0 skipped=0 failures=0
 internal.InternalPortTest                     tests=5   errors=0 skipped=0 failures=0
 internal.LeaseProtocolTest                    tests=16  errors=0 skipped=0 failures=0
 internal.LogCorrelationTest                   tests=1   errors=0 skipped=0 failures=0
@@ -26,4 +27,4 @@ run.RunCursorTest                             tests=7   errors=0 skipped=0 failu
 run.RunListExplainTest                        tests=1   errors=0 skipped=0 failures=0
 run.RunQueryApiTest                           tests=7   errors=0 skipped=0 failures=0
 run.RunRequestHashTest                        tests=3   errors=0 skipped=0 failures=0
-TOTAL                                         tests=168 errors=0 skipped=0 failures=0
+TOTAL                                         tests=170 errors=0 skipped=0 failures=0
