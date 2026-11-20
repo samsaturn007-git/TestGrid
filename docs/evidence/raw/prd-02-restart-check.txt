@@ -1,0 +1,6 @@
+created run c68688d2-b68b-43be-b9d7-a385c688e674 (HTTP 202)
+restarting the api container...
+api healthy again after 6s
+run c68688d2-b68b-43be-b9d7-a385c688e674 unchanged after restart: status QUEUED, targets ['local:chromium:0', 'local:firefox:0']
+same key after restart: HTTP 200, Idempotent-Replay: true, same run id
+restart-check OK

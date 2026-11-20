@@ -66,6 +66,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: make up (all services healthy)
         run: make up
+      - name: Run survives an API restart (PRD-02 AC-1)
+        run: make restart-check
       - name: Install Chromium for Playwright
         run: pnpm --filter worker exec playwright install --with-deps chromium
       - name: make smoke (FIXTURE_MODE=PASS)
