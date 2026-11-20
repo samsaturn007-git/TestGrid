@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T11:47:49+00:00",
+  "updated_at": "2026-11-20T11:57:11+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -163,7 +163,7 @@
         },
         "T7": {
           "label": "Run on Chromium, Firefox and WebKit and document platform limitations.",
-          "done": false
+          "done": true
         }
       },
       "evidence": null,
