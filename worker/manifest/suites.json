@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "suites": [
+    {
+      "suiteKey": "checkout-smoke",
+      "displayName": "Checkout smoke",
+      "specFiles": ["suites/checkout-smoke.spec.ts"],
+      "allowedEngines": ["chromium", "firefox", "webkit"],
+      "timeoutMs": 120000,
+      "playwrightRetries": 1,
+      "baseUrlRef": "DEMO_SHOP_INTERNAL",
+      "fixtureModes": ["PASS", "PRODUCT_DEFECT", "AUTOMATION_FLAKE", "SELECTOR_DRIFT", "TIMEOUT"],
+      "cases": [
+        {
+          "caseKey": "browse-catalog",
+          "title": "catalog lists the seeded products and opens a product",
+          "tag": "@browse-catalog",
+          "critical": false
+        },
+        {
+          "caseKey": "add-to-cart",
+          "title": "cart supports add, quantity change and remove",
+          "tag": "@add-to-cart",
+          "critical": false
+        },
+        {
+          "caseKey": "cart-total",
+          "title": "cart total includes the fixed 8% tax",
+          "tag": "@cart-total",
+          "critical": true
+        },
+        {
+          "caseKey": "apply-coupon",
+          "title": "coupon SAVE10 takes 10% off and unknown codes are rejected",
+          "tag": "@apply-coupon",
+          "critical": false
+        },
+        {
+          "caseKey": "checkout-happy-path",
+          "title": "checkout with an approved card shows an order number",
+          "tag": "@checkout-happy-path",
+          "critical": true
+        },
+        {
+          "caseKey": "card-declined",
+          "title": "a card ending in 0002 is declined",
+          "tag": "@card-declined",
+          "critical": false
+        }
+      ]
+    }
+  ]
+}

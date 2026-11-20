@@ -5,15 +5,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.testgrid.api.support.PostgresTestcontainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(PostgresTestcontainer.class)
 class HealthControllerTest {
 
   @Autowired private MockMvc mvc;
@@ -28,6 +31,9 @@ class HealthControllerTest {
 
   @Test
   void unknownPathIsNotFound() throws Exception {
-    mvc.perform(get("/api/v1/runs")).andExpect(status().isNotFound());
+    mvc.perform(get("/api/v1/no-such-route"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value("https://testgrid.local/problems/not-found"));
   }
 }

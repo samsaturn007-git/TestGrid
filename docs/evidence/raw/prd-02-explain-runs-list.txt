@@ -1,0 +1,61 @@
+-- GET /runs first page (limit 20 + 1), 5000 runs
+Limit  (cost=0.44..174.78 rows=21 width=270) (actual time=0.013..0.025 rows=21.00 loops=1)
+  Buffers: shared hit=47
+  ->  Nested Loop  (cost=0.44..41510.78 rows=5000 width=270) (actual time=0.013..0.024 rows=21.00 loops=1)
+        Buffers: shared hit=47
+        ->  Index Scan using runs_project_queued_at_id on runs r  (cost=0.28..498.16 rows=5000 width=214) (actual time=0.004..0.005 rows=21.00 loops=1)
+              Index Cond: (project_id = '00000000-0000-4000-8000-000000000001'::uuid)
+              Index Searches: 1
+              Buffers: shared hit=3
+        ->  Memoize  (cost=0.16..0.18 rows=1 width=80) (actual time=0.000..0.000 rows=1.00 loops=21)
+              Cache Key: r.suite_id
+              Cache Mode: logical
+              Hits: 20  Misses: 1  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+              Buffers: shared hit=2
+              ->  Index Scan using suites_pkey on suites s  (cost=0.15..0.17 rows=1 width=80) (actual time=0.002..0.003 rows=1.00 loops=1)
+                    Index Cond: (id = r.suite_id)
+                    Index Searches: 1
+                    Buffers: shared hit=2
+        SubPlan 1
+          ->  Aggregate  (cost=8.17..8.18 rows=1 width=8) (actual time=0.000..0.000 rows=1.00 loops=21)
+                Buffers: shared hit=42
+                ->  Index Only Scan using run_targets_run_id_target_key_key on run_targets t  (cost=0.15..8.17 rows=1 width=0) (actual time=0.000..0.000 rows=0.00 loops=21)
+                      Index Cond: (run_id = r.id)
+                      Heap Fetches: 0
+                      Index Searches: 21
+                      Buffers: shared hit=42
+Planning:
+  Buffers: shared hit=100 read=3
+Planning Time: 0.181 ms
+Execution Time: 0.039 ms
+
+-- GET /runs page after a cursor in the middle
+Limit  (cost=0.44..175.66 rows=21 width=270) (actual time=0.009..0.024 rows=21.00 loops=1)
+  Buffers: shared hit=49
+  ->  Nested Loop  (cost=0.44..20852.01 rows=2499 width=270) (actual time=0.009..0.023 rows=21.00 loops=1)
+        Buffers: shared hit=49
+        ->  Index Scan using runs_project_queued_at_id on runs r  (cost=0.28..353.70 rows=2499 width=214) (actual time=0.003..0.007 rows=21.00 loops=1)
+              Index Cond: ((project_id = '00000000-0000-4000-8000-000000000001'::uuid) AND (ROW(queued_at, id) < ROW('2026-11-20 15:17:43.707756+05:30'::timestamp with time zone, '852cfd65-72f6-4e95-9d3d-2de208371fc8'::uuid)))
+              Index Searches: 1
+              Buffers: shared hit=5
+        ->  Memoize  (cost=0.16..0.19 rows=1 width=80) (actual time=0.000..0.000 rows=1.00 loops=21)
+              Cache Key: r.suite_id
+              Cache Mode: logical
+              Hits: 20  Misses: 1  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+              Buffers: shared hit=2
+              ->  Index Scan using suites_pkey on suites s  (cost=0.15..0.18 rows=1 width=80) (actual time=0.001..0.001 rows=1.00 loops=1)
+                    Index Cond: (id = r.suite_id)
+                    Index Searches: 1
+                    Buffers: shared hit=2
+        SubPlan 1
+          ->  Aggregate  (cost=8.17..8.18 rows=1 width=8) (actual time=0.000..0.000 rows=1.00 loops=21)
+                Buffers: shared hit=42
+                ->  Index Only Scan using run_targets_run_id_target_key_key on run_targets t  (cost=0.15..8.17 rows=1 width=0) (actual time=0.000..0.000 rows=0.00 loops=21)
+                      Index Cond: (run_id = r.id)
+                      Heap Fetches: 0
+                      Index Searches: 21
+                      Buffers: shared hit=42
+Planning:
+  Buffers: shared hit=3
+Planning Time: 0.087 ms
+Execution Time: 0.041 ms

@@ -1,0 +1,4 @@
+# Suite revisions hash these bytes (contracts §10), so line endings must not depend on
+# the checkout's platform.
+worker/manifest/** text eol=lf
+worker/suites/** text eol=lf

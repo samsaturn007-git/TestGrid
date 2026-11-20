@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T21:01:37+00:00",
+  "updated_at": "2026-11-20T10:41:27+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -88,7 +88,7 @@
     "PRD-02": {
       "title": "PostgreSQL domain model, REST API, migrations and idempotent run creation",
       "filename": "prds/PRD-02-domain-and-api.md",
-      "status": "not_started",
+      "status": "done",
       "deps": [
         "PRD-01"
       ],
@@ -99,30 +99,30 @@
       "tasks": {
         "T1": {
           "label": "Write Flyway migrations, constraints, indexes and manifest seeding with schema validation.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement create-run API with validation, engine allowlist and fixture-profile guard.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement idempotency with canonical hash, 202/200/409 semantics and concurrency safety.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Implement run list (keyset cursor) and run detail with aggregate truth-table function.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Add Problem Details errors, OpenAPI generation, TS client types and CI drift check.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Write Testcontainers repository/controller tests incl. concurrent duplicates and restart persistence.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-02.md",
       "blocker": null
     },
     "PRD-03": {

@@ -18,7 +18,7 @@
 | PostgreSQL | **18.7** — image `postgres:18.7-bookworm` | PRD-01 | newest *mature* major. 19.0 was released today (2026-11-19); a `.0` on day one is not pinned for a project that must stay reproducible. Revisit at PRD-13. | [postgresql.org versions.json](https://www.postgresql.org/versions.json) · [Docker Hub postgres tags](https://hub.docker.com/_/postgres/tags?name=18.7) |
 | RabbitMQ | **4.4.1** (2026-11-16) — image `rabbitmq:4.4.1-management` | PRD-04 | latest stable (4.3.8 is the previous series). Re-verify when PRD-04 starts. | [GitHub releases](https://github.com/rabbitmq/rabbitmq-server/releases) · [Docker Hub rabbitmq tags](https://hub.docker.com/_/rabbitmq/tags?name=4.4.1) |
 
-Not pinned yet (pinned in their own PRD, after checking the official source that day): Testcontainers (PRD-02), OpenTelemetry Collector, Prometheus, Grafana, Jaeger (PRD-12), k6 (PRD-12), BrowserStack SDK (PRD-09 T1).
+Not pinned yet (pinned in their own PRD, after checking the official source that day): OpenTelemetry Collector, Prometheus, Grafana, Jaeger (PRD-12), k6 (PRD-12), BrowserStack SDK (PRD-09 T1).
 
 ### 1.1 PRD-01 tooling and libraries (checked 2026-11-19)
 
@@ -54,6 +54,20 @@ Exact versions in `package.json` files (no `^`), resolved in the single `pnpm-lo
 | `actions/setup-node` | v7.1.0 (2026-10-08) | `949feb2413d6458794dcd2491c4babbbce0c15c1` |
 | `actions/setup-java` | v6.3.0 (2026-11-14) | `d1374f8ac74474200d16ef8ecee22c7ae7a51880` |
 | `actions/upload-artifact` | v7.0.2 (2026-10-07) | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
+
+### 1.2 PRD-02 libraries (checked 2026-11-20)
+
+Java libraries without a `<version>` in `api/pom.xml` come from the Spring Boot 4.1.2 BOM ([spring-boot-dependencies-4.1.2.pom](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.2/spring-boot-dependencies-4.1.2.pom)). The BOM version wins over "latest", so Boot's tested combination stays intact.
+
+| Component | Pin | Source and note |
+|---|---|---|
+| Flyway (`spring-boot-starter-flyway`, `flyway-database-postgresql`) | **12.4.0** (Boot BOM) | Maven Central `latest` is 13.13.0 (2026-11-19). Kept on the BOM version. Verified against PostgreSQL 18.7 in Testcontainers and Compose: connects, no unsupported-version warning. |
+| PostgreSQL JDBC | **42.7.14** (Boot BOM) | |
+| Spring JDBC (`spring-boot-starter-jdbc`, `JdbcClient`) | Boot 4.1.2 | Plain SQL, so `ON CONFLICT`, keyset queries and constraints stay visible (no JPA entities to leak into the API). |
+| Testcontainers (`testcontainers-postgresql`, `testcontainers-junit-jupiter`, `spring-boot-testcontainers`) | **2.0.5** (Boot BOM; also Maven Central `latest`, 2026-04-20) | Uses the `postgres:18.7-bookworm` image from §1. Reaches OrbStack through `/var/run/docker.sock`. |
+| springdoc-openapi (`springdoc-openapi-starter-webmvc-api`) | **3.2.0** (2026-10-24) | Release notes: "Spring Boot 4.1.x line (built on Spring Boot 4.1.2)". Added in T5 (API docs only, no UI). Emits OpenAPI 3.1.0 through swagger-core 2.2.55. [GitHub release v3.2.0](https://github.com/springdoc/springdoc-openapi/releases/tag/v3.2.0) |
+| networknt `json-schema-validator` | **3.0.9** (2026-11-03) | Manifest validation (FR-2). Depends on Jackson 3 (`tools.jackson`), same major as Boot 4. Added in T1. |
+| `openapi-typescript` | **7.13.0** (npm `latest`, 2026-02-11) | Pinned in `packages/contracts`. Declares `peerDependencies: typescript ^5.x` and the repo uses TypeScript 6.0.3, so `pnpm install` prints an unmet-peer warning. Checked in T5: it generates `src/api.ts` from the 3.1 spec, and the output passes `tsc --noEmit` under 6.0.3. Revisit when a release declares TS 6 support. |
 
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).

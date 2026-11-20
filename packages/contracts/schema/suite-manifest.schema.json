@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://testgrid.local/schemas/suite-manifest.schema.json",
+  "title": "TestGrid suite manifest (contracts §10)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "suites"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/suite" }
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suiteKey",
+        "displayName",
+        "specFiles",
+        "allowedEngines",
+        "timeoutMs",
+        "playwrightRetries",
+        "baseUrlRef",
+        "fixtureModes",
+        "cases"
+      ],
+      "properties": {
+        "suiteKey": { "$ref": "#/$defs/key" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "enabled": { "type": "boolean", "default": true },
+        "specFiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^suites/([a-z0-9-]+/)*[a-z0-9-]+\\.spec\\.ts$",
+            "maxLength": 200
+          }
+        },
+        "allowedEngines": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["chromium", "firefox", "webkit"] }
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 3600000 },
+        "playwrightRetries": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "baseUrlRef": { "enum": ["DEMO_SHOP_INTERNAL"] },
+        "fixtureModes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["PASS", "PRODUCT_DEFECT", "AUTOMATION_FLAKE", "SELECTOR_DRIFT", "TIMEOUT"]
+          }
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/case" }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseKey", "title", "tag", "critical"],
+      "properties": {
+        "caseKey": { "$ref": "#/$defs/key" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "tag": { "type": "string", "pattern": "^@[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 65 },
+        "critical": { "type": "boolean" },
+        "expectedDurationMs": { "type": "integer", "minimum": 1, "maximum": 3600000 }
+      }
+    }
+  }
+}

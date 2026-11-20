@@ -31,15 +31,20 @@ services:
 
   api:
     build:
-      context: ../../api
+      context: ../..
+      dockerfile: api/Dockerfile
     image: testgrid/api:dev
     environment:
       API_PORT: '8080'
       JAVA_TOOL_OPTIONS: '-XX:MaxRAMPercentage=75'
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-testgrid}
+      DB_USER: ${POSTGRES_USER:-testgrid}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
+      # Safe default: fixture modes are refused unless .env says exactly "local".
+      TESTGRID_PROFILE: ${TESTGRID_PROFILE:-}
     ports:
       - '127.0.0.1:${API_PORT:-8080}:8080'
     depends_on:
-      # No DB access until PRD-02; the ordering is already the one PRD-02 needs.
       postgres:
         condition: service_healthy
     healthcheck:

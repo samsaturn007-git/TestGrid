@@ -1,0 +1,29 @@
+$ git log --oneline -1
+ce7115d feat(prd-02): add Problem Details correlation, OpenAPI spec and TS types (T5)
+
+## 1. Deliberate DTO change: rename RunSummary.targetCount -> targetTotal (no regeneration)
+$ git diff --stat
+ api/src/main/java/dev/testgrid/api/run/RunSummary.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+$ make contracts-check
+@@ -511,7 +511,7 @@ components:
+-        targetCount:
++        targetTotal:
+@@ -534,7 +534,7 @@ components:
+-      - targetCount
++      - targetTotal
+@@ -223,7 +223,7 @@ export interface components {
+-            targetCount: number;
++            targetTotal: number;
+contract drift: the code no longer matches the committed contract files.
+run 'make contracts' and commit api/openapi.yaml and packages/contracts/src/api.ts
+make contracts-check exit=2
+
+## 2. Revert the DTO change
+$ git status --short
+?? docs/evidence/raw/prd-02-contract-drift.txt
+
+$ make contracts-check
+contracts-check OK: api/openapi.yaml and packages/contracts/src/api.ts match the code
+make contracts-check exit=0
