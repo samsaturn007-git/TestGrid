@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T10:02:47+00:00",
+  "updated_at": "2026-11-20T10:17:36+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -115,7 +115,7 @@
         },
         "T5": {
           "label": "Add Problem Details errors, OpenAPI generation, TS client types and CI drift check.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Write Testcontainers repository/controller tests incl. concurrent duplicates and restart persistence.",
