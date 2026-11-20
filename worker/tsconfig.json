@@ -3,5 +3,5 @@
   "compilerOptions": {
     "lib": ["ES2024", "DOM"]
   },
-  "include": ["suites", "fixture-checks", "test", "playwright.config.ts"]
+  "include": ["src", "suites", "fixture-checks", "test", "playwright.config.ts"]
 }

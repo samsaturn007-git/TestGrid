@@ -48,6 +48,90 @@
           "critical": false
         }
       ]
+    },
+    {
+      "suiteKey": "catalog-regression",
+      "displayName": "Catalog regression",
+      "specFiles": ["suites/catalog-regression.spec.ts"],
+      "allowedEngines": ["chromium", "firefox", "webkit"],
+      "timeoutMs": 180000,
+      "playwrightRetries": 1,
+      "baseUrlRef": "DEMO_SHOP_INTERNAL",
+      "fixtureModes": ["PASS", "PRODUCT_DEFECT"],
+      "cases": [
+        {
+          "caseKey": "catalog-count",
+          "title": "catalog shows exactly six products",
+          "tag": "@catalog-count",
+          "critical": false
+        },
+        {
+          "caseKey": "catalog-order",
+          "title": "catalog lists products in seeded order",
+          "tag": "@catalog-order",
+          "critical": false
+        },
+        {
+          "caseKey": "catalog-prices",
+          "title": "catalog shows every seeded price",
+          "tag": "@catalog-prices",
+          "critical": true
+        },
+        {
+          "caseKey": "catalog-links",
+          "title": "product links point at product slugs",
+          "tag": "@catalog-links",
+          "critical": false
+        },
+        {
+          "caseKey": "product-detail-lamp",
+          "title": "lamp detail page shows name and price",
+          "tag": "@product-detail-lamp",
+          "critical": false
+        },
+        {
+          "caseKey": "product-detail-bottle",
+          "title": "bottle detail page shows name and price",
+          "tag": "@product-detail-bottle",
+          "critical": false
+        },
+        {
+          "caseKey": "product-not-found",
+          "title": "unknown product slug shows an error",
+          "tag": "@product-not-found",
+          "critical": false
+        },
+        {
+          "caseKey": "route-not-found",
+          "title": "unknown route shows the not-found page",
+          "tag": "@route-not-found",
+          "critical": false
+        },
+        {
+          "caseKey": "home-link",
+          "title": "home link returns to the catalog",
+          "tag": "@home-link",
+          "critical": false
+        },
+        {
+          "caseKey": "cart-empty-state",
+          "title": "a new session starts with an empty cart",
+          "tag": "@cart-empty-state",
+          "critical": false
+        },
+        {
+          "caseKey": "cart-badge",
+          "title": "cart badge counts items across products",
+          "tag": "@cart-badge",
+          "critical": false
+        },
+        {
+          "caseKey": "discounted-total",
+          "title": "discounted cart total is subtotal minus coupon plus tax",
+          "tag": "@discounted-total",
+          "critical": true
+        }
+      ]
     }
   ]
 }

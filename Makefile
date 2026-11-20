@@ -14,7 +14,9 @@ COMPOSE := docker compose -f infra/compose/compose.yaml --env-file .env
 MVNW := cd api && ./mvnw -B -q
 FIXTURE_MODE ?= PASS
 FIXTURE_SEED ?= 42
-export FIXTURE_MODE FIXTURE_SEED
+# The spec support reads the worker → Playwright names (PRD-03 FR-5, CONFLICT_REGISTER N8).
+export TG_FIXTURE_MODE := $(FIXTURE_MODE)
+export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
 .PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes doctor health clean
 
@@ -74,7 +76,7 @@ contracts-check: contracts ## Fail if the committed contract files differ from t
 restart-check: ## Create a run, restart the api container, check it reads back unchanged (PRD-02 AC-1)
 	@bash scripts/restart-check.sh
 
-smoke: ## Health checks plus the checkout-smoke spec on Chromium (FIXTURE_MODE=PASS by default)
+smoke: ## Health checks plus every registered suite on Chromium (FIXTURE_MODE=PASS by default)
 	@bash scripts/health.sh
 	pnpm --filter worker exec playwright test --project=chromium
 

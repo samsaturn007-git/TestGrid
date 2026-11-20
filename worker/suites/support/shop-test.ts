@@ -9,7 +9,7 @@ export const fixtureEnv = parseFixtureEnv(process.env);
  * the fixture call sets the session cookie on this context only.
  *
  * The seed is offset by the Playwright retry index. The shop's PRNG then decides
- * each try deterministically: the same FIXTURE_SEED always gives the same
+ * each try deterministically: the same TG_FIXTURE_SEED always gives the same
  * late/on-time pattern across retries (AUTOMATION_FLAKE).
  */
 export const test = base.extend<{ fixtureSession: void }>({

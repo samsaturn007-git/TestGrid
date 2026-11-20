@@ -19,25 +19,25 @@ describe('parseFixtureEnv', () => {
       'SELECTOR_DRIFT',
       'TIMEOUT',
     ]) {
-      assert.equal(parseFixtureEnv({ FIXTURE_MODE: mode }).mode, mode);
+      assert.equal(parseFixtureEnv({ TG_FIXTURE_MODE: mode }).mode, mode);
     }
   });
 
   it('rejects non-canonical modes and spellings', () => {
     for (const mode of ['pass', 'TIMED_OUT', 'BROWSER_LAUNCH', '']) {
-      assert.throws(() => parseFixtureEnv({ FIXTURE_MODE: mode }), /FIXTURE_MODE/);
+      assert.throws(() => parseFixtureEnv({ TG_FIXTURE_MODE: mode }), /TG_FIXTURE_MODE/);
     }
   });
 
   it('rejects malformed seeds', () => {
     for (const seed of ['-1', '1.5', 'abc', '1e3', '9999999999']) {
-      assert.throws(() => parseFixtureEnv({ FIXTURE_SEED: seed }), /FIXTURE_SEED/);
+      assert.throws(() => parseFixtureEnv({ TG_FIXTURE_SEED: seed }), /TG_FIXTURE_SEED/);
     }
   });
 
   it('only targets allowlisted shop origins', () => {
     assert.equal(
-      parseFixtureEnv({ DEMO_SHOP_INTERNAL: 'http://demo-shop:4173' }).baseUrl,
+      parseFixtureEnv({ TG_BASE_URL: 'http://demo-shop:4173' }).baseUrl,
       'http://demo-shop:4173',
     );
     for (const url of [
@@ -47,7 +47,7 @@ describe('parseFixtureEnv', () => {
       'http://user:pw@localhost:4173',
       'http://localhost:4173/admin',
     ]) {
-      assert.throws(() => parseFixtureEnv({ DEMO_SHOP_INTERNAL: url }), /DEMO_SHOP_INTERNAL/);
+      assert.throws(() => parseFixtureEnv({ TG_BASE_URL: url }), /TG_BASE_URL/);
     }
   });
 });

@@ -23,7 +23,7 @@ for run in "${RUNS[@]}"; do
   mode=${run%%:*} seed=${run##*:}
   for i in $(seq 1 "$REPEATS"); do
     curl -fsS -X POST "$SHOP/__fixture/reset" >/dev/null
-    FIXTURE_MODE=$mode FIXTURE_SEED=$seed pnpm --filter worker exec playwright test \
+    TG_FIXTURE_MODE=$mode TG_FIXTURE_SEED=$seed pnpm --filter worker exec playwright test \
       --project=chromium >/dev/null 2>&1 && code=0 || code=$?
     # Copy before the next run cleans worker/test-results.
     node scripts/summarize-playwright.mjs worker/test-results/results.json > "$summary_dir/$mode-$seed-$i.txt"
