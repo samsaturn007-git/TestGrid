@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-19T22:09:42+00:00",
+  "updated_at": "2026-11-20T10:02:47+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -111,7 +111,7 @@
         },
         "T4": {
           "label": "Implement run list (keyset cursor) and run detail with aggregate truth-table function.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Add Problem Details errors, OpenAPI generation, TS client types and CI drift check.",
