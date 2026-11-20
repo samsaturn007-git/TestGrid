@@ -13,6 +13,13 @@ public enum ProblemType {
   IDEMPOTENCY_CONFLICT(
       "idempotency-conflict", HttpStatus.CONFLICT, "Idempotency key reused with a different body"),
   NOT_FOUND("not-found", HttpStatus.NOT_FOUND, "Not found"),
+  UNAUTHORIZED("unauthorized", HttpStatus.UNAUTHORIZED, "Missing or invalid credentials"),
+  ATTEMPT_NOT_ACTIVE("attempt-not-active", HttpStatus.CONFLICT, "Attempt is not active"),
+  LEASE_EXPIRED("lease-expired", HttpStatus.GONE, "Lease expired or replaced"),
+  INVALID_COMPLETION(
+      "invalid-completion",
+      HttpStatus.UNPROCESSABLE_CONTENT,
+      "Completion does not match the claim"),
   UNSUPPORTED_MEDIA_TYPE(
       "unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");
 

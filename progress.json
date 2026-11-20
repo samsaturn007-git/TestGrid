@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T10:59:04+00:00",
+  "updated_at": "2026-11-20T11:05:25+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -139,7 +139,7 @@
       "tasks": {
         "T1": {
           "label": "Create worker package, manifest loader with schema validation, and two registered suites.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement service-token internal API: claims/next, start, heartbeat, complete with DB state transitions.",
