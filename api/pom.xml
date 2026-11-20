@@ -19,6 +19,7 @@
 		<spotless.version>3.11.0</spotless.version>
 		<google-java-format.version>2.0.0</google-java-format.version>
 		<json-schema-validator.version>3.0.9</json-schema-validator.version>
+		<springdoc.version>3.2.0</springdoc.version>
 	</properties>
 
 	<dependencies>
@@ -42,6 +43,11 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.networknt</groupId>

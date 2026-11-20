@@ -1,5 +1,6 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.common.ApiNullable;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.Trigger;
 import java.time.Instant;
@@ -13,10 +14,10 @@ public record RunSummary(
     String suiteRevision,
     RunStatus status,
     Trigger trigger,
-    CreateRunRequest.Fixture fixture,
-    CreateRunRequest.Source source,
+    @ApiNullable CreateRunRequest.Fixture fixture,
+    @ApiNullable CreateRunRequest.Source source,
     int targetCount,
     Instant queuedAt,
-    Instant startedAt,
-    Instant finishedAt,
+    @ApiNullable Instant startedAt,
+    @ApiNullable Instant finishedAt,
     RunResponse.Links links) {}

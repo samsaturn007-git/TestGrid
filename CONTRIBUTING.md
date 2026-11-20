@@ -36,6 +36,7 @@ Conventional Commits with the PRD as scope:
 - Keep commits small and reviewable; one logical change each.
 - Reference test IDs from `docs/SYSTEM_TEST_MATRIX.md` in the body when a commit adds or changes a test.
 - Never commit `.env`, credentials, real tokens or generated artifacts.
+  - **One exception:** the contract files `api/openapi.yaml` and `packages/contracts/src/api.ts` are generated and committed on purpose (PRD-02 FR-9). Any change to an API DTO or endpoint runs `make contracts` and commits both in the same commit; CI's `make contracts-check` fails otherwise.
 
 ## Pull requests
 

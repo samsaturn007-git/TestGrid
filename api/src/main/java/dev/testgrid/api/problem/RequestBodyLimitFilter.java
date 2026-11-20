@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.json.JsonMapper;
@@ -40,13 +41,15 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
     if (request.getContentLengthLong() > MAX_BODY_BYTES) {
       response.setStatus(ProblemType.VALIDATION_FAILED.status().value());
       response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-      mapper.writeValue(
-          response.getOutputStream(),
+      ProblemDetail problem =
           ProblemAdvice.body(
               ProblemType.VALIDATION_FAILED,
               new BodyTooLargeException(MAX_BODY_BYTES).getMessage(),
               request.getRequestURI(),
-              List.of()));
+              List.of());
+      // Runs before Spring's request context exists, so the trace ID is added here directly.
+      problem.setProperty("traceId", RequestCorrelationFilter.traceId(request));
+      mapper.writeValue(response.getOutputStream(), problem);
       return;
     }
     chain.doFilter(new LimitedRequest(request), response);

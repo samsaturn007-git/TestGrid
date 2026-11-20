@@ -5,6 +5,7 @@ import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.ShardingMode;
 import dev.testgrid.api.domain.Trigger;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -32,6 +33,7 @@ public record CreateRunRequest(
   static final String MSG_KEY = "must be a lowercase key such as checkout-smoke";
   static final String MSG_IDEMPOTENCY = "must be 1-200 characters from A-Z a-z 0-9 . _ : -";
 
+  @Schema(name = "TargetRequest")
   public record Target(@NotNull Executor executor, @NotNull Engine engine) {}
 
   public record Fixture(

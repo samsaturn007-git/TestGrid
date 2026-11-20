@@ -10,3 +10,5 @@ api/
 **/test-results/
 **/playwright-report/
 **/blob-report/
+# Generated from api/openapi.yaml by `make contracts`; checked for drift, not formatted.
+packages/contracts/src/api.ts

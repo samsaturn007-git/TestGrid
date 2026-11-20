@@ -12,7 +12,9 @@ public enum ProblemType {
       "fixture-not-allowed", HttpStatus.UNPROCESSABLE_CONTENT, "Fixture mode not allowed"),
   IDEMPOTENCY_CONFLICT(
       "idempotency-conflict", HttpStatus.CONFLICT, "Idempotency key reused with a different body"),
-  NOT_FOUND("not-found", HttpStatus.NOT_FOUND, "Not found");
+  NOT_FOUND("not-found", HttpStatus.NOT_FOUND, "Not found"),
+  UNSUPPORTED_MEDIA_TYPE(
+      "unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");
 
   private static final String BASE = "https://testgrid.local/problems/";
 

@@ -1,0 +1,738 @@
+openapi: 3.1.0
+info:
+  description: "Public API (/api/v1). Vocabulary: docs/API_AND_DATA_CONTRACTS.md.\
+    \ Errors are RFC 9457 Problem Details."
+  title: TestGrid API
+  version: v1
+servers:
+- url: /
+paths:
+  /api/v1/projects:
+    get:
+      operationId: listProjects
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageProject"
+          description: Projects
+      summary: Projects the caller can see
+      tags:
+      - catalog
+  /api/v1/projects/{projectId}/runs:
+    post:
+      operationId: createRun
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRunRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+          description: "Replay: this key was already used with the same request"
+          headers:
+            Idempotent-Replay:
+              description: Always "true"
+              style: simple
+            Location:
+              description: "/api/v1/runs/{runId}"
+              style: simple
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+          description: New run queued
+          headers:
+            Location:
+              description: "/api/v1/runs/{runId}"
+              style: simple
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found (project)
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: idempotency-conflict
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "unknown-suite, engine-not-allowed or fixture-not-allowed"
+      summary: Create a run (idempotent by idempotencyKey)
+      tags:
+      - runs
+  /api/v1/projects/{projectId}/suites:
+    get:
+      operationId: listSuites
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageSuite"
+          description: Suites
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: Current revision of each suite in the manifest
+      tags:
+      - catalog
+  /api/v1/runs:
+    get:
+      description: "Keyset-paginated: pass nextCursor back as cursor. Null on the\
+        \ last page."
+      operationId: listRuns
+      parameters:
+      - description: "1-100, default 20"
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - description: Opaque; from a previous page's nextCursor
+        in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageRunSummary"
+          description: A page of runs
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (limit or cursor)
+      summary: "List runs, newest first"
+      tags:
+      - runs
+  /api/v1/runs/{runId}:
+    get:
+      operationId: getRun
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+          description: The run
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: A run with its targets and aggregate status
+      tags:
+      - runs
+  /api/v1/suites/{suiteId}:
+    get:
+      operationId: getSuite
+      parameters:
+      - in: path
+        name: suiteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuiteDetail"
+          description: The suite
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: One suite revision with its cases
+      tags:
+      - catalog
+components:
+  schemas:
+    CreateRunRequest:
+      type: object
+      properties:
+        fixture:
+          $ref: "#/components/schemas/Fixture"
+        idempotencyKey:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,200}$"
+        sharding:
+          $ref: "#/components/schemas/Sharding"
+        source:
+          $ref: "#/components/schemas/Source"
+        suiteKey:
+          type: string
+          maxLength: 64
+          minLength: 0
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetRequest"
+          maxItems: 3
+          minItems: 1
+        trigger:
+          type: string
+          enum:
+          - MANUAL
+          - CI
+          - RERUN
+          - BENCHMARK
+          - CHAOS
+      required:
+      - idempotencyKey
+      - suiteKey
+      - targets
+      - trigger
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required:
+      - field
+      - message
+    Fixture:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+          - PASS
+          - PRODUCT_DEFECT
+          - AUTOMATION_FLAKE
+          - SELECTOR_DRIFT
+          - TIMEOUT
+        seed:
+          type: integer
+          format: int32
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - mode
+      - seed
+    PageProject:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    PageRunSummary:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunSummary"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    PageSuite:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Suite"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        detail:
+          type: string
+        errors:
+          type: array
+          description: Only present when specific fields were wrong
+          items:
+            $ref: "#/components/schemas/FieldError"
+        instance:
+          type: string
+        status:
+          type: integer
+          format: int32
+        title:
+          type: string
+        traceId:
+          type: string
+          description: "W3C trace ID, 32 hex characters"
+        type:
+          type: string
+          description: "Absent (about:blank) only for HTTP errors outside the catalogue,\
+            \ e.g. 405"
+          example: https://testgrid.local/problems/validation-failed
+      required:
+      - detail
+      - instance
+      - status
+      - title
+      - traceId
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        links:
+          $ref: "#/components/schemas/ResourceLinks"
+        name:
+          type: string
+        slug:
+          type: string
+      required:
+      - id
+      - links
+      - name
+      - slug
+    ResourceLinks:
+      type: object
+      properties:
+        self:
+          type: string
+      required:
+      - self
+    RunLinks:
+      type: object
+      properties:
+        self:
+          type: string
+        suite:
+          type:
+          - string
+          - "null"
+      required:
+      - self
+      - suite
+    RunResponse:
+      type: object
+      properties:
+        cancelRequestedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        finishedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        fixture:
+          oneOf:
+          - $ref: "#/components/schemas/Fixture"
+          - type: "null"
+        id:
+          type: string
+          format: uuid
+        idempotencyKey:
+          type: string
+        links:
+          $ref: "#/components/schemas/RunLinks"
+        projectId:
+          type: string
+          format: uuid
+        queuedAt:
+          type: string
+          format: date-time
+        sharding:
+          $ref: "#/components/schemas/Sharding"
+        source:
+          oneOf:
+          - $ref: "#/components/schemas/Source"
+          - type: "null"
+        startedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        suiteId:
+          type: string
+          format: uuid
+        suiteKey:
+          type: string
+        suiteRevision:
+          type: string
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunTarget"
+        trigger:
+          type: string
+          enum:
+          - MANUAL
+          - CI
+          - RERUN
+          - BENCHMARK
+          - CHAOS
+      required:
+      - cancelRequestedAt
+      - finishedAt
+      - fixture
+      - id
+      - idempotencyKey
+      - links
+      - projectId
+      - queuedAt
+      - sharding
+      - source
+      - startedAt
+      - status
+      - suiteId
+      - suiteKey
+      - suiteRevision
+      - targets
+      - trigger
+    RunSummary:
+      type: object
+      properties:
+        finishedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        fixture:
+          oneOf:
+          - $ref: "#/components/schemas/Fixture"
+          - type: "null"
+        id:
+          type: string
+          format: uuid
+        links:
+          $ref: "#/components/schemas/RunLinks"
+        projectId:
+          type: string
+          format: uuid
+        queuedAt:
+          type: string
+          format: date-time
+        source:
+          oneOf:
+          - $ref: "#/components/schemas/Source"
+          - type: "null"
+        startedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        suiteKey:
+          type: string
+        suiteRevision:
+          type: string
+        targetCount:
+          type: integer
+          format: int32
+        trigger:
+          type: string
+          enum:
+          - MANUAL
+          - CI
+          - RERUN
+          - BENCHMARK
+          - CHAOS
+      required:
+      - finishedAt
+      - fixture
+      - id
+      - links
+      - projectId
+      - queuedAt
+      - source
+      - startedAt
+      - status
+      - suiteKey
+      - suiteRevision
+      - targetCount
+      - trigger
+    RunTarget:
+      type: object
+      properties:
+        attemptCount:
+          type: integer
+          format: int32
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        executor:
+          type: string
+          enum:
+          - LOCAL
+          - BROWSERSTACK
+        finishedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        maxAttempts:
+          type: integer
+          format: int32
+        queuedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - CLAIMED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        targetKey:
+          type: string
+      required:
+      - attemptCount
+      - engine
+      - executor
+      - finishedAt
+      - id
+      - maxAttempts
+      - queuedAt
+      - status
+      - targetKey
+    Sharding:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+          - NONE
+          - PLAYWRIGHT_NATIVE
+          - DURATION_BALANCED
+        shards:
+          type: integer
+          format: int32
+          maximum: 16
+          minimum: 1
+      required:
+      - mode
+      - shards
+    Source:
+      type: object
+      properties:
+        branch:
+          type: string
+          maxLength: 200
+          minLength: 0
+          pattern: "^(?!.*\\.\\.)[A-Za-z0-9._/-]{1,200}$"
+        ciRef:
+          type: string
+          maxLength: 200
+          minLength: 0
+          pattern: "^[a-z]{1,16}:(?!/)[A-Za-z0-9._/-]{1,180}$"
+        commitSha:
+          type: string
+          pattern: "^[0-9a-f]{7,64}$"
+    Suite:
+      type: object
+      properties:
+        allowedEngines:
+          type: array
+          items:
+            type: string
+            enum:
+            - chromium
+            - firefox
+            - webkit
+        caseCount:
+          type: integer
+          format: int32
+        current:
+          type: boolean
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        fixtureModes:
+          type: array
+          items:
+            type: string
+            enum:
+            - PASS
+            - PRODUCT_DEFECT
+            - AUTOMATION_FLAKE
+            - SELECTOR_DRIFT
+            - TIMEOUT
+        id:
+          type: string
+          format: uuid
+        links:
+          $ref: "#/components/schemas/ResourceLinks"
+        playwrightRetries:
+          type: integer
+          format: int32
+        projectId:
+          type: string
+          format: uuid
+        revision:
+          type: string
+        suiteKey:
+          type: string
+        timeoutMs:
+          type: integer
+          format: int32
+      required:
+      - allowedEngines
+      - caseCount
+      - current
+      - displayName
+      - enabled
+      - fixtureModes
+      - id
+      - links
+      - playwrightRetries
+      - projectId
+      - revision
+      - suiteKey
+      - timeoutMs
+    SuiteDetail:
+      type: object
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestCase"
+        suite:
+          $ref: "#/components/schemas/Suite"
+      required:
+      - cases
+      - suite
+    TargetRequest:
+      type: object
+      properties:
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        executor:
+          type: string
+          enum:
+          - LOCAL
+          - BROWSERSTACK
+      required:
+      - engine
+      - executor
+    TestCase:
+      type: object
+      properties:
+        caseKey:
+          type: string
+        critical:
+          type: boolean
+        expectedDurationMs:
+          type:
+          - integer
+          - "null"
+          format: int32
+        tag:
+          type: string
+        title:
+          type: string
+      required:
+      - caseKey
+      - critical
+      - expectedDurationMs
+      - tag
+      - title

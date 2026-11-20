@@ -1,4 +1,5 @@
 # PRD-01 FR-9: format, lint, typecheck, unit tests and the Chromium smoke spec.
+# PRD-02 FR-9: contract drift check (api/openapi.yaml and the generated TS types).
 # Least privilege: read-only token, no secrets used, every action pinned to a commit SHA.
 name: ci
 
@@ -44,6 +45,8 @@ jobs:
         run: make test
       - name: Vocabulary check
         run: bash tools/vocab_check.sh
+      - name: Contract drift check (OpenAPI spec and TypeScript types)
+        run: make contracts-check
 
   smoke:
     name: compose up + Chromium smoke

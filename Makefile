@@ -16,7 +16,7 @@ FIXTURE_MODE ?= PASS
 FIXTURE_SEED ?= 42
 export FIXTURE_MODE FIXTURE_SEED
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api smoke fixture-checks modes doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check smoke fixture-checks modes doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -63,6 +63,13 @@ test-node:
 
 test-api:
 	$(MVNW) verify
+
+contracts: ## Regenerate api/openapi.yaml (springdoc) and packages/contracts/src/api.ts (needs Docker)
+	$(MVNW) test -Dtest=OpenApiSpecTest -Dtestgrid.openapi.write=true -Dsurefire.failIfNoSpecifiedTests=false
+	pnpm --filter @testgrid/contracts generate
+
+contracts-check: contracts ## Fail if the committed contract files differ from the code (PRD-02 FR-9)
+	@bash scripts/contracts-check.sh
 
 smoke: ## Health checks plus the checkout-smoke spec on Chromium (FIXTURE_MODE=PASS by default)
 	@bash scripts/health.sh

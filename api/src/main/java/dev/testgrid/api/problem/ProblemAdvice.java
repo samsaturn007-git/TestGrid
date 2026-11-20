@@ -18,6 +18,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -38,6 +40,7 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
   public static ProblemDetail body(
       ProblemType type, String detail, String instance, List<FieldError> errors) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(type.status(), detail);
+    withTraceId(problem);
     problem.setType(type.uri());
     problem.setTitle(type.title());
     if (instance != null) {
@@ -62,6 +65,7 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
             HttpStatus.INTERNAL_SERVER_ERROR, "The server could not complete the request.");
     problem.setTitle("Internal error");
     problem.setInstance(URI.create(request.getRequestURI()));
+    withTraceId(problem);
     return respond(problem);
   }
 
@@ -125,14 +129,22 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
         List.of(new FieldError(name, "invalid value or type")));
   }
 
-  /** Spring's built-in errors (404 route, 405, 415, ...) keep their status, typed where we can. */
+  /**
+   * Spring's built-in errors keep their status and get a contracts §6 type where one exists. The
+   * rest (405, 406) have no catalogue entry and leave {@code type} out, which RFC 9457 reads as
+   * {@code about:blank}.
+   */
   @Override
   protected ResponseEntity<Object> handleExceptionInternal(
       Exception ex, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
     ResponseEntity<Object> response =
         super.handleExceptionInternal(ex, body, headers, status, request);
     if (response != null && response.getBody() instanceof ProblemDetail problem) {
-      if (status.value() == 404) {
+      withTraceId(problem);
+      if (status.value() == 415) {
+        problem.setType(ProblemType.UNSUPPORTED_MEDIA_TYPE.uri());
+        problem.setTitle(ProblemType.UNSUPPORTED_MEDIA_TYPE.title());
+      } else if (status.value() == 404) {
         problem.setType(ProblemType.NOT_FOUND.uri());
         problem.setTitle(ProblemType.NOT_FOUND.title());
       } else if (status.value() == 400 && problem.getType().toString().equals("about:blank")) {
@@ -150,6 +162,16 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
     return ResponseEntity.status(type.status())
         .contentType(MediaType.APPLICATION_PROBLEM_JSON)
         .body(body(type, detail, uri, errors));
+  }
+
+  /** Contracts §1: every Problem body carries the request's trace ID. */
+  private static void withTraceId(ProblemDetail problem) {
+    if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+      String traceId = RequestCorrelationFilter.traceId(attrs.getRequest());
+      if (traceId != null) {
+        problem.setProperty("traceId", traceId);
+      }
+    }
   }
 
   private static ResponseEntity<ProblemDetail> respond(ProblemDetail problem) {

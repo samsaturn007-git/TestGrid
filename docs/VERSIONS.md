@@ -65,9 +65,9 @@ Java libraries without a `<version>` in `api/pom.xml` come from the Spring Boot 
 | PostgreSQL JDBC | **42.7.14** (Boot BOM) | |
 | Spring JDBC (`spring-boot-starter-jdbc`, `JdbcClient`) | Boot 4.1.2 | Plain SQL, so `ON CONFLICT`, keyset queries and constraints stay visible (no JPA entities to leak into the API). |
 | Testcontainers (`testcontainers-postgresql`, `testcontainers-junit-jupiter`, `spring-boot-testcontainers`) | **2.0.5** (Boot BOM; also Maven Central `latest`, 2026-04-20) | Uses the `postgres:18.7-bookworm` image from §1. Reaches OrbStack through `/var/run/docker.sock`. |
-| springdoc-openapi (`springdoc-openapi-starter-webmvc-api`) | **3.2.0** (2026-10-24) | Release notes: "Spring Boot 4.1.x line (built on Spring Boot 4.1.2)". Added in T5. [GitHub release v3.2.0](https://github.com/springdoc/springdoc-openapi/releases/tag/v3.2.0) |
+| springdoc-openapi (`springdoc-openapi-starter-webmvc-api`) | **3.2.0** (2026-10-24) | Release notes: "Spring Boot 4.1.x line (built on Spring Boot 4.1.2)". Added in T5 (API docs only, no UI). Emits OpenAPI 3.1.0 through swagger-core 2.2.55. [GitHub release v3.2.0](https://github.com/springdoc/springdoc-openapi/releases/tag/v3.2.0) |
 | networknt `json-schema-validator` | **3.0.9** (2026-11-03) | Manifest validation (FR-2). Depends on Jackson 3 (`tools.jackson`), same major as Boot 4. Added in T1. |
-| `openapi-typescript` | **7.13.0** (npm `latest`, 2026-02-11) | Declares `peerDependencies: typescript ^5.x`; this repo uses TypeScript 6.0.3. Check that it generates cleanly in T5 before pinning. |
+| `openapi-typescript` | **7.13.0** (npm `latest`, 2026-02-11) | Pinned in `packages/contracts`. Declares `peerDependencies: typescript ^5.x` and the repo uses TypeScript 6.0.3, so `pnpm install` prints an unmet-peer warning. Checked in T5: it generates `src/api.ts` from the 3.1 spec, and the output passes `tsc --noEmit` under 6.0.3. Revisit when a release declares TS 6 support. |
 
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).

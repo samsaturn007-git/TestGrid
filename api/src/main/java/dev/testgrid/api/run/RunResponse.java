@@ -1,10 +1,12 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.common.ApiNullable;
 import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.TargetStatus;
 import dev.testgrid.api.domain.Trigger;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -22,16 +24,17 @@ public record RunResponse(
     RunStatus status,
     Trigger trigger,
     String idempotencyKey,
-    CreateRunRequest.Fixture fixture,
+    @ApiNullable CreateRunRequest.Fixture fixture,
     CreateRunRequest.Sharding sharding,
-    CreateRunRequest.Source source,
+    @ApiNullable CreateRunRequest.Source source,
     Instant queuedAt,
-    Instant startedAt,
-    Instant finishedAt,
-    Instant cancelRequestedAt,
+    @ApiNullable Instant startedAt,
+    @ApiNullable Instant finishedAt,
+    @ApiNullable Instant cancelRequestedAt,
     List<Target> targets,
     Links links) {
 
+  @Schema(name = "RunTarget")
   public record Target(
       UUID id,
       String targetKey,
@@ -41,10 +44,11 @@ public record RunResponse(
       int attemptCount,
       int maxAttempts,
       Instant queuedAt,
-      Instant finishedAt) {}
+      @ApiNullable Instant finishedAt) {}
 
   /** {@code suite} is null in list rows, which don't load it. */
-  public record Links(String self, String suite) {}
+  @Schema(name = "RunLinks")
+  public record Links(String self, @ApiNullable String suite) {}
 
   public static String selfLink(UUID runId) {
     return "/api/v1/runs/" + runId;

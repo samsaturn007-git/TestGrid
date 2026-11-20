@@ -1,7 +1,9 @@
 package dev.testgrid.api.catalog;
 
+import dev.testgrid.api.common.ApiNullable;
 import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.FixtureMode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,8 +31,14 @@ public final class CatalogResponses {
 
   public record SuiteDetail(Suite suite, List<Case> cases) {}
 
+  @Schema(name = "TestCase")
   public record Case(
-      String caseKey, String title, String tag, boolean critical, Integer expectedDurationMs) {}
+      String caseKey,
+      String title,
+      String tag,
+      boolean critical,
+      @ApiNullable Integer expectedDurationMs) {}
 
+  @Schema(name = "ResourceLinks")
   public record Links(String self) {}
 }

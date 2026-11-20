@@ -1,0 +1,15 @@
+{
+  "name": "@testgrid/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/api.ts"
+  },
+  "scripts": {
+    "generate": "openapi-typescript ../../api/openapi.yaml --output src/api.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}
