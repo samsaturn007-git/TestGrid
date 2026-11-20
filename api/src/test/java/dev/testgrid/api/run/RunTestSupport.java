@@ -53,6 +53,29 @@ final class RunTestSupport {
     return out.append(']').toString();
   }
 
+  static UUID currentSuiteId(JdbcClient jdbc, String suiteKey) {
+    return jdbc.sql("SELECT id FROM suites WHERE project_id = :p AND suite_key = :k AND is_current")
+        .param("p", LocalProject.ID)
+        .param("k", suiteKey)
+        .query(UUID.class)
+        .single();
+  }
+
+  /** Inserts runs straight into the table with a chosen queued_at, bypassing the API. */
+  static UUID insertRun(JdbcClient jdbc, UUID projectId, UUID suiteId, String queuedAtSql) {
+    return jdbc.sql(
+            "INSERT INTO runs (project_id, suite_id, status, trigger, idempotency_key, request_hash,"
+                + " queued_at) VALUES (:p, :s, 'QUEUED', 'MANUAL', :k, :h, "
+                + queuedAtSql
+                + ") RETURNING id")
+        .param("p", projectId)
+        .param("s", suiteId)
+        .param("k", "seed-" + UUID.randomUUID())
+        .param("h", new byte[32])
+        .query(UUID.class)
+        .single();
+  }
+
   static long count(JdbcClient jdbc, String table) {
     return jdbc.sql("SELECT count(*) FROM " + table).query(Long.class).single();
   }

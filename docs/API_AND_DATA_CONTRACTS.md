@@ -67,6 +67,8 @@ Rules:
 - **Not all targets terminal:** the run is `RUNNING` if any target has ever been claimed, otherwise `QUEUED`.
 - **All targets terminal:** the run takes the first match in this order: `FAILED > TIMED_OUT > INFRA_ERROR > CANCELLED > PASSED`.
 - **Why this order:** a confirmed product failure is the most useful signal. Uncertain outcomes come next. `PASSED` requires every target to pass.
+- **"Ever claimed"** means the target has an attempt (`attempt_count > 0`) or is in a status only a claim can reach (`CLAIMED`, `RUNNING`, `PASSED`, `FAILED`, `TIMED_OUT`). `QUEUED`, `INFRA_ERROR` and `CANCELLED` can be reached without a claim, so for those the attempt count decides.
+- **Where it lives:** `RunAggregate.of` in the API, a pure function. `GET /runs/{runId}` computes it from the targets on every read. `runs.status` stores the same value for listing and filtering, and every writer that changes a target (PRD-03 onward) must update it in the same transaction.
 
 ### 2.4 Quality outcome (PRD-08)
 | Situation | Outcome | CLI exit |
@@ -156,6 +158,12 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | `GET /chaos/reports`, `GET /chaos/reports/{id}` | Read-only drill scoreboards and timelines | local profile with chaos enabled | 10 |
 | `GET` / `PUT /scheduler` | Read or change policy and cap | local profile only; admin scope | 11 |
 | `POST /tokens`, `DELETE /tokens/{id}` | Personal and CI tokens | admin scope | 12 |
+
+**Read endpoints (PRD-02)**
+- **Caller scope:** every endpoint resolves the caller's project in one place (`CallerScope`; today always the local project). A project, suite or run outside that scope answers `404 not-found`, exactly like one that doesn't exist. `POST /projects/{projectId}/runs` applies the same rule.
+- **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`. The filters arrive in PRD-05.
+- **`GET /runs/{runId}`:** the run, its targets ordered by `targetKey`, `status` computed as in §2.3, and `links {self, suite}`. The latest attempt per target is added in PRD-03.
+- **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
 
 **Create-run request**
 ```json

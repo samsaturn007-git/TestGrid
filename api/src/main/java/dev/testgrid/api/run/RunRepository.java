@@ -4,6 +4,7 @@ import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.EventType;
 import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
+import dev.testgrid.api.domain.RunAggregate;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.ShardingMode;
 import dev.testgrid.api.domain.TargetStatus;
@@ -13,6 +14,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -146,20 +149,6 @@ public class RunRepository {
   }
 
   public Optional<RunResponse> findRun(UUID projectId, UUID runId) {
-    Optional<RunResponse> run =
-        jdbc.sql(
-                """
-                SELECT r.*, s.suite_key, s.revision
-                FROM runs r JOIN suites s ON s.id = r.suite_id
-                WHERE r.project_id = :p AND r.id = :id
-                """)
-            .param("p", projectId)
-            .param("id", runId)
-            .query((rs, i) -> mapRun(rs, List.of()))
-            .optional();
-    if (run.isEmpty()) {
-      return run;
-    }
     List<RunResponse.Target> targets =
         jdbc.sql(
                 """
@@ -171,55 +160,125 @@ public class RunRepository {
             .param("id", runId)
             .query((rs, i) -> mapTarget(rs))
             .list();
-    RunResponse r = run.get();
-    return Optional.of(
-        new RunResponse(
-            r.id(),
-            r.projectId(),
-            r.suiteKey(),
-            r.suiteRevision(),
-            r.status(),
-            r.trigger(),
-            r.idempotencyKey(),
-            r.fixture(),
-            r.sharding(),
-            r.source(),
-            r.queuedAt(),
-            r.startedAt(),
-            r.finishedAt(),
-            r.cancelRequestedAt(),
-            targets,
-            r.links()));
+    return jdbc.sql(
+            """
+            SELECT r.*, s.suite_key, s.revision
+            FROM runs r JOIN suites s ON s.id = r.suite_id
+            WHERE r.project_id = :p AND r.id = :id
+            """)
+        .param("p", projectId)
+        .param("id", runId)
+        .query((rs, i) -> mapRun(rs, targets))
+        .optional();
   }
 
-  private static RunResponse mapRun(ResultSet rs, List<RunResponse.Target> targets)
-      throws SQLException {
+  // Keyset pagination (FR-6). The row comparison is an index condition on
+  // runs(project_id, queued_at DESC, id DESC), so every page is an index range scan of at most
+  // limit+1 rows: O(limit) per page however deep the client pages. id breaks queued_at ties.
+  static final String LIST_FIRST_PAGE =
+      """
+      SELECT r.id, r.project_id, r.status, r.trigger, r.fixture_mode, r.fixture_seed,
+             r.commit_sha, r.branch, r.ci_ref, r.queued_at, r.started_at, r.finished_at,
+             s.suite_key, s.revision,
+             (SELECT count(*) FROM run_targets t WHERE t.run_id = r.id) AS target_count
+      FROM runs r JOIN suites s ON s.id = r.suite_id
+      WHERE r.project_id = :p
+      ORDER BY r.queued_at DESC, r.id DESC
+      LIMIT :limit
+      """;
+
+  static final String LIST_AFTER_CURSOR =
+      """
+      SELECT r.id, r.project_id, r.status, r.trigger, r.fixture_mode, r.fixture_seed,
+             r.commit_sha, r.branch, r.ci_ref, r.queued_at, r.started_at, r.finished_at,
+             s.suite_key, s.revision,
+             (SELECT count(*) FROM run_targets t WHERE t.run_id = r.id) AS target_count
+      FROM runs r JOIN suites s ON s.id = r.suite_id
+      WHERE r.project_id = :p AND (r.queued_at, r.id) < (:queuedAt, :id)
+      ORDER BY r.queued_at DESC, r.id DESC
+      LIMIT :limit
+      """;
+
+  /** Up to {@code limit} runs after {@code cursor} (or from the newest), newest first. */
+  public List<RunSummary> listRuns(UUID projectId, RunCursor cursor, int limit) {
+    var query =
+        jdbc.sql(cursor == null ? LIST_FIRST_PAGE : LIST_AFTER_CURSOR)
+            .param("p", projectId)
+            .param("limit", limit);
+    if (cursor != null) {
+      query =
+          query
+              .param("queuedAt", OffsetDateTime.ofInstant(cursor.queuedAt(), ZoneOffset.UTC))
+              .param("id", cursor.id());
+    }
+    return query.query((rs, i) -> mapSummary(rs)).list();
+  }
+
+  private static RunSummary mapSummary(ResultSet rs) throws SQLException {
     UUID id = rs.getObject("id", UUID.class);
-    String mode = rs.getString("fixture_mode");
-    Integer seed = rs.getObject("fixture_seed", Integer.class);
-    String sha = rs.getString("commit_sha");
-    String branch = rs.getString("branch");
-    String ciRef = rs.getString("ci_ref");
-    return new RunResponse(
+    return new RunSummary(
         id,
         rs.getObject("project_id", UUID.class),
         rs.getString("suite_key"),
         rs.getString("revision"),
         RunStatus.valueOf(rs.getString("status")),
         Trigger.valueOf(rs.getString("trigger")),
+        fixture(rs),
+        source(rs),
+        rs.getInt("target_count"),
+        instant(rs, "queued_at"),
+        instant(rs, "started_at"),
+        instant(rs, "finished_at"),
+        new RunResponse.Links(RunResponse.selfLink(id), null));
+  }
+
+  private static RunResponse mapRun(ResultSet rs, List<RunResponse.Target> targets)
+      throws SQLException {
+    UUID id = rs.getObject("id", UUID.class);
+    UUID suiteId = rs.getObject("suite_id", UUID.class);
+    RunStatus status =
+        targets.isEmpty()
+            ? RunStatus.valueOf(rs.getString("status"))
+            : RunAggregate.of(
+                targets.stream()
+                    .map(t -> new RunAggregate.TargetState(t.status(), t.attemptCount()))
+                    .toList());
+    return new RunResponse(
+        id,
+        rs.getObject("project_id", UUID.class),
+        suiteId,
+        rs.getString("suite_key"),
+        rs.getString("revision"),
+        status,
+        Trigger.valueOf(rs.getString("trigger")),
         rs.getString("idempotency_key"),
-        mode == null ? null : new CreateRunRequest.Fixture(FixtureMode.valueOf(mode), seed),
+        fixture(rs),
         new CreateRunRequest.Sharding(
             ShardingMode.valueOf(rs.getString("sharding_mode")), rs.getInt("shard_count")),
-        sha == null && branch == null && ciRef == null
-            ? null
-            : new CreateRunRequest.Source(sha, branch, ciRef),
+        source(rs),
         instant(rs, "queued_at"),
         instant(rs, "started_at"),
         instant(rs, "finished_at"),
         instant(rs, "cancel_requested_at"),
         targets,
-        new RunResponse.Links(RunResponse.selfLink(id)));
+        new RunResponse.Links(RunResponse.selfLink(id), RunResponse.suiteLink(suiteId)));
+  }
+
+  private static CreateRunRequest.Fixture fixture(ResultSet rs) throws SQLException {
+    String mode = rs.getString("fixture_mode");
+    return mode == null
+        ? null
+        : new CreateRunRequest.Fixture(
+            FixtureMode.valueOf(mode), rs.getObject("fixture_seed", Integer.class));
+  }
+
+  private static CreateRunRequest.Source source(ResultSet rs) throws SQLException {
+    String sha = rs.getString("commit_sha");
+    String branch = rs.getString("branch");
+    String ciRef = rs.getString("ci_ref");
+    return sha == null && branch == null && ciRef == null
+        ? null
+        : new CreateRunRequest.Source(sha, branch, ciRef);
   }
 
   private static RunResponse.Target mapTarget(ResultSet rs) throws SQLException {

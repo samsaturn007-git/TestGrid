@@ -85,6 +85,33 @@ class SchemaConstraintsTest {
   }
 
   @Test
+  void theSameIdempotencyKeyIsAllowedInAnotherProject() {
+    UUID other =
+        jdbc.sql("INSERT INTO projects (slug, name) VALUES ('other', 'Other') RETURNING id")
+            .query(UUID.class)
+            .single();
+    UUID otherSuite =
+        jdbc.sql(
+                "INSERT INTO suites (project_id, suite_key, revision, display_name, timeout_ms,"
+                    + " playwright_retries, allowed_engines, fixture_modes) VALUES (:p, 's',"
+                    + " 'eeeeeeeeeeee', 'S', 1000, 0, ARRAY['chromium'], ARRAY[]::text[])"
+                    + " RETURNING id")
+            .param("p", other)
+            .query(UUID.class)
+            .single();
+    insertRun("shared-key", "QUEUED", false);
+    int inserted =
+        jdbc.sql(
+                "INSERT INTO runs (project_id, suite_id, status, trigger, idempotency_key,"
+                    + " request_hash) VALUES (:p, :s, 'QUEUED', 'MANUAL', 'shared-key', :h)")
+            .param("p", other)
+            .param("s", otherSuite)
+            .param("h", new byte[32])
+            .update();
+    assertThat(inserted).isEqualTo(1);
+  }
+
+  @Test
   void nonCanonicalStatusSpellingIsRejected() {
     assertThatThrownBy(() -> insertRun("key-2", "CANCELED", false))
         .isInstanceOf(DataIntegrityViolationException.class)

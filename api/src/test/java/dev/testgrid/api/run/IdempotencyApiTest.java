@@ -152,28 +152,16 @@ class IdempotencyApiTest {
   }
 
   @Test
-  void keysAreScopedToTheProject() throws Exception {
+  void postingToAProjectOutsideTheCallersScopeIsNotFound() throws Exception {
     UUID other =
         jdbc.sql("INSERT INTO projects (slug, name) VALUES ('other', 'Other') RETURNING id")
             .query(UUID.class)
             .single();
-    jdbc.sql(
-            """
-            INSERT INTO suites (project_id, suite_key, revision, display_name, is_current,
-                                timeout_ms, playwright_retries, allowed_engines, fixture_modes)
-            VALUES (:p, 'checkout-smoke', 'bbbbbbbbbbbb', 'Other smoke', true, 60000, 0,
-                    ARRAY['chromium', 'firefox'], ARRAY[]::text[])
-            """)
-        .param("p", other)
-        .update();
-    String body = request("shared-key", CHROMIUM_FIREFOX, "");
 
-    String inDemo = runId(postTo(RUNS_URL, body).andExpect(status().isAccepted()));
-    String inOther =
-        runId(postTo("/api/v1/projects/" + other + "/runs", body).andExpect(status().isAccepted()));
-
-    assertThat(inOther).isNotEqualTo(inDemo);
-    assertThat(count(jdbc, "runs")).isEqualTo(2);
+    postTo("/api/v1/projects/" + other + "/runs", request("shared-key", CHROMIUM_FIREFOX, ""))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.type").value("https://testgrid.local/problems/not-found"));
+    assertThat(count(jdbc, "runs")).isZero();
   }
 
   private ResultActions postTo(String url, String json) throws Exception {

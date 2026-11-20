@@ -11,10 +11,12 @@ import java.util.UUID;
 
 /**
  * A run as the public API shows it. Never a database row type (PRD-02 risk: no leaked entities).
+ * {@code status} is computed from the targets with {@link dev.testgrid.api.domain.RunAggregate}.
  */
 public record RunResponse(
     UUID id,
     UUID projectId,
+    UUID suiteId,
     String suiteKey,
     String suiteRevision,
     RunStatus status,
@@ -41,9 +43,14 @@ public record RunResponse(
       Instant queuedAt,
       Instant finishedAt) {}
 
-  public record Links(String self) {}
+  /** {@code suite} is null in list rows, which don't load it. */
+  public record Links(String self, String suite) {}
 
   public static String selfLink(UUID runId) {
     return "/api/v1/runs/" + runId;
+  }
+
+  public static String suiteLink(UUID suiteId) {
+    return "/api/v1/suites/" + suiteId;
   }
 }

@@ -8,6 +8,7 @@ import dev.testgrid.api.domain.Trigger;
 import dev.testgrid.api.problem.ApiProblemException;
 import dev.testgrid.api.problem.FieldError;
 import dev.testgrid.api.problem.ProblemType;
+import dev.testgrid.api.project.CallerScope;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,11 +29,14 @@ public class RunCreationService {
   private final RunRepository runs;
   private final TestgridProperties properties;
   private final JsonMapper mapper;
+  private final CallerScope scope;
 
-  public RunCreationService(RunRepository runs, TestgridProperties properties, JsonMapper mapper) {
+  public RunCreationService(
+      RunRepository runs, TestgridProperties properties, JsonMapper mapper, CallerScope scope) {
     this.runs = runs;
     this.properties = properties;
     this.mapper = mapper;
+    this.scope = scope;
   }
 
   /** {@code replay} is true when the key was already used with the same request. */
@@ -45,7 +49,8 @@ public class RunCreationService {
    */
   @Transactional
   public Result create(UUID projectId, CreateRunRequest request) {
-    if (!runs.projectExists(projectId)) {
+    // A project outside the caller's scope looks exactly like one that doesn't exist.
+    if (!scope.canSee(projectId) || !runs.projectExists(projectId)) {
       throw new ApiProblemException(ProblemType.NOT_FOUND, "project " + projectId + " not found");
     }
     checkShape(request);
