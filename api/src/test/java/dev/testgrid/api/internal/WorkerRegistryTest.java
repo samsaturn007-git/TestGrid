@@ -98,6 +98,29 @@ class WorkerRegistryTest extends WorkerApiTestBase {
         .containsExactly("ACTIVE", "LOST");
   }
 
+  /** Review of PR #5: two registrations of one name at once used to race into a 500. */
+  @org.junit.jupiter.api.RepeatedTest(5)
+  void concurrentRegistrationsOfOneNameLeaveOneLiveRow() throws Exception {
+    var go = new java.util.concurrent.CountDownLatch(1);
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(4)) {
+      var futures = new java.util.ArrayList<java.util.concurrent.Future<HttpResponse<String>>>();
+      for (int i = 0; i < 4; i++) {
+        futures.add(
+            pool.submit(() -> {
+              go.await();
+              return register("worker-race", 1);
+            }));
+      }
+      go.countDown();
+      for (var f : futures) {
+        assertThat(f.get().statusCode()).as(f.get().body()).isEqualTo(201);
+      }
+    }
+    assertThat(count("SELECT count(*) FROM workers WHERE name = 'worker-race' AND state <> 'LOST'"))
+        .isEqualTo(1);
+    assertThat(count("SELECT count(*) FROM workers WHERE name = 'worker-race'")).isEqualTo(4);
+  }
+
   @Test
   void badRegistrationsAre400AndUnknownWorkers404() {
     assertThat(post("w;rm -rf", "1.0", 1).statusCode()).isEqualTo(400);

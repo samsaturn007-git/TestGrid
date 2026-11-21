@@ -38,6 +38,7 @@ public class WorkerRegistry {
   @Transactional
   public WorkerView register(
       String name, String version, Executor executor, List<Engine> engines, int slots) {
+    workers.lockName(name);
     int replaced = workers.markPreviousLost(name);
     WorkerView worker = workers.insert(name, version, executor, List.copyOf(engines), slots);
     try (var ctx = LogContext.open().put("workerId", name)) {

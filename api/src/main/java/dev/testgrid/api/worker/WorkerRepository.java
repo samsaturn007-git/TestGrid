@@ -22,6 +22,21 @@ public class WorkerRepository {
     this.jdbc = jdbc;
   }
 
+  /** Advisory-lock class for worker names (the second key is {@code hashtext(name)}). */
+  static final int NAME_LOCK_CLASS = 0x7467; // "tg"
+
+  /**
+   * Serialises registrations of one name until commit, so two concurrent registrations (a retry
+   * after a timeout, say) can't both see no live row and then collide on the unique index.
+   */
+  public void lockName(String name) {
+    jdbc.sql("SELECT pg_advisory_xact_lock(:c, hashtext(:n))")
+        .param("c", NAME_LOCK_CLASS)
+        .param("n", name)
+        .query()
+        .singleRow();
+  }
+
   /**
    * A container that registers again under its name (it restarted) replaces its old row: the old
    * process is gone, so the old row is LOST. The partial unique index {@code
