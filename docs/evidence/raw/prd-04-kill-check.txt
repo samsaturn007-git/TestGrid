@@ -1,0 +1,15 @@
+$ make kill-check   # 2026-11-21T14:32:43Z
+created run 4ebfd02b-d286-4f4c-97e1-59ff17f76d2a (TIMEOUT fixture: each attempt runs ~40 s)
+target RUNNING; sending SIGKILL to the worker container and starting it again
+waiting for the reaper to abandon attempt 1 and for attempt 2 to be claimed (bound 45 s)
+attempt 2 claimed 32 s after the kill
+waiting for attempt 2 to finish
+--- attempts (database)
+1 | ABANDONED | LEASE_EXPIRED | worker-04904eb573e4 | 0
+2 | TIMED_OUT | TEST_TIMEOUT | worker-04904eb573e4 | 6
+--- events
+RUN_CREATED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ATTEMPT_ABANDONED > TARGET_RETRY_SCHEDULED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > TARGET_FINISHED > RUN_FINISHED
+--- run
+run status: TIMED_OUT | target status: TIMED_OUT | attempts: 2
+kill-check OK
+exit status not captured (zsh pipestatus index); the script runs with set -e and prints its OK line only when every check passed

@@ -68,7 +68,7 @@ Read-only (`scripts/sql/stuck-runs.sql`, invariant I8). It lists non-terminal ta
 
 | Reason | Meaning | What to do |
 |---|---|---|
-| `NO_ACTIVE_WORKER_FOR_ENGINE` | No `ACTIVE` worker serves this engine and executor. | `curl -s http://127.0.0.1:8080/api/v1/workers`; start or scale workers (`docker compose … up -d --scale worker=2`), or check `TESTGRID_WORKER_ENGINES`. The target runs as soon as one registers. |
+| `NO_ACTIVE_WORKER_FOR_ENGINE` | No `ACTIVE` worker serves this engine and executor. | `curl -s http://127.0.0.1:8080/api/v1/workers`; start or scale workers (`docker compose … up -d --scale worker=2`), or check `TESTGRID_WORKER_ENGINES`. The target runs as soon as one registers. A worker killed without draining (`kill -9`, OOM) still counts as `ACTIVE` until it has been silent for 3 × lease TTL (90 s), so this reason can be missing for that long (seen live, evidence `prd-04-runbook-tools.txt`). |
 | `LEASE_EXPIRED_NOT_REAPED` | The lease ran out more than 15 s ago and the reaper hasn't acted. | The API's loops are not running: check the API log for `dispatch loops started` and `reaper pass failed`, and that `TESTGRID_DISPATCH_ENABLED` is not `false`. |
 | `DISPATCH_NOT_RECOVERED` | Dispatched over 6 min ago, never claimed, not recovered. | Same as above (the reaper owns this). Then `make dlq`: its message is probably there. |
 | `RUNNING_PAST_SUITE_TIMEOUT` | The attempt still heartbeats past the suite timeout + 60 s. | The worker is alive but its Playwright run is not ending: `docker compose … logs worker`; cancel the run (§6) or restart that worker (its lease then expires and the reaper retries). |

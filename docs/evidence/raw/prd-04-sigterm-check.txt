@@ -1,0 +1,14 @@
+$ make sigterm-check   # 2026-11-21T14:34:51Z
+created run 5845601f-7c42-4d73-baf0-1e991d7ad48d
+target RUNNING; docker compose stop worker (SIGTERM)
+worker container stopped after 20 s
+run INFRA_ERROR | target INFRA_ERROR | attempt INFRA_ERROR WORKER_SHUTDOWN | detail: worker shut down before the attempt finished | cases 0
+--- worker log during shutdown
+"msg":"draining"
+"msg":"stopped consuming; finishing current attempts"
+"msg":"attempt finished; reporting"
+"msg":"completion accepted"
+"msg":"consumer stopped"
+"msg":"worker exited cleanly"
+sigterm-check OK
+exit status not captured (zsh pipestatus index); the script runs with set -e and prints its OK line only when every check passed
