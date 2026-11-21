@@ -1,6 +1,7 @@
 -- PRD-04 T7, invariant I8 (ARCHITECTURE §5): targets that are not terminal and should have moved.
--- The thresholds mirror the defaults in docs/RUNBOOK.md §2 (reaper 5 s, dispatch timeout 5 min,
--- suite timeout + 60 s grace); a row here means a loop is not running or nothing can take it.
+-- :dispatch_timeout_s comes from TESTGRID_DISPATCH_TIMEOUT_MS (scripts/stuck-runs.sh), the value the
+-- reaper uses; the other thresholds are the reaper interval (5 s) plus margin and the suite timeout
+-- plus 60 s grace. A row here means a loop is not running or nothing can take the target.
 WITH latest AS (
   SELECT DISTINCT ON (a.target_id) a.target_id, a.attempt_no, a.worker_id, a.status,
          a.leased_until, a.started_at
@@ -16,7 +17,8 @@ WITH latest AS (
            WHEN t.status = 'RUNNING'
                 AND l.started_at < now() - make_interval(secs => s.timeout_ms / 1000.0 + 60)
              THEN 'RUNNING_PAST_SUITE_TIMEOUT'
-           WHEN t.status = 'QUEUED' AND t.dispatched_at < now() - interval '6 minutes'
+           WHEN t.status = 'QUEUED'
+                AND t.dispatched_at < now() - make_interval(secs => :dispatch_timeout_s + 60)
              THEN 'DISPATCH_NOT_RECOVERED'
            WHEN t.status = 'QUEUED' AND NOT EXISTS (
                   SELECT 1 FROM workers w

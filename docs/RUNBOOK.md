@@ -15,7 +15,7 @@ What the system promises when things fail, the timings behind those promises, an
 | The worker dies after `complete`, before the ack | The broker redelivers; the target is terminal, so the claim answers `409` and the restarted worker acks. No second attempt. | — | `AckCrashTest`, `make crash-check` (AC-3) |
 | The worker dies after the claim (killed, OOM, network gone) | The lease runs out; the attempt becomes `ABANDONED` (`LEASE_EXPIRED`) and is kept; the target is retried after a backoff with a new generation, or ends `INFRA_ERROR` when `max_attempts` is spent. The redelivered old message gets `409`. | `max_attempts × (lease TTL + max backoff)`; one retry ≈ TTL + 5 s reaper + backoff | `WorkerKillTest`, `make kill-check`, `make crash-check` (AC-4) |
 | RabbitMQ restarts mid-run | Running attempts keep their leases (the database holds them); their acks are lost, so the broker redelivers and the claim answers `409`. Dispatches whose publish failed stay in the outbox and go out when the broker is back. | outbox backoff, max 30 s | `BrokerRestartTest` (AC-5) |
-| A message can never be processed (every consumer dies before claiming it, or it doesn't parse) | After 1 + 5 deliveries the quorum queue dead-letters it to `tg.targets.dead`. After the dispatch timeout the reaper sends a new generation; after `max_attempts` unclaimed dispatches in a row the target ends `INFRA_ERROR` (`WORKER_LOST`). | `max_attempts × dispatch timeout` | `DeadLetterTest`, `ReaperTest` (AC-6) |
+| A message can never be processed (every consumer dies before claiming it, or it doesn't parse) | After 1 + 5 deliveries the quorum queue dead-letters it to `tg.targets.dead`. After the dispatch timeout the reaper sends a new generation; after `max_attempts` unclaimed dispatches in total the target ends `INFRA_ERROR` (`WORKER_LOST`). | `max_attempts × dispatch timeout` | `DeadLetterTest`, `ReaperTest` (AC-6) |
 | A cancel races a completion or a claim | Whichever transaction commits first wins; the target gets exactly one terminal state and both requests are in `run_events`. | — | `RunCancelTest`, `CancelRaceTest` (AC-7) |
 | More targets than the cap | The dispatcher never releases more than `global_max_sessions − active − dispatched_unclaimed`; the claim re-checks under the same lock. | — | `CapTest`, `ClaimConcurrencyTest` (AC-1, I5) |
 | A worker gets `SIGTERM` | It drains (registry `DRAINING`), stops consuming, gives running attempts 20 s, then reports `INFRA_ERROR` / `WORKER_SHUTDOWN`; messages it had not started go back to the queue. | 20 s + 10 s kill grace | `make sigterm-check` |
@@ -31,7 +31,7 @@ What the system promises when things fail, the timings behind those promises, an
 
 ## 2. Timing defaults
 
-The cap, retries and lease TTL live in the single `scheduler_settings` row: the database is the only source once the row exists (CONFLICT_REGISTER N15). Everything else is an API or worker property read at startup.
+The cap, retries and lease TTL live in the single `scheduler_settings` row: the database is the only source once the row exists (CONFLICT_REGISTER N15). Everything else is an API or worker property read at startup. Compose forwards the four reaper variables (`TESTGRID_REAPER_INTERVAL_MS`, `TESTGRID_RETRY_BACKOFF_*`, `TESTGRID_DISPATCH_TIMEOUT_MS`) and `TESTGRID_WORKER_SLOTS` from `.env`; the other settings need an `environment` entry in `infra/compose/compose.yaml`.
 
 | Setting | Default | Where | How to change |
 |---|---|---|---|
@@ -45,7 +45,7 @@ The cap, retries and lease TTL live in the single `scheduler_settings` row: the 
 | Publish retry backoff | 1 s × 2ⁿ⁻¹, max 30 s | `testgrid.dispatch.publish-backoff-*` | API restart |
 | Reaper interval | 5 s | `TESTGRID_REAPER_INTERVAL_MS` | API restart |
 | Retry backoff (attempts) | 2 s × 2ⁿ⁻¹, max 60 s, ±20 % | `TESTGRID_RETRY_BACKOFF_BASE_MS`, `TESTGRID_RETRY_BACKOFF_MAX_MS` | API restart |
-| Dispatch timeout (lost message) | 5 min | `TESTGRID_DISPATCH_TIMEOUT_MS` | API restart. Keep it longer than the longest legitimate queue wait (§3, `WAITING_FOR_CAPACITY`) |
+| Dispatch timeout (lost message) | 5 min | `TESTGRID_DISPATCH_TIMEOUT_MS` | API restart. Keep it longer than the longest legitimate queue wait: a message still waiting (repeated `429`s after the cap was lowered, or a busy worker's prefetch) is redispatched after it, and each redispatch counts toward the `WORKER_LOST` limit. `make stuck-runs` reads the same value |
 | Worker LOST after | 3 × lease TTL | fixed (`WorkerRegistry.LOST_AFTER_TTLS`) | code |
 | Delivery limit | 5 redeliveries | queue argument `x-delivery-limit` | fixed: RabbitMQ refuses to change queue arguments (contracts §9) |
 | Retry-queue TTL (`429`, API unreachable) | 1 s × 2ⁿ⁻¹, max 30 s, ±20 % | worker (`dispatch-message.ts`) | code |

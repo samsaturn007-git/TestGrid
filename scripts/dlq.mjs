@@ -4,6 +4,7 @@
 //   list   prints one tab-separated line per message and puts every message back with
 //          basic.nack(requeue): on RabbitMQ 4.4 a nack does not count toward a quorum queue's
 //          delivery limit, whereas a channel closed with unacked messages would.
+//   Both read at most the messages present when they start (checkQueue).
 //   replay republishes each message, body and properties unchanged apart from the broker's
 //          x-death headers, to the engine queue it was dead-lettered from (x-first-death-queue),
 //          waits for the publisher confirm, then acks the dead letter.
@@ -26,7 +27,10 @@ const ch = await conn.createConfirmChannel();
 const held = [];
 let replayed = 0;
 let skipped = 0;
-for (;;) {
+// Only the messages that are there now. A replayed message can be dead-lettered again while this
+// runs (its cause not fixed yet); without a bound the loop would pick it up and replay it forever.
+const { messageCount } = await ch.checkQueue(DEAD);
+for (let i = 0; i < messageCount; i++) {
   const msg = await ch.get(DEAD, { noAck: false });
   if (!msg) break;
   const h = msg.properties.headers ?? {};
