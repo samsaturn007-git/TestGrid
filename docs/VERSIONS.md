@@ -81,6 +81,17 @@ Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, release date, d
 | zod | **4.6.7** (pin kept, still `latest`) | Worker: claim payload, environment and Playwright JSON report parsing. Same version as demo-shop. |
 | API JSON logs | Spring Boot 4.1.2 built-in structured logging (`logging.structured.format.console`) | No new dependency: Boot's ECS/Logstash formats replace a separate Logback encoder. |
 
+### 1.4 PRD-04 broker and client libraries (checked 2026-11-21)
+
+| Component | Pin | Source and note |
+|---|---|---|
+| RabbitMQ | **4.4.1** (pin kept), image `rabbitmq:4.4.1-management` | Re-checked before PRD-04: still the newest non-prerelease on [GitHub releases](https://github.com/rabbitmq/rabbitmq-server/releases) (4.4.1 and 4.3.8 both 2026-11-16). Docker Hub tag updated 2026-11-17, multi-arch incl. arm64; pulled locally, `rabbitmq-diagnostics --version` prints 4.4.1, 448 MB. |
+| Spring AMQP (`spring-boot-starter-amqp`) | **4.1.2** (Boot 4.1.2 BOM) | [spring-boot-dependencies-4.1.2.pom](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.2/spring-boot-dependencies-4.1.2.pom): `spring-amqp.version` 4.1.2, `rabbit-amqp-client.version` 5.30.0. Not added to `api/pom.xml` until PRD-04 T2. |
+| Testcontainers RabbitMQ (`testcontainers-rabbitmq`) | **2.0.5** (Boot BOM) | Artifact exists on Maven Central (`testcontainers-rabbitmq-2.0.5.pom`, HTTP 200); same version as the Postgres module. |
+| amqplib (worker) | **2.4.0** (npm `latest`, 2026-11-16) | [npm registry](https://registry.npmjs.org/amqplib): `engines.node >=18`, ships its own `index.d.ts` (no `@types/amqplib`; that package is at 0.10.8 for the old 0.10 line), no dependencies. It is five days old at check time; re-check on install (T3) and fall back to 2.3.3 if a regression has been reported. |
+
+**PRD-04 memory budget** (§3): the default profile plus RabbitMQ is 4,864 + 512 = 5,376 MiB with 2 workers. The PRD-04 demo with `--scale worker=3` is 6,912 MiB of the 7.8 GiB OrbStack VM; don't run it alongside the `obs` profile.
+
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).
 - `.nvmrc`, `.tool-versions`, `package.json#packageManager` and `.mvn/wrapper/maven-wrapper.properties` must match this table (PRD-01 FR-3).
