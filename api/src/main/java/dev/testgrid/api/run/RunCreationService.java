@@ -1,6 +1,7 @@
 package dev.testgrid.api.run;
 
 import dev.testgrid.api.config.TestgridProperties;
+import dev.testgrid.api.dispatch.DispatchSignal;
 import dev.testgrid.api.dispatch.SchedulerSettingsRepository;
 import dev.testgrid.api.domain.EventType;
 import dev.testgrid.api.domain.Executor;
@@ -32,18 +33,21 @@ public class RunCreationService {
   private final JsonMapper mapper;
   private final CallerScope scope;
   private final SchedulerSettingsRepository settings;
+  private final DispatchSignal signal;
 
   public RunCreationService(
       RunRepository runs,
       TestgridProperties properties,
       JsonMapper mapper,
       CallerScope scope,
-      SchedulerSettingsRepository settings) {
+      SchedulerSettingsRepository settings,
+      DispatchSignal signal) {
     this.runs = runs;
     this.properties = properties;
     this.mapper = mapper;
     this.scope = scope;
     this.settings = settings;
+    this.signal = signal;
   }
 
   /** {@code replay} is true when the key was already used with the same request. */
@@ -113,6 +117,8 @@ public class RunCreationService {
     payload.put("trigger", request.trigger().name());
     payload.put("targetKeys", targetKeys);
     runs.insertRunEvent(runId, EventType.RUN_CREATED, mapper.writeValueAsString(payload));
+    // Nothing is published here (ADR-004); the dispatcher picks the targets up after commit.
+    signal.dispatchAfterCommit();
 
     return new Result(runs.findRun(projectId, runId).orElseThrow(), false);
   }

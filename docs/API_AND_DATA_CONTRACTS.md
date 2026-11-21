@@ -330,7 +330,14 @@ Each `(caseKey, engine)` pair gets one of:
 - **Queues:** quorum queues `tg.targets.<engine>` with routing key `engine.<engine>`.
 - **Retry:** `tg.targets.retry` with a per-message TTL and a dead-letter route back to `tg.dispatch`.
 - **Dead letters:** exchange `tg.dlx` → queue `tg.targets.dead`.
+- **Queue arguments** (declared by the API on every connection; RabbitMQ refuses to change them later, so they are fixed here):
+  - `tg.targets.<engine>`: `x-queue-type: quorum`, `x-delivery-limit: 5`, `x-dead-letter-exchange: tg.dlx`.
+  - `tg.targets.retry`: `x-queue-type: quorum`, `x-dead-letter-exchange: tg.dispatch` (messages carry their own TTL).
+  - `tg.dlx` is a durable fanout exchange; `tg.targets.dead` is a quorum queue bound to it.
 - **Message body:** `{messageId, targetId, dispatchGeneration, schemaVersion: 1}`, persistent, with headers `traceparent` and `x-tg-run-id`.
+  - AMQP properties: `message_id` = `messageId`, `type` = `TARGET_DISPATCHED`, `content_type` = `application/json`.
+  - The body is the `outbox_events.payload` of the dispatch, published unchanged. A redelivered or re-published message has the same `messageId` and `dispatchGeneration`.
+- **Publishing (outbox, PRD-04 FR-3):** publisher confirms and the `mandatory` flag. A row is marked published only after an ack with no return; a nack, a return (unroutable), a 5 s confirm timeout or a broken connection leaves it unpublished with `publish_attempts + 1` and `next_attempt_at = now() + 1 s × 2ⁿ⁻¹` after the n-th failure (capped at 30 s).
 - **Consumers:** manual acknowledgement with `prefetch = worker slots`.
   - Ack after `complete` returns `2xx`, or after `claim` returns `409` (terminal or stale).
   - On `429` capacity, route to the retry queue.

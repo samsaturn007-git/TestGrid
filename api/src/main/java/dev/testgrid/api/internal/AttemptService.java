@@ -3,6 +3,7 @@ package dev.testgrid.api.internal;
 import dev.testgrid.api.common.Hashing;
 import dev.testgrid.api.common.LogContext;
 import dev.testgrid.api.common.Redactor;
+import dev.testgrid.api.dispatch.DispatchSignal;
 import dev.testgrid.api.dispatch.SchedulerSettingsRepository;
 import dev.testgrid.api.domain.AttemptStatus;
 import dev.testgrid.api.domain.CaseStatus;
@@ -51,16 +52,19 @@ public class AttemptService {
   private final InternalApiProperties properties;
   private final SchedulerSettingsRepository settings;
   private final JsonMapper mapper;
+  private final DispatchSignal signal;
 
   public AttemptService(
       AttemptRepository attempts,
       InternalApiProperties properties,
       SchedulerSettingsRepository settings,
-      JsonMapper mapper) {
+      JsonMapper mapper,
+      DispatchSignal signal) {
     this.attempts = attempts;
     this.properties = properties;
     this.settings = settings;
     this.mapper = mapper;
+    this.signal = signal;
   }
 
   /** FR-3: claim the oldest eligible target, or empty when there is nothing to run. */
@@ -232,6 +236,8 @@ public class AttemptService {
             EventType.RUN_FINISHED,
             json(Map.of("status", run.status().name())));
       }
+      // A session just freed up: let the dispatcher release the next target without waiting a tick.
+      signal.dispatchAfterCommit();
       log.info(
           "attempt completed status={} errorClass={} cases={} runStatus={}",
           result.status(),
