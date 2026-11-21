@@ -7,6 +7,19 @@ info:
 servers:
 - url: /
 paths:
+  /api/v1/capabilities:
+    get:
+      operationId: getCapabilities
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Capabilities"
+          description: Capabilities
+      summary: What this deployment accepts
+      tags:
+      - meta
   /api/v1/projects:
     get:
       operationId: listProjects
@@ -368,6 +381,13 @@ components:
       - startedAt
       - status
       - workerId
+    Capabilities:
+      type: object
+      properties:
+        fixturesAllowed:
+          type: boolean
+      required:
+      - fixturesAllowed
     CaseResult:
       type: object
       properties:

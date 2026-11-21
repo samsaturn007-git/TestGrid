@@ -141,6 +141,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | Method and path | Purpose | Notes | PRD |
 |---|---|---|---|
 | `GET /projects` | List projects | | 02 |
+| `GET /capabilities` | What this deployment accepts: `{fixturesAllowed}` | `true` exactly when `TESTGRID_PROFILE=local`; the profile name itself is not returned | 05 |
 | `GET /projects/{projectId}/suites` | Suites with current revision | backed by the manifest | 02 |
 | `GET /suites/{suiteId}` | Suite plus cases | | 02 |
 | `POST /projects/{projectId}/runs` | Create a run | `202` new run, `200` replay (header `Idempotent-Replay: true`), `409` key reused with a different payload, `422` unknown suite or engine | 02 |
@@ -181,6 +182,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 - **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`. The filters arrive in PRD-05.
 - **`GET /runs/{runId}`:** the run, its targets ordered by `targetKey`, `status` computed as in §2.3, and `links {self, suite}`. Each target carries `latestAttempt` (or `null`): `{id, attemptNo, workerId, status, claimedAt, startedAt, finishedAt, leasedUntil, leaseExpired, lastHeartbeatAt, errorClass}`. `leaseExpired` is `true` when the attempt is still `CLAIMED`/`RUNNING` but `leased_until < now()` (database clock), so a dead worker is visible rather than shown as running (PRD-03 AC-4).
 - **`GET /runs/{runId}/results` (PRD-03 FR-9):** `{runId, status, targets[{id, targetKey, engine, status, attempts[{attempt, errorDetail, caseResults[{caseKey, status, durationMs, retryCount, errorClass, errorMessage}]}]}]}`. Attempts are newest first; case results are ordered by `caseKey`. Lease tokens never appear.
+- **`GET /capabilities` (PRD-05):** `{"fixturesAllowed": boolean}`. The dashboard shows the fixture-mode controls only when it is `true`; the API still enforces `422 fixture-not-allowed` on its own, so a stale or forged answer changes nothing.
 - **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
 
 **Create-run request**
