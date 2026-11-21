@@ -13,6 +13,11 @@ const Env = z.object({
   TESTGRID_WORKER_TOKEN: z.string().min(32),
   TESTGRID_WORKER_ID: z.string().regex(WORKER_ID).optional(),
   TESTGRID_WORKER_ENGINES: z.string().default('chromium'),
+  // Shown in the registry (GET /api/v1/workers); the image build can set it.
+  TESTGRID_WORKER_VERSION: z
+    .string()
+    .regex(/^[A-Za-z0-9._+-]{1,64}$/)
+    .default('dev'),
   DEMO_SHOP_INTERNAL: z.string(),
   // PRD-04 FR-5: the broker the dispatch messages come from. Operator settings, never client input.
   RABBITMQ_HOST: z
@@ -32,6 +37,7 @@ export interface WorkerConfig {
   apiUrl: string;
   token: string;
   workerId: string;
+  version: string;
   engines: z.infer<typeof ENGINE>[];
   baseUrl: string;
   amqp: AmqpConfig;
@@ -73,6 +79,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     apiUrl: api.origin,
     token: e.TESTGRID_WORKER_TOKEN,
     workerId: e.TESTGRID_WORKER_ID ?? fallbackId,
+    version: e.TESTGRID_WORKER_VERSION,
     engines,
     baseUrl,
     amqp: {

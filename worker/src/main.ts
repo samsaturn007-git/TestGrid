@@ -5,6 +5,7 @@ import { loadConfig } from './config.ts';
 import { runConsumer } from './consumer.ts';
 import { createLogger } from './logger.ts';
 import { DEFAULT_WORKER_ROOT, loadManifest } from './manifest.ts';
+import { WorkerRegistration } from './registration.ts';
 import { handleDelivery } from './worker.ts';
 
 const config = loadConfig(process.env);
@@ -22,7 +23,19 @@ log.info(
   'manifest loaded',
 );
 
+const api = new WorkerApiClient(config.apiUrl, config.token);
 const stopping = new AbortController();
+const registration = new WorkerRegistration({
+  api,
+  log,
+  registration: {
+    name: config.workerId,
+    version: config.version,
+    engines: config.engines,
+    slots: config.slots,
+  },
+  stopping: stopping.signal,
+});
 let signals = 0;
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
@@ -33,12 +46,14 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     );
     // A second signal skips the grace period.
     if (signals > 1) process.exit(1);
+    // FR-7: DRAINING in the registry while the current attempts finish.
+    void registration.drain();
     stopping.abort();
   });
 }
 
 const deps = {
-  api: new WorkerApiClient(config.apiUrl, config.token),
+  api,
   log,
   workerId: config.workerId,
   attemptDeps: {
@@ -53,18 +68,22 @@ const deps = {
   stopping: stopping.signal,
 };
 
-await runConsumer({
-  // Object form: the password never has to be URL-encoded into a string that could be logged.
-  connect: () =>
-    amqp.connect(
-      { protocol: 'amqp', ...config.amqp, heartbeat: 15 },
-      { clientProperties: { connection_name: config.workerId } },
-    ),
-  engines: config.engines,
-  slots: config.slots,
-  log,
-  stopping: stopping.signal,
-  handle: (body, traceparent) => handleDelivery(deps, body, traceparent),
-  reconnectMaxMs: config.reconnectMaxMs,
-});
+// FR-7: register before taking any message.
+if (await registration.start()) {
+  await runConsumer({
+    // Object form: the password never has to be URL-encoded into a string that could be logged.
+    connect: () =>
+      amqp.connect(
+        { protocol: 'amqp', ...config.amqp, heartbeat: 15 },
+        { clientProperties: { connection_name: config.workerId } },
+      ),
+    engines: config.engines,
+    slots: config.slots,
+    log,
+    stopping: stopping.signal,
+    handle: (body, traceparent) => handleDelivery(deps, body, traceparent),
+    reconnectMaxMs: config.reconnectMaxMs,
+  });
+}
+registration.stop();
 log.info('worker exited cleanly');

@@ -149,7 +149,8 @@ services:
     environment:
       TESTGRID_API_URL: http://api:8081
       TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
-      TESTGRID_WORKER_ID: worker-1
+      # No fixed TESTGRID_WORKER_ID (CONFLICT_REGISTER N13): each container is worker-<hostname>,
+      # so `--scale worker=N` gives N distinct names in the registry and on attempts.
       TESTGRID_WORKER_ENGINES: ${TESTGRID_WORKER_ENGINES:-chromium}
       # PRD-04 FR-5: dispatch messages come from the broker; prefetch = slots.
       RABBITMQ_HOST: rabbitmq
