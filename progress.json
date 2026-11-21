@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T11:57:11+00:00",
+  "updated_at": "2026-11-21T08:23:09+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -128,7 +128,7 @@
     "PRD-03": {
       "title": "Single Playwright worker and end-to-end first run",
       "filename": "prds/PRD-03-single-worker-runner.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [
         "PRD-02"
       ],
@@ -166,7 +166,7 @@
           "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-03.md",
       "blocker": null
     },
     "PRD-04": {

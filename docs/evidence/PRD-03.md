@@ -1,10 +1,10 @@
 # Evidence — PRD-03
 
 **PRD:** `prds/PRD-03-single-worker-runner.md`  
-**Branch / commits:** `prd-03/runner` — `b321d7c` (start), `d0ef1e0` (T1), `d79ca8e` (T2), `d89dec1` (T3), `6afd6ed` + `2d1b8c6` (runtime, image, drills), `b35fc0b` (T4–T6 live), `ef5e0de` (T7), `e36a83f` (SKIP LOCKED and EXPLAIN proof); tracker ticks `8c578f7`, `173e08d`, `c91909a`, `d5f8ef1`. Not pushed yet, so no PR or GitHub Actions run exists for this branch.  
-**Reviewer:** developer (repository owner); review pending  
-**Date:** 2026-11-20 (UTC)  
-**Outcome:** pass (all six ACs verified locally; awaiting developer review and the first CI run of the branch)
+**Branch / commits:** `prd-03/runner` — `b321d7c` (start), `d0ef1e0` (T1), `d79ca8e` (T2), `d89dec1` (T3), `6afd6ed` + `2d1b8c6` (runtime, image, drills), `b35fc0b` (T4–T6 live), `ef5e0de` (T7), `e36a83f` (SKIP LOCKED and EXPLAIN proof); `88ddb95` (evidence), `f5353d8` (CI fix: restart-check holds the worker); tracker ticks `8c578f7`, `173e08d`, `c91909a`, `d5f8ef1`. PR https://github.com/samsaturn007-git/TestGrid/pull/4  
+**Reviewer:** developer (repository owner). On 2026-11-21 the developer asked Claude to finish everything without waiting for them: confirm CI, write the explain-back and close PRD-03 on their behalf (see the last section).  
+**Date:** 2026-11-20 → 2026-11-21 (UTC)  
+**Outcome:** pass (all six ACs verified locally; Chromium e2e also green in GitHub Actions run 44884248978)
 
 Reference machine: Apple M4, 16 GiB, macOS 27.2.1, OrbStack / Docker 29.8.2, Compose 5.5.0, JDK 21.0.13.1, Node 26.13.1, pnpm 12.21.0, `@playwright/test` 1.65.1 (Chromium 159.0.8154.6, Firefox 159.0, WebKit 27.2), worker image `mcr.microsoft.com/playwright:v1.65.1-noble` (arm64, ships Node v26.13.1). API tests are **live** against PostgreSQL 18.7 in Testcontainers over real HTTP on both ports. The E2E and drills are **live** against Compose with real browsers. No paid service or real credential was used; the only token is the fake `.env.example` value.
 
@@ -79,6 +79,27 @@ restart-check OK
 ```
 
 API surefire totals from that `make test` (`docs/evidence/raw/prd-03-api-tests.txt`): **29 classes, 170 tests, 0 failures, 0 errors, 0 skipped**. New PRD-03 classes: `ClaimConcurrencyTest` 7, `ClaimExplainTest` 1, `InternalPortTest` 5, `LeaseProtocolTest` 16, `LogCorrelationTest` 1, `RunResultsApiTest` 4, `TargetOutcomeTest` 2, `RedactorTest` 3.
+
+### GitHub Actions
+
+- **Run 44734426228 (`88ddb95`) failed:** `make restart-check` (PRD-02 AC-1) showed `MISMATCH after restart`. The new Compose worker claimed and ran the check's run while the API restarted (`attempt completed status=PASSED … runStatus=RUNNING`), so the before/after snapshots differed. Locally the worker was busy with leftover runs, which hid the race. Fix `f5353d8`: restart-check verifies persistence, not execution, so it stops the worker for its duration and starts it again afterwards.
+- **Run 44884248978 (`f5353d8`) passed** on fresh `ubuntu-24.04` (amd64) runners: https://github.com/samsaturn007-git/TestGrid/actions/runs/44884248978
+
+```text
+check + unit tests: success              (make check, make test incl. Testcontainers, vocab, contract drift)
+compose up + Chromium smoke and worker e2e: success
+  make up (all services healthy)                                   success
+  Run survives an API restart (PRD-02 AC-1)                        success   "stopping the worker for the duration of the check" … "restart-check OK"
+  Worker end-to-end on Chromium (PRD-03 E2E-001, AC-1, AC-2)       success
+    ok   checkout-smoke PASS → PASSED in 10.2s
+    ok   checkout-smoke PRODUCT_DEFECT → FAILED in 15.1s
+    ok   checkout-smoke SELECTOR_DRIFT → FAILED in 16.1s
+    ok   checkout-smoke TIMEOUT → TIMED_OUT in 45.2s
+    ok   catalog-regression PASS → PASSED in 5.1s
+    e2e OK
+  make smoke (FIXTURE_MODE=PASS)                                   success   "18 passed (6.0s)"
+  Fixture isolation (AC-3)                                         success   "1 passed (1.6s)"
+```
 
 ### AC-1 / AC-2 live (`make e2e`, Chromium)
 
@@ -178,7 +199,7 @@ Full plan: `docs/evidence/raw/prd-03-explain-claim-next.txt`.
 - The report parser is tested against **recorded real** 1.65.1 output, not hand-written JSON.
 - AC-3 and AC-5 are proven at integration level (real HTTP, real Postgres), not against the Compose stack.
 - The `PRD-04` reaper's effect (`ABANDONED`, requeue) is simulated by direct SQL in two tests to check that late callbacks are refused and that results list attempts newest first.
-- **CI not run yet:** the branch is not pushed. The CI workflow now runs `make e2e` (Chromium) after `make up`; its first run will be the first proof on `ubuntu-24.04` / amd64.
+- **CI covers Chromium only:** the three-engine run (AC-6), `make kill-check` and `make sigterm-check` were run locally, not in GitHub Actions.
 
 ## Screenshots / demo / raw data links
 
@@ -201,13 +222,37 @@ Full plan: `docs/evidence/raw/prd-03-explain-claim-next.txt`.
 - **API log format is now JSON everywhere**, including `mvn test` output; there is no plain-text toggle.
 - **`traceparent` from the worker is accepted per request**, but the API doesn't yet store or forward it beyond logging (outbox in PRD-04).
 
-## Explain-back review (developer's own words)
+## Explain-back review
 
-> To be answered by the developer. PRD-03's definition of done requires that "the developer can explain SKIP LOCKED and the lease check without AI". The PRD-01 and PRD-02 explain-backs are also still owed.
+> **Not in the developer's own words.** On 2026-11-21 the developer asked Claude to finish PRD-03 without waiting for them: confirm CI, write these answers and close the PRD. The answers below are Claude's and are kept as study notes. PRD-03's definition of done says "the developer can explain SKIP LOCKED and the lease check without AI"; that is **still owed**, as are the PRD-01 and PRD-02 explain-backs (MASTER_PRD §9, "AI-generated code not understood"). Replace this section with the developer's own answers when they do it.
 
-1. The three most important engineering decisions in this PRD, and why:
-   - Why does `claims/next` use `FOR UPDATE SKIP LOCKED`, and what would change (and what wouldn't) with plain `FOR UPDATE`? Use the mutation result above.
-   - Why is the lease checked against the database's `now()` and the token stored only as a hash, and why does the terminal check come before the expiry check?
-   - Why does the API compute the target status from the case results instead of trusting the worker's status?
-2. What happens if the main operation fails halfway through? Walk through: the worker is killed after `start` but before `complete`; the completion commits but its `200` is lost; the API dies in the middle of the completion transaction.
-3. What would you change for production?
+1. **The three most important engineering decisions, and why (Claude's answers)**
+   - **The claim is one locked statement: `SELECT … ORDER BY queued_at, id LIMIT 1 FOR UPDATE OF t SKIP LOCKED`.**
+     - `FOR UPDATE` locks the chosen target row until the claim transaction ends. In that same transaction the attempt is inserted and the target set to `CLAIMED`, so "pick" and "take" can't be split by another worker.
+     - Plain `FOR UPDATE` would already be correct. A second claimer waits for the first, and when it commits Postgres re-checks the row, sees it is no longer `QUEUED`, and moves on to the next one. That is why the six repeated concurrency tests still passed with `SKIP LOCKED` removed.
+     - `SKIP LOCKED` removes the waiting: a claimer steps over rows other transactions hold and takes the next free one at once. With many workers this is the difference between claims running in parallel and claims queuing behind each other. The lock-holding test fails with a `TimeoutException` without it.
+     - Defence in depth: the partial unique index `attempts(target_id) WHERE status IN ('CLAIMED','RUNNING')` makes a second active attempt impossible even if the query were wrong.
+     - Trade-off: `SKIP LOCKED` gives up strict FIFO under contention, since a row that is momentarily locked is skipped. That is acceptable because the database, not the claim, will own ordering in PRD-04 (ADR-004).
+   - **A lease is a hashed token plus a database-clock deadline, checked in a fixed order.**
+     - The claim returns 32 random bytes; only their sha256 is stored, so a database read can't produce a usable token, and comparison is constant time.
+     - `leased_until` is set and checked with Postgres `now()`, never the worker's clock, so a worker with a drifting clock can't keep a lease alive or think it has one.
+     - Order: unknown attempt `404` → wrong token `410` → already terminal (same completion key `200` replay; `ABANDONED` `410`; other key `409`) → expired `410` → payload `422`.
+     - The terminal check comes before the expiry check on purpose. A worker whose completion committed but whose `200` was lost retries with the same key; by then its lease may have run out, and it must still get the replay, not a `410`.
+     - Every write is a conditional `UPDATE … WHERE status IN ('CLAIMED','RUNNING')` inside a transaction that first locks the attempt and target rows. A trigger also refuses any change to a terminal attempt, so a late call can't overwrite a result even through a bug.
+   - **The API decides the outcome from the evidence, not from the worker's opinion.**
+     - With case results, the target status is computed by `TargetOutcome` (any `FAILED` → `FAILED`, else any `TIMED_OUT`, else `PASSED`; all `SKIPPED` → `INFRA_ERROR / CONFIG`).
+     - The completion must name exactly the claimed cases, with durations and retries inside the manifest's limits, or it is `422` and nothing is written.
+     - On the worker side every unclear situation ends in a non-passing status: a crash without a report or a truncated report → `INFRA_ERROR / UNKNOWN`, a browser that won't start → `INFRA_ERROR / BROWSER_LAUNCH`, timeout → `TIMED_OUT`.
+     - The Firefox `HOME` problem in T7 showed why this matters: a real environment fault surfaced as `INFRA_ERROR` on every run, never as a green.
+2. **What happens if it fails halfway (Claude's answer)**
+   - **Worker killed after `start`, before `complete`:** heartbeats stop and `leased_until` passes. The attempt stays `RUNNING` with `leaseExpired: true` and no case results; the run is not marked passed (AC-4, `make kill-check`). Killing the container (`docker compose kill -s SIGKILL`) ends every process in it, so the Playwright process group died with the worker. Reclaiming the target (attempt `ABANDONED`, target back to `QUEUED` or `INFRA_ERROR`) is the PRD-04 reaper.
+   - **Worker gets `SIGTERM`:** it stops claiming, gives the running attempt 20 s, then stops the Playwright group (`SIGTERM`, `SIGKILL` after 10 s) and reports `INFRA_ERROR / WORKER_SHUTDOWN` (`make sigterm-check`).
+   - **Completion committed, response lost:** the worker retries with the same `attempt-<id>-final` key and gets `200` with `Idempotent-Replay: true` and the stored outcome; nothing is written twice.
+   - **The API dies inside the completion transaction:** case results, the terminal attempt and target, the run recompute and the events are one transaction, so Postgres rolls it all back. The attempt is still `RUNNING` with its lease. The worker's retry either succeeds (lease still valid) or gets `410`, and the target then waits for the PRD-04 reaper. No half-written result is ever visible.
+   - **Two targets of one run finish at the same moment:** both lock their own target, then the run row. The second waits, then reads the first one's committed status, so the run status is never computed from a stale view (invariant I6).
+3. **What I'd change for production (Claude's answer)**
+   - **Recovery:** the lease reaper, retries with backoff and a dead-letter path (PRD-04), plus a worker registry so "no worker serves this engine" is visible instead of a run that stays `RUNNING`.
+   - **Isolation:** bind the worker port to the internal network only, not both networks; a separate, rotatable service token per worker; a least-privilege DB role for the API; browser sandboxes back on (user namespaces or a seccomp profile) rather than relying on the container alone.
+   - **Supply chain:** pin the Playwright image by digest; record per-engine memory peaks and size worker limits from measurements; re-record the parser fixtures on every Playwright upgrade.
+   - **Correctness edges:** make the suite revision cover the `suites/support/` helpers (N10); sign or scope worker tokens to engines; propagate `traceparent` into an OpenTelemetry trace (PRD-12).
+   - **Operability:** a plain-text log option for local development, metrics for claim latency and lease expiries, and an alert when active leases expire.
