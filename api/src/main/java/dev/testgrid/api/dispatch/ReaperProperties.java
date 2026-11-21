@@ -14,7 +14,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *   <li>{@code dispatchTimeoutMs}: a target dispatched this long ago and still unclaimed has lost
  *       its message (dead-lettered, or a retry message lost on the way back; CONFLICT_REGISTER
  *       N17). It is dispatched again with a new generation. It must be longer than the longest time
- *       a message can legitimately wait in a queue for a free worker slot.
+ *       a message can legitimately wait in a queue for a free worker slot: a message that keeps
+ *       getting {@code 429} (the cap was lowered) or waits in a busy worker's prefetch past the
+ *       timeout is redispatched too, and every redispatch counts toward the {@code WORKER_LOST}
+ *       limit ({@code dispatch_generation − attempt_count} reaching {@code max_attempts}).
  * </ul>
  */
 @ConfigurationProperties("testgrid.reaper")

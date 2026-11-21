@@ -58,7 +58,7 @@ Infrastructure faults such as a browser failing to launch or a worker being kill
 | `CLAIMED / RUNNING → INFRA_ERROR` | worker reports infra failure, or the final retry is exhausted | attempt `INFRA_ERROR` or `ABANDONED` |
 | `CLAIMED / RUNNING → QUEUED` | lease expires and retries remain (reaper) | attempt `ABANDONED` (`LEASE_EXPIRED`); `not_before` set by backoff; `dispatched_at` cleared so the next dispatch has a new generation |
 | `QUEUED → QUEUED` | dispatched but unclaimed past the dispatch timeout (reaper, PRD-04) | none; `dispatched_at` cleared for a new generation |
-| `QUEUED → INFRA_ERROR` | `max_attempts` dispatches in a row never claimed (reaper, PRD-04) | none (`TARGET_FINISHED` carries `errorClass: WORKER_LOST`) |
+| `QUEUED → INFRA_ERROR` | `max_attempts` dispatches of the target never claimed, in total (reaper, PRD-04) | none (`TARGET_FINISHED` carries `errorClass: WORKER_LOST`) |
 | `QUEUED → CANCELLED` | run cancel requested | none |
 | `CLAIMED / RUNNING → CANCELLED` | worker sees `cancelRequested` and completes with `CANCELLED`, or the lease expires while a cancel is requested | attempt `CANCELLED` or `ABANDONED` |
 
@@ -390,7 +390,7 @@ Each `(caseKey, engine)` pair gets one of:
   - If the publish isn't confirmed, the original is requeued after 1 s instead of acked. A crash between the confirm and the ack leaves two copies; the claim fences the second.
 - **Delivery limit (checked on RabbitMQ 4.4.1):** a redelivery after a consumer dies counts toward `x-delivery-limit: 5`; the first delivery plus five redeliveries, then the message is dead-lettered with reason `delivery_limit`. A `basic.nack` with requeue does **not** count, so the worker uses it only on shutdown.
 - **Closing (checked on RabbitMQ 4.4.1):** an ack followed straight by `connection.close()` was lost and the message redelivered (probe from the worker container: 1 message left; closing the channel first: 0). The worker therefore closes its channel, waiting for `close-ok`, before the connection.
-- **Dead letters:** `tg.targets.dead` keeps them for an operator (replay runbook: PRD-04 T7). A dead-lettered target stays `QUEUED` and dispatched until the reaper's dispatch timeout (5 min); then it is dispatched again with a new generation, or ends `INFRA_ERROR` (`WORKER_LOST`) once `max_attempts` dispatches in a row went unclaimed (ARCHITECTURE §4, CONFLICT_REGISTER N17). The `testgrid_dlq_depth` metric and its alert come with PRD-12 (ARCHITECTURE §8).
+- **Dead letters:** `tg.targets.dead` keeps them for an operator (replay runbook: PRD-04 T7). A dead-lettered target stays `QUEUED` and dispatched until the reaper's dispatch timeout (5 min); then it is dispatched again with a new generation, or ends `INFRA_ERROR` (`WORKER_LOST`) once `max_attempts` of its dispatches went unclaimed (counted over the target's whole life, `dispatch_generation − attempt_count`, not consecutively) (ARCHITECTURE §4, CONFLICT_REGISTER N17). The `testgrid_dlq_depth` metric and its alert come with PRD-12 (ARCHITECTURE §8).
 
 ---
 
