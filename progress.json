@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T14:31:20+00:00",
+  "updated_at": "2026-11-21T15:13:18+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -172,7 +172,7 @@
     "PRD-04": {
       "title": "RabbitMQ, transactional outbox, dispatcher, bounded workers and lease recovery",
       "filename": "prds/PRD-04-durable-queue.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [
         "PRD-03"
       ],
@@ -210,7 +210,7 @@
           "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-04.md",
       "blocker": null
     },
     "PRD-05": {
