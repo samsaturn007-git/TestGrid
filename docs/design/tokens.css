@@ -13,35 +13,51 @@
   color-scheme: dark;
 
   /* Surfaces */
-  --tg-canvas: #0B0D10;
-  --tg-surface: #12151A;
-  --tg-raised: #181C22;
-  --tg-overlay: #1C2027;
-  --tg-hairline-soft: #1C2027;
-  --tg-hairline: #262B33;
-  --tg-hairline-strong: #353B45;
+  --tg-canvas: #0b0d10;
+  --tg-surface: #12151a;
+  --tg-raised: #181c22;
+  --tg-overlay: #1c2027;
+  --tg-hairline-soft: #1c2027;
+  --tg-hairline: #262b33;
+  --tg-hairline-strong: #353b45;
 
   /* Text */
-  --tg-text: #E7E9EC;            /* 15.0:1 */
-  --tg-text-secondary: #C9CED5;  /* 11.6:1 */
-  --tg-text-muted: #A0A8B3;      /*  7.6:1 */
+  --tg-text: #e7e9ec; /* 15.0:1 */
+  --tg-text-secondary: #c9ced5; /* 11.6:1 */
+  --tg-text-muted: #a0a8b3; /*  7.6:1 */
 
   /* Primary action: ink, never a status hue */
-  --tg-primary-bg: #E7E9EC;
-  --tg-primary-fg: #0B0D10;      /* 16.0:1 */
+  --tg-primary-bg: #e7e9ec;
+  --tg-primary-fg: #0b0d10; /* 16.0:1 */
 
   /* Focus ring: 2px solid, offset 2px, :focus-visible only */
-  --tg-focus: #6CB6FF;           /*  8.5:1 */
+  --tg-focus: #6cb6ff; /*  8.5:1 */
 
   /* Status roles: fg on surface / fg on tint */
-  --tg-info: #6CB6FF;      --tg-info-tint: #1E2A38;      --tg-info-rim: #345271;      /* 8.5 / 6.8 */
-  --tg-success: #4ED69A;   --tg-success-tint: #1A2E2B;   --tg-success-rim: #295E4B;   /* 9.9 / 7.8 */
-  --tg-danger: #FF7A7A;    --tg-danger-tint: #312226;    --tg-danger-rim: #6C3B3E;    /* 7.2 / 6.0 */
-  --tg-warning: #F0B54A;   --tg-warning-tint: #2F2A20;   --tg-warning-rim: #66522C;   /* 9.9 / 7.7 */
-  --tg-infra: #BFA2FF;     --tg-infra-tint: #282738;     --tg-infra-rim: #544B71;     /* 8.6 / 6.8 */
-  --tg-abandoned: #D2A585; --tg-abandoned-tint: #2B2828; --tg-abandoned-rim: #5B4C43; /* 8.2 / 6.6 */
-  --tg-flaky: #E8D44D;     --tg-flaky-tint: #2E2E21;     --tg-flaky-rim: #635E2D;     /* 12.2 / 9.1 */
-  --tg-neutral: #A0A8B3;   --tg-neutral-tint: #24282E;   --tg-neutral-rim: #484D54;   /* 7.6 / 6.2 */
+  --tg-info: #6cb6ff;
+  --tg-info-tint: #1e2a38;
+  --tg-info-rim: #345271; /* 8.5 / 6.8 */
+  --tg-success: #4ed69a;
+  --tg-success-tint: #1a2e2b;
+  --tg-success-rim: #295e4b; /* 9.9 / 7.8 */
+  --tg-danger: #ff7a7a;
+  --tg-danger-tint: #312226;
+  --tg-danger-rim: #6c3b3e; /* 7.2 / 6.0 */
+  --tg-warning: #f0b54a;
+  --tg-warning-tint: #2f2a20;
+  --tg-warning-rim: #66522c; /* 9.9 / 7.7 */
+  --tg-infra: #bfa2ff;
+  --tg-infra-tint: #282738;
+  --tg-infra-rim: #544b71; /* 8.6 / 6.8 */
+  --tg-abandoned: #d2a585;
+  --tg-abandoned-tint: #2b2828;
+  --tg-abandoned-rim: #5b4c43; /* 8.2 / 6.6 */
+  --tg-flaky: #e8d44d;
+  --tg-flaky-tint: #2e2e21;
+  --tg-flaky-rim: #635e2d; /* 12.2 / 9.1 */
+  --tg-neutral: #a0a8b3;
+  --tg-neutral-tint: #24282e;
+  --tg-neutral-rim: #484d54; /* 7.6 / 6.2 */
 
   /* Elevation: hairlines first, shadows only for things that float */
   --tg-shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -67,29 +83,45 @@
   --tg-ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 
-:root[data-theme="light"] {
+:root[data-theme='light'] {
   color-scheme: light;
-  --tg-canvas: #F6F7F9;
-  --tg-surface: #FFFFFF;
-  --tg-raised: #F3F4F6;
-  --tg-overlay: #FFFFFF;
-  --tg-hairline-soft: #EDEEF0;
-  --tg-hairline: #E3E5E8;
-  --tg-hairline-strong: #D5D8DD;
-  --tg-text: #12151A;            /* 18.3:1 */
-  --tg-text-secondary: #3A414B;  /* 10.3:1 */
-  --tg-text-muted: #4E5661;      /*  7.4:1 */
-  --tg-primary-bg: #12151A;
-  --tg-primary-fg: #FFFFFF;      /* 18.3:1 */
-  --tg-focus: #0B63C7;           /*  5.8:1 */
-  --tg-info: #0B63C7;      --tg-info-tint: #E9F1FA;      --tg-info-rim: #AAC8EB;      /* 5.8 / 5.1 */
-  --tg-success: #0F7A4A;   --tg-success-tint: #E9F3EF;   --tg-success-rim: #ABD0C0;   /* 5.4 / 4.7 */
-  --tg-danger: #C42B2B;    --tg-danger-tint: #FAECEC;    --tg-danger-rim: #EAB5B5;    /* 5.6 / 4.9 */
-  --tg-warning: #965800;   --tg-warning-tint: #F6F0E8;   --tg-warning-rim: #DAC5A6;   /* 5.7 / 5.0 */
-  --tg-infra: #6B3FC8;     --tg-infra-tint: #F2EEFA;     --tg-infra-rim: #CBBCEC;     /* 6.6 / 5.8 */
-  --tg-abandoned: #8A5634; --tg-abandoned-tint: #F4F0ED; --tg-abandoned-rim: #D6C4B8; /* 6.1 / 5.4 */
-  --tg-flaky: #716300;     --tg-flaky-tint: #F2F1E8;     --tg-flaky-rim: #CDC8A6;     /* 6.0 / 5.3 */
-  --tg-neutral: #545C67;   --tg-neutral-tint: #F0F0F1;   --tg-neutral-rim: #C3C6CA;   /* 6.8 / 5.9 */
+  --tg-canvas: #f6f7f9;
+  --tg-surface: #ffffff;
+  --tg-raised: #f3f4f6;
+  --tg-overlay: #ffffff;
+  --tg-hairline-soft: #edeef0;
+  --tg-hairline: #e3e5e8;
+  --tg-hairline-strong: #d5d8dd;
+  --tg-text: #12151a; /* 18.3:1 */
+  --tg-text-secondary: #3a414b; /* 10.3:1 */
+  --tg-text-muted: #4e5661; /*  7.4:1 */
+  --tg-primary-bg: #12151a;
+  --tg-primary-fg: #ffffff; /* 18.3:1 */
+  --tg-focus: #0b63c7; /*  5.8:1 */
+  --tg-info: #0b63c7;
+  --tg-info-tint: #e9f1fa;
+  --tg-info-rim: #aac8eb; /* 5.8 / 5.1 */
+  --tg-success: #0f7a4a;
+  --tg-success-tint: #e9f3ef;
+  --tg-success-rim: #abd0c0; /* 5.4 / 4.7 */
+  --tg-danger: #c42b2b;
+  --tg-danger-tint: #faecec;
+  --tg-danger-rim: #eab5b5; /* 5.6 / 4.9 */
+  --tg-warning: #965800;
+  --tg-warning-tint: #f6f0e8;
+  --tg-warning-rim: #dac5a6; /* 5.7 / 5.0 */
+  --tg-infra: #6b3fc8;
+  --tg-infra-tint: #f2eefa;
+  --tg-infra-rim: #cbbcec; /* 6.6 / 5.8 */
+  --tg-abandoned: #8a5634;
+  --tg-abandoned-tint: #f4f0ed;
+  --tg-abandoned-rim: #d6c4b8; /* 6.1 / 5.4 */
+  --tg-flaky: #716300;
+  --tg-flaky-tint: #f2f1e8;
+  --tg-flaky-rim: #cdc8a6; /* 6.0 / 5.3 */
+  --tg-neutral: #545c67;
+  --tg-neutral-tint: #f0f0f1;
+  --tg-neutral-rim: #c3c6ca; /* 6.8 / 5.9 */
   --tg-shadow-popover: 0 4px 16px rgba(18, 21, 26, 0.08);
   --tg-shadow-dialog: 0 16px 48px rgba(18, 21, 26, 0.16);
   --tg-scrim: rgba(18, 21, 26, 0.35);
@@ -98,27 +130,43 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
-    --tg-canvas: #F6F7F9;
-    --tg-surface: #FFFFFF;
-    --tg-raised: #F3F4F6;
-    --tg-overlay: #FFFFFF;
-    --tg-hairline-soft: #EDEEF0;
-    --tg-hairline: #E3E5E8;
-    --tg-hairline-strong: #D5D8DD;
-    --tg-text: #12151A;
-    --tg-text-secondary: #3A414B;
-    --tg-text-muted: #4E5661;
-    --tg-primary-bg: #12151A;
-    --tg-primary-fg: #FFFFFF;
-    --tg-focus: #0B63C7;
-    --tg-info: #0B63C7;      --tg-info-tint: #E9F1FA;      --tg-info-rim: #AAC8EB;
-    --tg-success: #0F7A4A;   --tg-success-tint: #E9F3EF;   --tg-success-rim: #ABD0C0;
-    --tg-danger: #C42B2B;    --tg-danger-tint: #FAECEC;    --tg-danger-rim: #EAB5B5;
-    --tg-warning: #965800;   --tg-warning-tint: #F6F0E8;   --tg-warning-rim: #DAC5A6;
-    --tg-infra: #6B3FC8;     --tg-infra-tint: #F2EEFA;     --tg-infra-rim: #CBBCEC;
-    --tg-abandoned: #8A5634; --tg-abandoned-tint: #F4F0ED; --tg-abandoned-rim: #D6C4B8;
-    --tg-flaky: #716300;     --tg-flaky-tint: #F2F1E8;     --tg-flaky-rim: #CDC8A6;
-    --tg-neutral: #545C67;   --tg-neutral-tint: #F0F0F1;   --tg-neutral-rim: #C3C6CA;
+    --tg-canvas: #f6f7f9;
+    --tg-surface: #ffffff;
+    --tg-raised: #f3f4f6;
+    --tg-overlay: #ffffff;
+    --tg-hairline-soft: #edeef0;
+    --tg-hairline: #e3e5e8;
+    --tg-hairline-strong: #d5d8dd;
+    --tg-text: #12151a;
+    --tg-text-secondary: #3a414b;
+    --tg-text-muted: #4e5661;
+    --tg-primary-bg: #12151a;
+    --tg-primary-fg: #ffffff;
+    --tg-focus: #0b63c7;
+    --tg-info: #0b63c7;
+    --tg-info-tint: #e9f1fa;
+    --tg-info-rim: #aac8eb;
+    --tg-success: #0f7a4a;
+    --tg-success-tint: #e9f3ef;
+    --tg-success-rim: #abd0c0;
+    --tg-danger: #c42b2b;
+    --tg-danger-tint: #faecec;
+    --tg-danger-rim: #eab5b5;
+    --tg-warning: #965800;
+    --tg-warning-tint: #f6f0e8;
+    --tg-warning-rim: #dac5a6;
+    --tg-infra: #6b3fc8;
+    --tg-infra-tint: #f2eefa;
+    --tg-infra-rim: #cbbcec;
+    --tg-abandoned: #8a5634;
+    --tg-abandoned-tint: #f4f0ed;
+    --tg-abandoned-rim: #d6c4b8;
+    --tg-flaky: #716300;
+    --tg-flaky-tint: #f2f1e8;
+    --tg-flaky-rim: #cdc8a6;
+    --tg-neutral: #545c67;
+    --tg-neutral-tint: #f0f0f1;
+    --tg-neutral-rim: #c3c6ca;
     --tg-shadow-popover: 0 4px 16px rgba(18, 21, 26, 0.08);
     --tg-shadow-dialog: 0 16px 48px rgba(18, 21, 26, 0.16);
     --tg-scrim: rgba(18, 21, 26, 0.35);
@@ -126,7 +174,15 @@
 }
 
 /* Running pulse: opacity only, never on anything but the RUNNING icon. */
-@keyframes tg-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes tg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   :root {
