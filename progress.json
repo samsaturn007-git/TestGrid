@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T21:53:14+00:00",
+  "updated_at": "2026-11-21T22:22:45+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -235,7 +235,7 @@
         },
         "T3": {
           "label": "Build run list with URL-synced filters and cursor pagination; add API filters.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Build run detail: browser matrix, attempts list, case table, cancel and rerun.",
