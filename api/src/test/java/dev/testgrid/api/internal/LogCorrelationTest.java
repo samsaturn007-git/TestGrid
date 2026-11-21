@@ -28,7 +28,11 @@ class LogCorrelationTest extends WorkerApiTestBase {
     complete(claim, "k-bad", "COMPLETED_WITH_RESULTS", "[]");
     complete(claim, "k-ok", "COMPLETED_WITH_RESULTS", checkoutResults(Map.of()));
     complete(claim, "k-other", "COMPLETED_WITH_RESULTS", checkoutResults(Map.of()));
-    post(internalPort(), "/internal/v1/claims/next", "{}", "wrong-" + TOKEN);
+    post(
+        internalPort(),
+        "/internal/v1/targets/" + claim.targetId() + "/claim",
+        "{}",
+        "wrong-" + TOKEN);
     lease(
         new Claim(claim.attemptId(), AttemptService.newLeaseToken(), null, null, ""), "heartbeat");
 

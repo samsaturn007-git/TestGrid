@@ -4,11 +4,11 @@ import dev.testgrid.api.domain.AttemptStatus;
 import dev.testgrid.api.domain.CaseStatus;
 import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.ErrorClass;
-import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.TargetStatus;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -31,10 +31,14 @@ public final class WorkerApi {
 
   private WorkerApi() {}
 
+  /**
+   * PRD-04 FR-5: the worker claims the target named in an AMQP message. {@code dispatchGeneration}
+   * is the fencing token from the message; {@code messageId} is recorded for the audit trail.
+   */
   public record ClaimRequest(
       @NotNull @Pattern(regexp = WORKER_ID) String workerId,
-      @NotNull Executor executor,
-      @NotNull @Size(min = 1, max = 3) List<@NotNull Engine> engines) {}
+      @NotNull UUID messageId,
+      @NotNull @Min(1) Integer dispatchGeneration) {}
 
   public record Suite(String suiteKey, String revision) {}
 

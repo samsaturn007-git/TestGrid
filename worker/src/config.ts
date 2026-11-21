@@ -14,8 +14,17 @@ const Env = z.object({
   TESTGRID_WORKER_ID: z.string().regex(WORKER_ID).optional(),
   TESTGRID_WORKER_ENGINES: z.string().default('chromium'),
   DEMO_SHOP_INTERNAL: z.string(),
-  TESTGRID_POLL_MIN_MS: z.coerce.number().int().min(50).default(500),
-  TESTGRID_POLL_MAX_MS: z.coerce.number().int().min(100).default(5000),
+  // PRD-04 FR-5: the broker the dispatch messages come from. Operator settings, never client input.
+  RABBITMQ_HOST: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]{1,253}$/)
+    .default('rabbitmq'),
+  RABBITMQ_PORT: z.coerce.number().int().min(1).max(65535).default(5672),
+  RABBITMQ_USER: z.string().min(1).max(128),
+  RABBITMQ_PASSWORD: z.string().min(1).max(256),
+  // prefetch = slots (contracts §9); docs/VERSIONS.md §3 allows 1 by default, 2 at most for now.
+  TESTGRID_WORKER_SLOTS: z.coerce.number().int().min(1).max(16).default(1),
+  TESTGRID_RECONNECT_MAX_MS: z.coerce.number().int().min(100).default(30_000),
   TESTGRID_SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(20_000),
 });
 
@@ -25,9 +34,17 @@ export interface WorkerConfig {
   workerId: string;
   engines: z.infer<typeof ENGINE>[];
   baseUrl: string;
-  pollMinMs: number;
-  pollMaxMs: number;
+  amqp: AmqpConfig;
+  slots: number;
+  reconnectMaxMs: number;
   shutdownGraceMs: number;
+}
+
+export interface AmqpConfig {
+  hostname: string;
+  port: number;
+  username: string;
+  password: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
@@ -58,8 +75,14 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     workerId: e.TESTGRID_WORKER_ID ?? fallbackId,
     engines,
     baseUrl,
-    pollMinMs: e.TESTGRID_POLL_MIN_MS,
-    pollMaxMs: Math.max(e.TESTGRID_POLL_MAX_MS, e.TESTGRID_POLL_MIN_MS),
+    amqp: {
+      hostname: e.RABBITMQ_HOST,
+      port: e.RABBITMQ_PORT,
+      username: e.RABBITMQ_USER,
+      password: e.RABBITMQ_PASSWORD,
+    },
+    slots: e.TESTGRID_WORKER_SLOTS,
+    reconnectMaxMs: e.TESTGRID_RECONNECT_MAX_MS,
     shutdownGraceMs: e.TESTGRID_SHUTDOWN_GRACE_MS,
   };
 }

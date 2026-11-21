@@ -4,7 +4,6 @@ import dev.testgrid.api.domain.AttemptStatus;
 import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.ErrorClass;
 import dev.testgrid.api.domain.EventType;
-import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.RunAggregate;
 import dev.testgrid.api.domain.RunStatus;
@@ -33,11 +32,15 @@ public class AttemptRepository {
     this.jdbc = jdbc;
   }
 
-  public record ClaimableTarget(
+  public record ClaimTarget(
       UUID targetId,
       UUID runId,
       Engine engine,
+      TargetStatus status,
       int attemptCount,
+      int dispatchGeneration,
+      boolean dispatched,
+      boolean cancelRequested,
       FixtureMode fixtureMode,
       Integer fixtureSeed,
       UUID suiteId,
@@ -45,41 +48,37 @@ public class AttemptRepository {
       String revision,
       int timeoutMs) {}
 
-  static final String CLAIM_NEXT =
+  static final String LOCK_FOR_CLAIM =
       """
-      SELECT t.id AS target_id, t.run_id, t.engine, t.attempt_count,
+      SELECT t.id AS target_id, t.run_id, t.engine, t.status, t.attempt_count,
+             t.dispatch_generation, t.dispatched_at IS NOT NULL AS dispatched,
+             r.cancel_requested_at IS NOT NULL AS cancel_requested,
              r.fixture_mode, r.fixture_seed,
              s.id AS suite_id, s.suite_key, s.revision, s.timeout_ms
       FROM run_targets t
       JOIN runs r ON r.id = t.run_id
       JOIN suites s ON s.id = r.suite_id
-      WHERE t.status = 'QUEUED'
-        AND (t.not_before IS NULL OR t.not_before <= now())
-        AND t.executor = :executor
-        AND t.engine IN (:engines)
-        AND t.attempt_count < t.max_attempts
-        AND r.cancel_requested_at IS NULL
-      ORDER BY t.queued_at, t.id
-      LIMIT 1
-      FOR UPDATE OF t SKIP LOCKED
+      WHERE t.id = :t
+      FOR UPDATE OF t
       """;
 
   /**
-   * The oldest eligible QUEUED target for these engines, locked for this transaction. SKIP LOCKED
-   * makes concurrent claimers step over a row another transaction is claiming instead of waiting
-   * for it, so two workers never get the same target and neither blocks the other. Served by the
-   * partial index {@code run_targets_queued}.
+   * The target a dispatch message names, locked for this transaction (PRD-04 FR-5). No SKIP LOCKED:
+   * a duplicate delivery waits for the claim that holds the row, then sees it {@code CLAIMED}.
    */
-  public Optional<ClaimableTarget> lockNextClaimable(Executor executor, List<Engine> engines) {
-    return jdbc.sql(CLAIM_NEXT)
-        .param("executor", executor.name())
-        .param("engines", engines.stream().map(Engine::wireName).toList())
+  public Optional<ClaimTarget> lockForClaim(UUID targetId) {
+    return jdbc.sql(LOCK_FOR_CLAIM)
+        .param("t", targetId)
         .query((rs, i) ->
-            new ClaimableTarget(
+            new ClaimTarget(
                 rs.getObject("target_id", UUID.class),
                 rs.getObject("run_id", UUID.class),
                 Engine.fromWireName(rs.getString("engine")),
+                TargetStatus.valueOf(rs.getString("status")),
                 rs.getInt("attempt_count"),
+                rs.getInt("dispatch_generation"),
+                rs.getBoolean("dispatched"),
+                rs.getBoolean("cancel_requested"),
                 rs.getString("fixture_mode") == null
                     ? null
                     : FixtureMode.valueOf(rs.getString("fixture_mode")),

@@ -5,22 +5,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Contracts §3 required indexes: with 5,000 targets of which 10 are QUEUED, the claim query reads
- * the partial index {@code run_targets_queued} instead of scanning every target. The plan is
- * written to target/evidence/ for docs/evidence/PRD-03.md.
+ * The targeted claim (PRD-04 FR-5) locks one target by primary key, so its cost doesn't grow with
+ * the number of targets. With 5,000 targets the plan is an index scan on {@code run_targets_pkey}
+ * under a row lock. The plan is written to target/evidence/ for docs/evidence/PRD-04.md.
  */
 class ClaimExplainTest extends WorkerApiTestBase {
 
   private static final int ROWS = 5000;
-  private static final Path EVIDENCE = Path.of("target/evidence/explain-claim-next.txt");
+  private static final Path EVIDENCE = Path.of("target/evidence/explain-target-claim.txt");
 
   @Test
-  void claimNextUsesThePartialQueuedIndex() throws IOException {
+  void theTargetedClaimLocksOneTargetByPrimaryKey() throws IOException {
     UUID suiteId =
         jdbc.sql("SELECT id FROM suites WHERE suite_key = 'checkout-smoke' AND is_current")
             .query(UUID.class)
@@ -46,26 +45,29 @@ class ClaimExplainTest extends WorkerApiTestBase {
         .update();
     jdbc.sql("ANALYZE runs").update();
     jdbc.sql("ANALYZE run_targets").update();
+    UUID target =
+        jdbc.sql("SELECT id FROM run_targets WHERE status = 'QUEUED' LIMIT 1")
+            .query(UUID.class)
+            .single();
 
     String plan =
         String.join(
             "\n",
-            jdbc.sql("EXPLAIN (ANALYZE, BUFFERS) " + AttemptRepository.CLAIM_NEXT)
-                .param("executor", "LOCAL")
-                .param("engines", List.of("chromium", "firefox", "webkit"))
+            jdbc.sql("EXPLAIN (ANALYZE, BUFFERS) " + AttemptRepository.LOCK_FOR_CLAIM)
+                .param("t", target)
                 .query(String.class)
                 .list());
 
-    assertThat(plan).contains("using run_targets_queued on run_targets");
+    assertThat(plan).contains("using run_targets_pkey on run_targets");
     assertThat(plan).doesNotContain("Seq Scan on run_targets");
     assertThat(plan).contains("LockRows");
 
     Files.createDirectories(EVIDENCE.getParent());
     Files.writeString(
         EVIDENCE,
-        "-- POST /internal/v1/claims/next, "
+        "-- POST /internal/v1/targets/{targetId}/claim, "
             + ROWS
-            + " targets, 10 QUEUED (ANALYZEd)\n"
+            + " targets (ANALYZEd)\n"
             + plan
             + "\n");
   }

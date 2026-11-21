@@ -29,13 +29,14 @@ public class WorkerController {
     this.attempts = attempts;
   }
 
-  @PostMapping("/claims/next")
-  public ResponseEntity<WorkerApi.ClaimResponse> claimNext(
-      @Valid @RequestBody WorkerApi.ClaimRequest request) {
-    return attempts
-        .claimNext(request)
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.noContent().build());
+  /**
+   * PRD-04 FR-5. The PRD-03 {@code POST /claims/next} is gone (CONFLICT_REGISTER N11): every claim
+   * now names a dispatched target and its generation, so none can skip the dispatcher's cap.
+   */
+  @PostMapping("/targets/{targetId}/claim")
+  public WorkerApi.ClaimResponse claim(
+      @PathVariable UUID targetId, @Valid @RequestBody WorkerApi.ClaimRequest request) {
+    return attempts.claim(targetId, request);
   }
 
   @PostMapping("/attempts/{attemptId}/start")

@@ -2,109 +2,100 @@ package dev.testgrid.api.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.jayway.jsonpath.JsonPath;
 import java.net.http.HttpResponse;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * FR-3: concurrent {@code claims/next} calls through real HTTP. SKIP LOCKED means each target is
- * claimed exactly once and the losers move on (or get 204) instead of waiting or failing.
+ * PRD-04 FR-5 through real HTTP: concurrent claims of dispatch messages. The row lock makes a
+ * duplicate delivery of one message claim its target once; the dispatcher's advisory lock, taken by
+ * every claim, makes the capacity re-check hold under concurrency (invariant I5).
  */
 class ClaimConcurrencyTest extends WorkerApiTestBase {
 
-  @Autowired DataSource dataSource;
-
   @RepeatedTest(3)
-  void twoConcurrentClaimsForOneTargetClaimItOnce() throws Exception {
+  void twoConcurrentClaimsOfOneMessageClaimTheTargetOnce() throws Exception {
     createRun("checkout-smoke", "PASS", "chromium");
-    List<HttpResponse<String>> responses = claimConcurrently(2);
-    assertThat(responses).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 204);
+    Dispatched message = dispatchOldest("chromium");
+
+    List<HttpResponse<String>> responses =
+        concurrently(2, i -> claimTarget("w-" + i, message.targetId(), message.generation()));
+
+    assertThat(responses).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 409);
     assertThat(count("SELECT count(*) FROM attempts")).isEqualTo(1);
+    assertThat(count("SELECT count(*) FROM run_events WHERE type = 'TARGET_CLAIMED'")).isEqualTo(1);
   }
 
   @RepeatedTest(3)
-  void tenConcurrentClaimsForFourTargetsClaimEachOnce() throws Exception {
+  void tenConcurrentClaimsForFourMessagesClaimEachTargetOnce() throws Exception {
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 4").update();
     createRun("checkout-smoke", "PASS", "chromium", "firefox", "webkit");
     createRun("catalog-regression", "PASS", "chromium");
-
-    List<HttpResponse<String>> responses = claimConcurrently(10);
-
-    List<String> claimedTargets = new ArrayList<>();
-    for (var r : responses) {
-      assertThat(r.statusCode()).as(r.body()).isIn(200, 204);
-      if (r.statusCode() == 200) {
-        claimedTargets.add(JsonPath.read(r.body(), "$.targetId"));
-      }
+    List<Dispatched> messages = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      messages.add(dispatchOldest("chromium", "firefox", "webkit"));
     }
-    assertThat(claimedTargets).hasSize(4).doesNotHaveDuplicates();
+
+    // Each message is delivered to between two and three workers at once.
+    List<HttpResponse<String>> responses =
+        concurrently(
+            10,
+            i -> {
+              Dispatched m = messages.get(i % 4);
+              return claimTarget("w-" + i, m.targetId(), m.generation());
+            });
+
+    assertThat(responses).allSatisfy(r -> assertThat(r.statusCode()).as(r.body()).isIn(200, 409));
+    assertThat(responses).filteredOn(r -> r.statusCode() == 200).hasSize(4);
     assertThat(count("SELECT count(*) FROM attempts")).isEqualTo(4);
+    assertThat(count("SELECT count(DISTINCT target_id) FROM attempts")).isEqualTo(4);
     assertThat(count("SELECT count(*) FROM run_targets WHERE status = 'CLAIMED'")).isEqualTo(4);
-    assertThat(count("SELECT count(*) FROM run_events WHERE type = 'TARGET_CLAIMED'")).isEqualTo(4);
   }
 
   /**
-   * What SKIP LOCKED itself buys: a claimer doesn't wait for a row another transaction holds, it
-   * takes the next one. Without SKIP LOCKED this claim blocks until the lock is released (each
-   * target is still claimed once either way; the database re-checks the row after the wait).
+   * Two messages are out while the cap is 1 (the cap was lowered after dispatch). Without the
+   * advisory lock both claims could count zero active attempts and both succeed.
    */
-  @Test
-  void aClaimSkipsATargetLockedByAnotherTransactionInsteadOfWaiting() throws Exception {
-    String older = createRun("checkout-smoke", "PASS", "chromium");
-    String newer = createRun("checkout-smoke", "PASS", "chromium");
-    ExecutorService one = Executors.newSingleThreadExecutor();
-    HttpResponse<String> response;
-    long millis;
-    try (Connection holder = dataSource.getConnection()) {
-      holder.setAutoCommit(false);
-      try (PreparedStatement lock =
-          holder.prepareStatement("SELECT id FROM run_targets WHERE run_id = ? FOR UPDATE")) {
-        lock.setObject(1, UUID.fromString(older));
-        lock.executeQuery().close();
-      }
-      long started = System.nanoTime();
-      Future<HttpResponse<String>> claim = one.submit(() -> claimResponse("w-skip", "chromium"));
-      try {
-        // Without SKIP LOCKED the claim waits for this transaction and times out here.
-        response = claim.get(5, TimeUnit.SECONDS);
-      } finally {
-        // Release the lock before anything waits on the claim, so a failure can't hang.
-        holder.rollback();
-      }
-      millis = Duration.ofNanos(System.nanoTime() - started).toMillis();
-    } finally {
-      one.shutdownNow();
-    }
-    assertThat(response.statusCode()).isEqualTo(200);
-    assertThat(JsonPath.<String>read(response.body(), "$.runId")).isEqualTo(newer);
-    assertThat(millis).as("did not wait for the locked row").isLessThan(2000);
+  @RepeatedTest(3)
+  void concurrentClaimsNeverGoOverTheCap() throws Exception {
+    createRun("checkout-smoke", "PASS", "chromium", "firefox");
+    Dispatched first = dispatchOldest("chromium", "firefox");
+    Dispatched second = dispatchOldest("chromium", "firefox");
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 1").update();
+
+    List<HttpResponse<String>> responses =
+        concurrently(
+            2,
+            i -> {
+              Dispatched m = i == 0 ? first : second;
+              return claimTarget("w-" + i, m.targetId(), m.generation());
+            });
+
+    assertThat(responses).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 429);
+    assertThat(count("SELECT count(*) FROM attempts WHERE status = 'CLAIMED'")).isEqualTo(1);
   }
 
-  private List<HttpResponse<String>> claimConcurrently(int threads) throws Exception {
+  interface Call {
+    HttpResponse<String> run(int index) throws Exception;
+  }
+
+  private List<HttpResponse<String>> concurrently(int threads, Call call) throws Exception {
     CountDownLatch go = new CountDownLatch(1);
-    Callable<HttpResponse<String>> task =
-        () -> {
-          go.await();
-          return claimResponse(
-              "w-" + Thread.currentThread().threadId(), "chromium", "firefox", "webkit");
-        };
     try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
       List<Future<HttpResponse<String>>> futures = new ArrayList<>();
       for (int i = 0; i < threads; i++) {
+        int index = i;
+        Callable<HttpResponse<String>> task =
+            () -> {
+              go.await();
+              return call.run(index);
+            };
         futures.add(pool.submit(task));
       }
       go.countDown();

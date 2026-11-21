@@ -70,17 +70,17 @@ export class WorkerApiClient {
     return response;
   }
 
-  async claimNext(
-    workerId: string,
-    engines: readonly string[],
+  /** PRD-04 FR-5: claim the target a dispatch message names, fenced by its generation. */
+  async claim(
+    targetId: string,
+    request: { workerId: string; messageId: string; dispatchGeneration: number },
     traceId: string,
-  ): Promise<Claim | null> {
+  ): Promise<Claim> {
     const response = await this.post(
-      '/internal/v1/claims/next',
-      { workerId, executor: 'LOCAL', engines },
+      `/internal/v1/targets/${encodeURIComponent(targetId)}/claim`,
+      request,
       traceId,
     );
-    if (response.status === 204) return null;
     return Claim.parse(await response.json());
   }
 

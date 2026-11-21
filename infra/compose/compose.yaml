@@ -151,10 +151,17 @@ services:
       TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
       TESTGRID_WORKER_ID: worker-1
       TESTGRID_WORKER_ENGINES: ${TESTGRID_WORKER_ENGINES:-chromium}
+      # PRD-04 FR-5: dispatch messages come from the broker; prefetch = slots.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-testgrid}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env (copy .env.example)}
+      TESTGRID_WORKER_SLOTS: ${TESTGRID_WORKER_SLOTS:-1}
       # The allowlisted origin behind the manifest's baseUrlRef DEMO_SHOP_INTERNAL.
       DEMO_SHOP_INTERNAL: http://demo-shop:4173
     depends_on:
       api:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       demo-shop:
         condition: service_healthy

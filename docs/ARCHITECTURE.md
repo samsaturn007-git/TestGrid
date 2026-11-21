@@ -28,7 +28,7 @@ flowchart LR
   W -->|start / heartbeat / complete| API
   W -->|allowlisted base URL| SHOP[demo-shop]
 ```
-- **Pull model:** the worker polls with `claims/next`.
+- **Pull model:** the worker polls with `claims/next` (PRD-03 only; removed in PRD-04 T3, where the worker claims the target named in a dispatch message, CONFLICT_REGISTER N11).
 - **Claim query:** `SELECT … FROM run_targets WHERE status='QUEUED' AND (not_before IS NULL OR not_before <= now()) ORDER BY queued_at, id LIMIT 1 FOR UPDATE SKIP LOCKED`, followed by the attempt insert in the same transaction.
 - Even with a single worker, the lease protocol is real from day one. Statuses are never faked in the UI.
 

@@ -16,6 +16,9 @@ public enum ProblemType {
   UNAUTHORIZED("unauthorized", HttpStatus.UNAUTHORIZED, "Missing or invalid credentials"),
   ATTEMPT_NOT_ACTIVE("attempt-not-active", HttpStatus.CONFLICT, "Attempt is not active"),
   LEASE_EXPIRED("lease-expired", HttpStatus.GONE, "Lease expired or replaced"),
+  STALE_DISPATCH("stale-dispatch", HttpStatus.CONFLICT, "Dispatch message is stale"),
+  CAPACITY_EXHAUSTED(
+      "capacity-exhausted", HttpStatus.TOO_MANY_REQUESTS, "Global session cap reached"),
   INVALID_COMPLETION(
       "invalid-completion",
       HttpStatus.UNPROCESSABLE_CONTENT,

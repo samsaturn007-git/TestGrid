@@ -252,8 +252,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 
 | Endpoint | Body | Responses | PRD |
 |---|---|---|---|
-| `POST /claims/next` | `{workerId, executor, engines[]}` | `200` claim, `204` nothing to claim | 03 |
-| `POST /targets/{targetId}/claim` | `{workerId, messageId, dispatchGeneration}` | `200` claim; `409` already claimed, terminal or stale dispatch; `429` capacity | 04 |
+| `POST /targets/{targetId}/claim` | `{workerId, messageId, dispatchGeneration}` | `200` claim; `404`; `409 stale-dispatch`; `429 capacity-exhausted` | 04 |
 | `POST /attempts/{id}/start` | `{leaseToken}` | `200`; `409`; `410` | 03 |
 | `POST /attempts/{id}/heartbeat` | `{leaseToken}` | `200 {leasedUntil, cancelRequested}`; `410` | 03 |
 | `POST /attempts/{id}/complete` | the completion payload below | `200` (including an idempotent replay); `409`; `410`; `422` | 03 |
@@ -277,6 +276,16 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 5. Complete only: a payload that doesn't fit the claim → `422 invalid-completion`, nothing written.
 
 A repeated `start` by the lease holder is answered `200` without a second transition.
+
+**Claim (PRD-04 FR-5)**
+- PRD-03's `POST /claims/next` was removed in PRD-04 T3 (CONFLICT_REGISTER N11). Every claim names the target of a dispatch message and the message's `dispatchGeneration`, so no claim can skip the dispatcher's order or cap.
+- One transaction:
+  1. Take the dispatcher's advisory lock, so claims and dispatch ticks count capacity one at a time.
+  2. Lock the target row (no `SKIP LOCKED`: a duplicate delivery waits, then sees the claim). Unknown target → `404`.
+  3. `409 stale-dispatch` when the message is no longer the current dispatch: the target is already `CLAIMED`/`RUNNING` or terminal; `dispatchGeneration` differs from the target's; the target was requeued and is not dispatched (`dispatched_at` is null); or the run has a cancel request.
+  4. `429 capacity-exhausted` when active attempts (`CLAIMED`/`RUNNING`) already equal `global_max_sessions`. A claim normally can't hit this, because the target was counted as dispatched-but-unclaimed; it happens when the cap was lowered after dispatch.
+  5. Insert the attempt, set the target `CLAIMED`, write `TARGET_CLAIMED` with `{workerId, attemptNo, messageId, dispatchGeneration}`.
+- Nothing is written on `404`, `409` or `429`.
 
 **Claim response**
 ```json
@@ -338,10 +347,25 @@ Each `(caseKey, engine)` pair gets one of:
   - AMQP properties: `message_id` = `messageId`, `type` = `TARGET_DISPATCHED`, `content_type` = `application/json`.
   - The body is the `outbox_events.payload` of the dispatch, published unchanged. A redelivered or re-published message has the same `messageId` and `dispatchGeneration`.
 - **Publishing (outbox, PRD-04 FR-3):** publisher confirms and the `mandatory` flag. A row is marked published only after an ack with no return; a nack, a return (unroutable), a 5 s confirm timeout or a broken connection leaves it unpublished with `publish_attempts + 1` and `next_attempt_at = now() + 1 s × 2ⁿ⁻¹` after the n-th failure (capped at 30 s).
-- **Consumers:** manual acknowledgement with `prefetch = worker slots`.
-  - Ack after `complete` returns `2xx`, or after `claim` returns `409` (terminal or stale).
-  - On `429` capacity, route to the retry queue.
-  - After N redeliveries, dead-letter the message; the target becomes `INFRA_ERROR` and an alert metric fires.
+- **Consumers (worker, PRD-04 T3):** manual acknowledgement with `prefetch = worker slots` on each engine queue the worker serves. Quorum queues have no global QoS, so a worker that serves several engines may hold more deliveries than slots; it runs at most `slots` attempts and the extra deliveries wait unstarted. What happens to a message:
+
+  | Claim or attempt result | Message |
+  |---|---|
+  | attempt finished: `complete` answered `2xx` (replay included) or `4xx`, the start was refused, the lease was lost, or the completion could not be delivered (the reaper owns recovery) | ack |
+  | `claim` `409 stale-dispatch` or `404` | ack |
+  | `claim` `429 capacity-exhausted`, `401`/`403`, `5xx` or no answer | retry queue |
+  | body not the schema above, or `claim` `400` | `basic.nack` without requeue → `tg.dlx` → `tg.targets.dead` |
+  | worker crashes or its channel closes before the ack | the broker redelivers; counts toward `x-delivery-limit` |
+  | worker stops (`SIGTERM`) before the message started | `basic.nack` with requeue |
+
+- **Retry publish:** default exchange, routing key `tg.targets.retry`, publisher confirm, then the original is acked. The body, `message_id`, `type` and headers are copied; broker headers (`x-death`, `x-first-death-*`, `x-last-death-*`) are dropped. It adds:
+  - `expiration` = 1 s × 2ⁿ⁻¹ for the n-th retry, capped at 30 s, ±20 % jitter;
+  - header `x-tg-retries` = n;
+  - `CC: engine.<engine>`. When the TTL expires the message is dead-lettered to `tg.dispatch` with its routing keys, and the CC key routes it back to `tg.targets.<engine>` (TopologyTest checks this on RabbitMQ 4.4.1).
+  - If the publish isn't confirmed, the original is requeued after 1 s instead of acked. A crash between the confirm and the ack leaves two copies; the claim fences the second.
+- **Delivery limit (checked on RabbitMQ 4.4.1):** a redelivery after a consumer dies counts toward `x-delivery-limit: 5`; the first delivery plus five redeliveries, then the message is dead-lettered with reason `delivery_limit`. A `basic.nack` with requeue does **not** count, so the worker uses it only on shutdown.
+- **Closing (checked on RabbitMQ 4.4.1):** an ack followed straight by `connection.close()` was lost and the message redelivered (probe from the worker container: 1 message left; closing the channel first: 0). The worker therefore closes its channel, waiting for `close-ok`, before the connection.
+- **Dead letters:** `tg.targets.dead` keeps them for an operator (replay runbook: PRD-04 T7). A dead-lettered target stays `QUEUED` and dispatched; the lease reaper (PRD-04 T4) recovers it: requeue with a new generation, or `INFRA_ERROR` once `max_attempts` is spent (CONFLICT_REGISTER N17). The `testgrid_dlq_depth` metric and its alert come with PRD-12 (ARCHITECTURE §8).
 
 ---
 

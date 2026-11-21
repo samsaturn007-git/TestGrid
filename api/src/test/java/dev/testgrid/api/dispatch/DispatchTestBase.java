@@ -87,11 +87,20 @@ abstract class DispatchTestBase {
         .single();
   }
 
-  /** The PRD-03 claim path; the worker moves to the AMQP claim in T3 (CONFLICT_REGISTER N11). */
+  /** Claims the oldest dispatched target as a worker would after receiving its message. */
   WorkerApi.ClaimResponse claim() {
-    return attempts
-        .claimNext(new WorkerApi.ClaimRequest("w-test", Executor.LOCAL, List.of(Engine.CHROMIUM)))
-        .orElseThrow();
+    var message =
+        jdbc.sql(
+                """
+                SELECT t.id, t.dispatch_generation FROM run_targets t
+                WHERE t.status = 'QUEUED' AND t.dispatched_at IS NOT NULL
+                ORDER BY t.queued_at, t.id LIMIT 1
+                """)
+            .query((rs, i) -> List.of(rs.getObject("id", UUID.class), rs.getInt(2)))
+            .single();
+    return attempts.claim(
+        (UUID) message.get(0),
+        new WorkerApi.ClaimRequest("w-test", UUID.randomUUID(), (Integer) message.get(1)));
   }
 
   void completeAsInfraError(WorkerApi.ClaimResponse claim) {

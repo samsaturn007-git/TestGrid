@@ -3,6 +3,7 @@ package dev.testgrid.api.internal;
 import dev.testgrid.api.common.Hashing;
 import dev.testgrid.api.common.LogContext;
 import dev.testgrid.api.common.Redactor;
+import dev.testgrid.api.dispatch.DispatchRepository;
 import dev.testgrid.api.dispatch.DispatchSignal;
 import dev.testgrid.api.dispatch.SchedulerSettingsRepository;
 import dev.testgrid.api.domain.AttemptStatus;
@@ -27,7 +28,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -53,29 +53,101 @@ public class AttemptService {
   private final SchedulerSettingsRepository settings;
   private final JsonMapper mapper;
   private final DispatchSignal signal;
+  private final DispatchRepository dispatch;
 
   public AttemptService(
       AttemptRepository attempts,
       InternalApiProperties properties,
       SchedulerSettingsRepository settings,
       JsonMapper mapper,
-      DispatchSignal signal) {
+      DispatchSignal signal,
+      DispatchRepository dispatch) {
     this.attempts = attempts;
     this.properties = properties;
     this.settings = settings;
     this.mapper = mapper;
     this.signal = signal;
+    this.dispatch = dispatch;
   }
 
-  /** FR-3: claim the oldest eligible target, or empty when there is nothing to run. */
+  /**
+   * PRD-04 FR-5: claim the target a dispatch message names. One transaction that takes the
+   * dispatcher's advisory lock (so claims and dispatch ticks see one consistent capacity count),
+   * locks the target and only then decides:
+   *
+   * <ol>
+   *   <li>unknown target: {@code 404};
+   *   <li>already claimed, terminal, requeued, cancel requested or an older generation: {@code 409
+   *       stale-dispatch}; the worker acks the message, a newer one exists or none is needed;
+   *   <li>active attempts already at the cap: {@code 429 capacity-exhausted}; the worker sends the
+   *       message to the retry queue.
+   * </ol>
+   *
+   * The target is still counted as dispatched-but-unclaimed until this commits, and counted as an
+   * active attempt from then on, so the dispatcher's sum never dips in between.
+   */
   @Transactional
-  public Optional<WorkerApi.ClaimResponse> claimNext(WorkerApi.ClaimRequest request) {
-    var claimable = attempts.lockNextClaimable(request.executor(), request.engines());
-    if (claimable.isEmpty()) {
-      return Optional.empty();
+  public WorkerApi.ClaimResponse claim(UUID targetId, WorkerApi.ClaimRequest request) {
+    dispatch.lock();
+    var target =
+        attempts
+            .lockForClaim(targetId)
+            .orElseThrow(() ->
+                new ApiProblemException(
+                    ProblemType.NOT_FOUND, "target " + targetId + " not found"));
+    try (var ctx = context(target.runId(), targetId, null, request.workerId())) {
+      String stale = staleReason(target, request.dispatchGeneration());
+      if (stale != null) {
+        // Normal after a redelivery or a requeue: logged, never applied.
+        log.info(
+            "rejected stale dispatch messageId={} dispatchGeneration={}: {}",
+            request.messageId(),
+            request.dispatchGeneration(),
+            stale);
+        throw new ApiProblemException(
+            ProblemType.STALE_DISPATCH, stale + " (target " + targetId + ")");
+      }
+      var current = settings.current();
+      int active = dispatch.capacity().active();
+      if (active >= current.globalMaxSessions()) {
+        log.warn(
+            "rejected claim at capacity active={} cap={} messageId={}",
+            active,
+            current.globalMaxSessions(),
+            request.messageId());
+        throw new ApiProblemException(
+            ProblemType.CAPACITY_EXHAUSTED,
+            active + " of " + current.globalMaxSessions() + " sessions are in use");
+      }
+      return insertClaim(target, request, current.leaseTtlSeconds());
     }
-    var target = claimable.get();
-    int leaseTtlSeconds = settings.current().leaseTtlSeconds();
+  }
+
+  /** Why a message can no longer be claimed, or null when it is the current dispatch. */
+  static String staleReason(AttemptRepository.ClaimTarget target, int generation) {
+    if (target.status() == TargetStatus.CLAIMED || target.status() == TargetStatus.RUNNING) {
+      return "the target is already claimed";
+    }
+    if (target.status() != TargetStatus.QUEUED) {
+      return "the target is already " + target.status();
+    }
+    if (generation != target.dispatchGeneration()) {
+      return "message generation "
+          + generation
+          + " is not the current generation "
+          + target.dispatchGeneration();
+    }
+    if (!target.dispatched()) {
+      return "the target was requeued and waits for a new dispatch";
+    }
+    if (target.cancelRequested()) {
+      return "the run has a cancel request";
+    }
+    return null;
+  }
+
+  private WorkerApi.ClaimResponse insertClaim(
+      AttemptRepository.ClaimTarget target, WorkerApi.ClaimRequest request, int leaseTtlSeconds) {
     String token = newLeaseToken();
     int attemptNo = target.attemptCount() + 1;
     var attempt =
@@ -89,38 +161,38 @@ public class AttemptService {
       throw new IllegalStateException("locked QUEUED target " + target.targetId() + " moved");
     }
     attempts.recomputeRun(target.runId());
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("workerId", request.workerId());
+    payload.put("attemptNo", attemptNo);
+    payload.put("messageId", request.messageId().toString());
+    payload.put("dispatchGeneration", request.dispatchGeneration());
     attempts.insertEvent(
-        target.runId(),
-        target.targetId(),
-        attempt.id(),
-        EventType.TARGET_CLAIMED,
-        json(Map.of("workerId", request.workerId(), "attemptNo", attemptNo)));
-
-    try (var ctx = context(target.runId(), target.targetId(), attempt.id(), request.workerId())) {
+        target.runId(), target.targetId(), attempt.id(), EventType.TARGET_CLAIMED, json(payload));
+    try (var ctx = LogContext.open().put("attemptId", attempt.id())) {
       log.info(
-          "claimed target engine={} attemptNo={} leasedUntil={}",
+          "claimed target engine={} attemptNo={} dispatchGeneration={} leasedUntil={}",
           target.engine().wireName(),
           attemptNo,
+          request.dispatchGeneration(),
           attempt.leasedUntil());
     }
     var fixture =
         target.fixtureMode() == null
             ? null
             : new WorkerApi.Fixture(target.fixtureMode(), target.fixtureSeed());
-    return Optional.of(
-        new WorkerApi.ClaimResponse(
-            attempt.id(),
-            attemptNo,
-            target.runId(),
-            target.targetId(),
-            token,
-            leaseTtlSeconds,
-            properties.heartbeatIntervalSeconds(),
-            new WorkerApi.Suite(target.suiteKey(), target.revision()),
-            target.engine(),
-            attempts.caseKeys(target.suiteId()),
-            fixture,
-            target.timeoutMs()));
+    return new WorkerApi.ClaimResponse(
+        attempt.id(),
+        attemptNo,
+        target.runId(),
+        target.targetId(),
+        token,
+        leaseTtlSeconds,
+        properties.heartbeatIntervalSeconds(),
+        new WorkerApi.Suite(target.suiteKey(), target.revision()),
+        target.engine(),
+        attempts.caseKeys(target.suiteId()),
+        fixture,
+        target.timeoutMs());
   }
 
   /** CLAIMED → RUNNING. A repeated start by the lease holder is answered, not applied twice. */

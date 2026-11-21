@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,7 @@ public class DispatchLoops implements SmartLifecycle {
   private final OutboxPublisher publisher;
   private final DispatchSignal signal;
   private final DispatchProperties properties;
+  private final AmqpAdmin admin;
   private final AtomicBoolean running = new AtomicBoolean();
   private final List<Thread> threads = new ArrayList<>();
 
@@ -36,11 +38,13 @@ public class DispatchLoops implements SmartLifecycle {
       Dispatcher dispatcher,
       OutboxPublisher publisher,
       DispatchSignal signal,
-      DispatchProperties properties) {
+      DispatchProperties properties,
+      AmqpAdmin admin) {
     this.dispatcher = dispatcher;
     this.publisher = publisher;
     this.signal = signal;
     this.properties = properties;
+    this.admin = admin;
   }
 
   @Override
@@ -102,9 +106,19 @@ public class DispatchLoops implements SmartLifecycle {
 
   private void publishLoop() {
     boolean failing = false;
+    boolean declared = false;
     while (running.get()) {
       boolean full = false;
       try {
+        if (!declared) {
+          // Workers consume from queues the API owns. Declare them at startup instead of on the
+          // first publish, so a worker that starts before the first run finds them; after that
+          // Spring's RabbitAdmin redeclares on every new connection (a broker restart, for
+          // example).
+          admin.initialize();
+          declared = true;
+          log.info("broker topology declared");
+        }
         OutboxPublisher.BatchResult result = publisher.publishBatch();
         full = result.locked() == properties.outboxBatchSize();
         if (failing && result.failed() == 0) {

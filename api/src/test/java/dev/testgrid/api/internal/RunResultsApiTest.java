@@ -22,7 +22,7 @@ class RunResultsApiTest extends WorkerApiTestBase {
                 + " finished_at = now() WHERE id = :id")
         .param("id", UUID.fromString(first.attemptId()))
         .update();
-    jdbc.sql("UPDATE run_targets SET status = 'QUEUED' WHERE id = :id")
+    jdbc.sql("UPDATE run_targets SET status = 'QUEUED', dispatched_at = NULL WHERE id = :id")
         .param("id", UUID.fromString(first.targetId()))
         .update();
     Claim second = claim("chromium");

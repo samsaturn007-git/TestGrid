@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// The claim payload from POST /internal/v1/claims/next (contracts §7), validated before the
+// The claim payload from POST /internal/v1/targets/{targetId}/claim (contracts §7), validated before the
 // worker acts on it: the API is trusted, but a bug there must not become a Playwright flag.
 export const ENGINE = z.enum(['chromium', 'firefox', 'webkit']);
 export const FIXTURE_MODE = z.enum([
