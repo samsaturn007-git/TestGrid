@@ -133,6 +133,8 @@ public class Reaper {
             .put("targetId", lease.targetId())
             .put("attemptId", lease.attemptId())
             .put("workerId", lease.workerId())) {
+      // Run lock before any event insert (AttemptRepository.lockRun): target, then run.
+      events.lockRun(lease.runId());
       String detail = "no heartbeat before the lease ran out at " + lease.leasedUntil();
       if (reaper.abandonAttempt(lease.attemptId(), detail) != 1) {
         throw new IllegalStateException("locked active attempt " + lease.attemptId() + " moved");
@@ -195,6 +197,7 @@ public class Reaper {
   private TargetStatus recover(ReaperRepository.StuckDispatch stuck) {
     try (var ctx =
         LogContext.open().put("runId", stuck.runId()).put("targetId", stuck.targetId())) {
+      events.lockRun(stuck.runId());
       if (stuck.cancelRequested()) {
         finishQueued(stuck, TargetStatus.CANCELLED, "CANCELLED");
         log.warn("lost dispatch; run has a cancel request: target CANCELLED");

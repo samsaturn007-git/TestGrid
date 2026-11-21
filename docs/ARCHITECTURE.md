@@ -101,6 +101,8 @@ sequenceDiagram
 
 **Lost dispatch** (PRD-04 T4, CONFLICT_REGISTER N17): the same pass also locks `QUEUED` targets whose `dispatched_at` is older than the dispatch timeout, i.e. whose message was dead-lettered or lost on the way back from the retry queue. They are undispatched so the dispatcher sends a new generation (`TARGET_RETRY_SCHEDULED`, reason `DISPATCH_TIMEOUT`), or end `INFRA_ERROR` (`WORKER_LOST`) once `max_attempts` dispatches in a row went unclaimed (`dispatch_generation − attempt_count`). The timeout must be longer than the longest legitimate queue wait; with more cap than worker slots a message can wait for a free slot, and a redispatch then is harmless (the old message gets `409`) but counts toward that limit.
 
+**Lock order (PRD-04 T6):** every transaction that changes a target locks it before its run, and takes the run's `FOR UPDATE` lock **before its first `run_events` insert**. Each insert takes `FOR KEY SHARE` on the run through the foreign key, so asking for `FOR UPDATE` afterwards is a lock upgrade; two completions of one run did exactly that and PostgreSQL aborted one with `deadlock detected` (found by the T6 crash tests, regression test `ConcurrentCompletionTest`). Claim, complete, cancel and the reaper follow the rule; the dispatcher and `start` only ever take the shared lock.
+
 **Late callback:** an old worker that wakes up (for example after `SIGSTOP`/`SIGCONT`) and calls `complete` gets `410 lease-expired`. It is logged with the attempt ID. Nothing is overwritten.
 
 ## 5. Invariants (checked by the PRD-10 validator; DB-enforced where possible)

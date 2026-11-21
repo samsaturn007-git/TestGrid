@@ -279,6 +279,16 @@ public class AttemptRepository {
         .update();
   }
 
+  /**
+   * Takes the run row's FOR UPDATE lock now, before any {@code run_events} insert. Each such insert
+   * takes FOR KEY SHARE on the run through its foreign key; asking for FOR UPDATE afterwards (as
+   * {@link #recomputeRun} does) is a lock upgrade, and two transactions upgrading on the same run
+   * deadlock. Call it right after locking the target, so the order stays target before run.
+   */
+  public void lockRun(UUID runId) {
+    jdbc.sql("SELECT id FROM runs WHERE id = :r FOR UPDATE").param("r", runId).query().singleRow();
+  }
+
   public record RunChange(RunStatus status, boolean finishedNow) {}
 
   /**

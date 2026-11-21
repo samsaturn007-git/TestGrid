@@ -264,6 +264,9 @@ public class AttemptService {
       List<String> claimed = attempts.caseKeys(attempt.suiteId());
       validate(attempt, claimed, request);
       Result result = resultOf(attempt, request);
+      // Before the first event insert: see AttemptRepository.lockRun (a deadlock otherwise when
+      // two targets of one run complete at once).
+      attempts.lockRun(attempt.runId());
 
       for (CaseResult c : request.caseResults()) {
         String message = Redactor.redact(c.errorMessage());
