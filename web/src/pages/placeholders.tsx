@@ -38,14 +38,6 @@ export function RunDetailPage() {
   );
 }
 
-export function SuitesPage() {
-  return (
-    <Page title="Suites">
-      <NotBuiltYet task="T2" />
-    </Page>
-  );
-}
-
 export function WorkersPage() {
   return (
     <Page title="Workers">

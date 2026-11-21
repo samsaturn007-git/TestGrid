@@ -32,18 +32,46 @@ function isProblem(body: unknown): body is Problem {
   );
 }
 
-export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function send(
+  path: string,
+  init: RequestInit,
+): Promise<{ response: Response; body: unknown }> {
   let response: Response;
   try {
-    response = await fetch(API_BASE + path, {
-      headers: { Accept: 'application/json' },
-      ...(signal ? { signal } : {}),
-    });
+    response = await fetch(API_BASE + path, init);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new ApiError(0, null);
   }
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) throw new ApiError(response.status, isProblem(body) ? body : null);
+  return { response, body };
+}
+
+export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const { body } = await send(path, {
+    headers: { Accept: 'application/json' },
+    ...(signal ? { signal } : {}),
+  });
   return body as T;
+}
+
+/** A POST answer: `status` tells a new resource (202) from an idempotent replay (200). */
+export interface PostResult<T> {
+  status: number;
+  data: T;
+  replayed: boolean;
+}
+
+export async function apiPost<T>(path: string, payload: unknown): Promise<PostResult<T>> {
+  const { response, body } = await send(path, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return {
+    status: response.status,
+    data: body as T,
+    replayed: response.headers.get('Idempotent-Replay') === 'true',
+  };
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { useCurrentProject } from '../api/queries.ts';
+import { NewRunButton } from '../runs/NewRunButton.tsx';
+import { NewRunProvider } from '../runs/NewRunProvider.tsx';
 import { ThemeToggle } from './ThemeToggle.tsx';
 
 const NAV_ICONS = {
@@ -73,56 +75,59 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen bg-canvas text-text">
-      <a
-        href="#main"
-        className="fixed left-3 top-3 z-50 -translate-y-20 rounded-chip bg-primary-bg px-3 py-2 font-semibold text-primary-fg no-underline focus:translate-y-0"
-      >
-        Skip to content
-      </a>
-
-      <nav
-        aria-label="Primary"
-        className="sticky top-0 flex h-screen w-[220px] shrink-0 flex-col gap-5 border-r border-hairline-soft px-3 py-4"
-      >
-        <div className="flex items-center gap-2.5 px-2 py-1">
-          <Logo />
-          <span className="text-[15px] font-bold tracking-[-0.01em]">TestGrid</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <NavItem to="/" icon={NAV_ICONS.overview} label="Overview" />
-          <NavItem to="/runs" icon={NAV_ICONS.runs} label="Runs" />
-          <NavItem
-            to={project ? `/projects/${project.id}/suites` : '/suites'}
-            icon={NAV_ICONS.suites}
-            label="Suites"
-          />
-          <NavItem to="/workers" icon={NAV_ICONS.workers} label="Workers" />
-        </div>
-      </nav>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex min-h-14 flex-wrap items-center gap-3 border-b border-hairline-soft px-6 py-2">
-          {project ? (
-            <span className="flex items-center gap-2 text-body">
-              <span className="text-text-muted">Project</span>
-              <span className="font-semibold">{project.name}</span>
-            </span>
-          ) : null}
-          <div className="ml-auto flex items-center gap-3">
-            <ThemeToggle />
-          </div>
-        </header>
-
-        <main
-          id="main"
-          ref={mainRef}
-          tabIndex={-1}
-          className="flex w-full max-w-[1320px] flex-col gap-7 px-8 pb-10 pt-7 outline-none"
+    <NewRunProvider>
+      <div className="flex min-h-screen bg-canvas text-text">
+        <a
+          href="#main"
+          className="fixed left-3 top-3 z-50 -translate-y-20 rounded-chip bg-primary-bg px-3 py-2 font-semibold text-primary-fg no-underline focus:translate-y-0"
         >
-          <Outlet />
-        </main>
+          Skip to content
+        </a>
+
+        <nav
+          aria-label="Primary"
+          className="sticky top-0 flex h-screen w-[220px] shrink-0 flex-col gap-5 border-r border-hairline-soft px-3 py-4"
+        >
+          <div className="flex items-center gap-2.5 px-2 py-1">
+            <Logo />
+            <span className="text-[15px] font-bold tracking-[-0.01em]">TestGrid</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <NavItem to="/" icon={NAV_ICONS.overview} label="Overview" />
+            <NavItem to="/runs" icon={NAV_ICONS.runs} label="Runs" />
+            <NavItem
+              to={project ? `/projects/${project.id}/suites` : '/suites'}
+              icon={NAV_ICONS.suites}
+              label="Suites"
+            />
+            <NavItem to="/workers" icon={NAV_ICONS.workers} label="Workers" />
+          </div>
+        </nav>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex min-h-14 flex-wrap items-center gap-3 border-b border-hairline-soft px-6 py-2">
+            {project ? (
+              <span className="flex items-center gap-2 text-body">
+                <span className="text-text-muted">Project</span>
+                <span className="font-semibold">{project.name}</span>
+              </span>
+            ) : null}
+            <div className="ml-auto flex items-center gap-3">
+              <ThemeToggle />
+              {project ? <NewRunButton /> : null}
+            </div>
+          </header>
+
+          <main
+            id="main"
+            ref={mainRef}
+            tabIndex={-1}
+            className="flex w-full max-w-[1320px] flex-col gap-7 px-8 pb-10 pt-7 outline-none"
+          >
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </NewRunProvider>
   );
 }

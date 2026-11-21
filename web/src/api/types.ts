@@ -18,3 +18,13 @@ export type AttemptStatus = Schemas['AttemptSummary']['status'];
 export type CaseStatus = Schemas['CaseResult']['status'];
 export type WorkerState = Schemas['WorkerView']['state'];
 export type Engine = Schemas['RunTarget']['engine'];
+
+export type Capabilities = Schemas['Capabilities'];
+export type Suite = Schemas['Suite'];
+export type PageSuite = Schemas['PageSuite'];
+export type SuiteDetail = Schemas['SuiteDetail'];
+export type TestCase = Schemas['TestCase'];
+export type CreateRunRequest = Schemas['CreateRunRequest'];
+export type RunResponse = Schemas['RunResponse'];
+export type FieldError = Schemas['FieldError'];
+export type FixtureMode = Schemas['Fixture']['mode'];

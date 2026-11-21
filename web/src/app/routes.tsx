@@ -4,10 +4,10 @@ import {
   OverviewPage,
   RunDetailPage,
   RunsPage,
-  SuitesPage,
   SuitesRedirect,
   WorkersPage,
 } from '../pages/placeholders.tsx';
+import { SuitesPage } from '../pages/SuitesPage.tsx';
 import { AppShell } from './AppShell.tsx';
 
 // One route table for the browser router and for tests (createMemoryRouter).

@@ -4,32 +4,10 @@ import { userEvent } from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '../api/queries.ts';
-import type { PageProject, Problem } from '../api/types.ts';
+import type { Problem } from '../api/types.ts';
+import { catalogApi, json, PROJECT_ID, stubApi } from '../test/api.ts';
 import { expectNoSeriousA11yViolations } from '../test/axe.ts';
 import { routes } from './routes.tsx';
-
-const PROJECT_ID = '00000000-0000-4000-8000-000000000001';
-const PROJECTS: PageProject = {
-  items: [
-    { id: PROJECT_ID, name: 'Local project', slug: 'local', links: { self: '/api/v1/projects' } },
-  ],
-  nextCursor: null,
-};
-
-function stubFetch(handler: (url: string) => Response) {
-  const fetchMock = vi.fn((input: RequestInfo | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    return Promise.resolve(handler(url));
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
-}
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': status < 400 ? 'application/json' : 'application/problem+json' },
-  });
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -47,7 +25,7 @@ afterEach(() => {
 
 describe('App shell (PRD-05 FR-1)', () => {
   it('starts with a skip link to the main landmark, and has banner, nav and main', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/');
     const user = userEvent.setup();
 
@@ -62,7 +40,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   });
 
   it('shows the project from the API and links Suites to that project', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/');
 
     expect(await screen.findByText('Local project')).toBeInTheDocument();
@@ -73,7 +51,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   });
 
   it('marks the current page in the nav and moves focus to main after navigating', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/');
     const user = userEvent.setup();
 
@@ -87,7 +65,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   });
 
   it('reaches every page with the keyboard alone', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/');
     const user = userEvent.setup();
     await screen.findByText('Local project');
@@ -100,7 +78,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   });
 
   it('/suites redirects to the caller project suites', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     const router = renderAt('/suites');
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/projects/${PROJECT_ID}/suites`),
@@ -116,7 +94,7 @@ describe('App shell (PRD-05 FR-1)', () => {
       instance: '/api/v1/projects',
       traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
     };
-    const fetchMock = stubFetch(() => json(problem, 500));
+    const { fetchMock } = stubApi(() => json(problem, 500));
     renderAt('/suites');
 
     const alert = await screen.findByRole('alert', {}, { timeout: 8000 });
@@ -128,7 +106,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   }, 10_000);
 
   it('does not retry a 4xx', async () => {
-    const fetchMock = stubFetch(() =>
+    const { fetchMock } = stubApi(() =>
       json(
         {
           type: 'https://testgrid.local/problems/not-found',
@@ -158,7 +136,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   }, 10_000);
 
   it('switches theme with an accessible toggle and remembers the choice', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/');
     const user = userEvent.setup();
 
@@ -171,7 +149,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   });
 
   it('answers an unknown address with a not-found page', async () => {
-    stubFetch(() => json(PROJECTS));
+    stubApi(catalogApi());
     renderAt('/nope');
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Page not found' }),
@@ -181,7 +159,7 @@ describe('App shell (PRD-05 FR-1)', () => {
   it.each(['/', '/runs', '/runs/abc', `/projects/${PROJECT_ID}/suites`, '/workers', '/nope'])(
     '%s has no serious or critical axe violations',
     async (path) => {
-      stubFetch(() => json(PROJECTS));
+      stubApi(catalogApi());
       renderAt(path);
       await screen.findByText('Local project');
       await expectNoSeriousA11yViolations();
