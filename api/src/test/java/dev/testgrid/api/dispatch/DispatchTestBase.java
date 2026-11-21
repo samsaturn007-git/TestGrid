@@ -50,7 +50,7 @@ abstract class DispatchTestBase {
     // TRUNCATE skips the row-level guards on run_events and outbox_events.
     jdbc.sql("TRUNCATE outbox_events, case_results, attempts, run_events, run_targets, runs")
         .update();
-    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3, max_attempts = 3").update();
     faults.disarm();
     admin.initialize();
     QUEUES.forEach(queue -> admin.purgeQueue(queue, false));
@@ -58,7 +58,7 @@ abstract class DispatchTestBase {
 
   @AfterEach
   void restoreSettings() {
-    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3, max_attempts = 3").update();
     faults.disarm();
   }
 

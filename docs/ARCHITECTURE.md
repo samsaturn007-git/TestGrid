@@ -95,9 +95,11 @@ sequenceDiagram
 **Worker crash**
 1. Heartbeats stop.
 2. The reaper runs every 5 s: `SELECT … WHERE status IN ('CLAIMED','RUNNING') AND leased_until < now() FOR UPDATE SKIP LOCKED`.
-3. The attempt becomes `ABANDONED` (`LEASE_EXPIRED`).
-4. If retries remain, the target returns to `QUEUED` with `not_before = now() + backoff`; otherwise it becomes `INFRA_ERROR`.
+3. The attempt becomes `ABANDONED` (`LEASE_EXPIRED`) and is kept (`ATTEMPT_ABANDONED`).
+4. If the run has a cancel request the target becomes `CANCELLED`. Otherwise, if retries remain (`attempt_count < max_attempts`), it returns to `QUEUED` with `dispatched_at = NULL` and `not_before = now() + backoff` (`TARGET_RETRY_SCHEDULED`); otherwise it becomes `INFRA_ERROR`.
 5. The dispatcher re-dispatches it with a new generation, and the broker's redelivery of the old message is rejected as `stale-dispatch`.
+
+**Lost dispatch** (PRD-04 T4, CONFLICT_REGISTER N17): the same pass also locks `QUEUED` targets whose `dispatched_at` is older than the dispatch timeout, i.e. whose message was dead-lettered or lost on the way back from the retry queue. They are undispatched so the dispatcher sends a new generation (`TARGET_RETRY_SCHEDULED`, reason `DISPATCH_TIMEOUT`), or end `INFRA_ERROR` (`WORKER_LOST`) once `max_attempts` dispatches in a row went unclaimed (`dispatch_generation − attempt_count`). The timeout must be longer than the longest legitimate queue wait; with more cap than worker slots a message can wait for a free slot, and a redispatch then is harmless (the old message gets `409`) but counts toward that limit.
 
 **Late callback:** an old worker that wakes up (for example after `SIGSTOP`/`SIGCONT`) and calls `complete` gets `410 lease-expired`. It is logged with the attempt ID. Nothing is overwritten.
 
@@ -125,7 +127,8 @@ These are starting values to tune with evidence, not claims.
 | Heartbeat interval | 10 s |
 | Reaper interval | 5 s |
 | Max attempts | 3 |
-| Retry backoff | 2 s × 2ⁿ, ±20 % jitter |
+| Retry backoff | 2 s × 2ⁿ⁻¹ after the n-th attempt (2 s, 4 s, 8 s …), max 60 s, ±20 % jitter |
+| Dispatch timeout (lost message) | 5 min |
 | Dispatcher tick | 250 ms |
 | Outbox poll | 500 ms, batch of 100 |
 | SSE ping | 15 s |

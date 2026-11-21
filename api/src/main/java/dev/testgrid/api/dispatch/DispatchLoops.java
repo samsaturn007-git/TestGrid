@@ -13,8 +13,9 @@ import org.springframework.stereotype.Component;
 /**
  * Runs the dispatcher (every {@code tick-ms}, or sooner on a nudge) and the outbox publisher (every
  * {@code outbox-poll-ms}, sooner on a nudge, straight away again after a full batch) on two daemon
- * threads. A failed tick is logged once per outage and retried on the next one: the database keeps
- * the state, so a loop never has to remember anything between ticks.
+ * threads, and the lease reaper (every {@code testgrid.reaper.interval-ms}) on a third. A failed
+ * tick is logged once per outage and retried on the next one: the database keeps the state, so a
+ * loop never has to remember anything between ticks.
  */
 @Component
 @ConditionalOnProperty(
@@ -28,6 +29,8 @@ public class DispatchLoops implements SmartLifecycle {
 
   private final Dispatcher dispatcher;
   private final OutboxPublisher publisher;
+  private final Reaper reaper;
+  private final ReaperProperties reaperProperties;
   private final DispatchSignal signal;
   private final DispatchProperties properties;
   private final AmqpAdmin admin;
@@ -37,11 +40,15 @@ public class DispatchLoops implements SmartLifecycle {
   public DispatchLoops(
       Dispatcher dispatcher,
       OutboxPublisher publisher,
+      Reaper reaper,
+      ReaperProperties reaperProperties,
       DispatchSignal signal,
       DispatchProperties properties,
       AmqpAdmin admin) {
     this.dispatcher = dispatcher;
     this.publisher = publisher;
+    this.reaper = reaper;
+    this.reaperProperties = reaperProperties;
     this.signal = signal;
     this.properties = properties;
     this.admin = admin;
@@ -54,11 +61,15 @@ public class DispatchLoops implements SmartLifecycle {
     }
     threads.add(Thread.ofPlatform().daemon().name("tg-dispatcher").start(this::dispatchLoop));
     threads.add(Thread.ofPlatform().daemon().name("tg-outbox").start(this::publishLoop));
+    threads.add(Thread.ofPlatform().daemon().name("tg-reaper").start(this::reaperLoop));
     log.info(
-        "dispatch loops started tickMs={} outboxPollMs={} outboxBatchSize={}",
+        "dispatch loops started tickMs={} outboxPollMs={} outboxBatchSize={} reaperIntervalMs={}"
+            + " dispatchTimeoutMs={}",
         properties.tickMs(),
         properties.outboxPollMs(),
-        properties.outboxBatchSize());
+        properties.outboxBatchSize(),
+        reaperProperties.intervalMs(),
+        reaperProperties.dispatchTimeoutMs());
   }
 
   @Override
@@ -134,6 +145,42 @@ public class DispatchLoops implements SmartLifecycle {
       if (!full && !await(false, properties.outboxPollMs())) {
         return;
       }
+    }
+  }
+
+  private void reaperLoop() {
+    boolean failing = false;
+    while (running.get()) {
+      boolean full = false;
+      try {
+        Reaper.Pass pass = reaper.reapOnce();
+        // A full batch means more may be waiting: go again straight away.
+        full =
+            pass.abandoned() >= reaperProperties.batchSize()
+                || pass.redispatched() + pass.lost() >= reaperProperties.batchSize();
+        if (failing) {
+          log.info("reaper recovered");
+          failing = false;
+        }
+      } catch (RuntimeException e) {
+        if (!failing) {
+          log.warn("reaper pass failed; retrying every interval: {}", e.toString());
+          failing = true;
+        }
+      }
+      if (!full && !sleep(reaperProperties.intervalMs())) {
+        return;
+      }
+    }
+  }
+
+  private boolean sleep(long ms) {
+    try {
+      Thread.sleep(ms);
+      return running.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
