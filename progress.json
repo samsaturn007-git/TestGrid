@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T11:09:59+00:00",
+  "updated_at": "2026-11-21T12:54:47+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -191,7 +191,7 @@
         },
         "T3": {
           "label": "Declare topology; implement consumer manual ack, retry queue and DLQ policy.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Implement reaper, bounded retries with backoff/jitter and stale-generation rejection.",
