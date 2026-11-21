@@ -131,16 +131,18 @@ public class RunRepository {
         .optional();
   }
 
-  public void insertTarget(UUID runId, String targetKey, Executor executor, Engine engine) {
+  public void insertTarget(
+      UUID runId, String targetKey, Executor executor, Engine engine, int maxAttempts) {
     jdbc.sql(
             """
-            INSERT INTO run_targets (run_id, target_key, executor, engine, status)
-            VALUES (:run, :key, :executor, :engine, 'QUEUED')
+            INSERT INTO run_targets (run_id, target_key, executor, engine, status, max_attempts)
+            VALUES (:run, :key, :executor, :engine, 'QUEUED', :maxAttempts)
             """)
         .param("run", runId)
         .param("key", targetKey)
         .param("executor", executor.name())
         .param("engine", engine.wireName())
+        .param("maxAttempts", maxAttempts)
         .update();
   }
 

@@ -3,6 +3,7 @@ package dev.testgrid.api.internal;
 import dev.testgrid.api.common.Hashing;
 import dev.testgrid.api.common.LogContext;
 import dev.testgrid.api.common.Redactor;
+import dev.testgrid.api.dispatch.SchedulerSettingsRepository;
 import dev.testgrid.api.domain.AttemptStatus;
 import dev.testgrid.api.domain.CaseStatus;
 import dev.testgrid.api.domain.ErrorClass;
@@ -48,12 +49,17 @@ public class AttemptService {
 
   private final AttemptRepository attempts;
   private final InternalApiProperties properties;
+  private final SchedulerSettingsRepository settings;
   private final JsonMapper mapper;
 
   public AttemptService(
-      AttemptRepository attempts, InternalApiProperties properties, JsonMapper mapper) {
+      AttemptRepository attempts,
+      InternalApiProperties properties,
+      SchedulerSettingsRepository settings,
+      JsonMapper mapper) {
     this.attempts = attempts;
     this.properties = properties;
+    this.settings = settings;
     this.mapper = mapper;
   }
 
@@ -65,6 +71,7 @@ public class AttemptService {
       return Optional.empty();
     }
     var target = claimable.get();
+    int leaseTtlSeconds = settings.current().leaseTtlSeconds();
     String token = newLeaseToken();
     int attemptNo = target.attemptCount() + 1;
     var attempt =
@@ -73,7 +80,7 @@ public class AttemptService {
             attemptNo,
             request.workerId(),
             Hashing.sha256(token),
-            properties.leaseTtlSeconds());
+            leaseTtlSeconds);
     if (attempts.markTargetClaimed(target.targetId()) != 1) {
       throw new IllegalStateException("locked QUEUED target " + target.targetId() + " moved");
     }
@@ -103,7 +110,7 @@ public class AttemptService {
             target.runId(),
             target.targetId(),
             token,
-            properties.leaseTtlSeconds(),
+            leaseTtlSeconds,
             properties.heartbeatIntervalSeconds(),
             new WorkerApi.Suite(target.suiteKey(), target.revision()),
             target.engine(),
@@ -122,7 +129,7 @@ public class AttemptService {
         return new WorkerApi.StartResponse(attemptId, AttemptStatus.RUNNING, leasedUntil);
       }
       Instant leasedUntil =
-          attempts.markStarted(attemptId, properties.leaseTtlSeconds()).orElseThrow();
+          attempts.markStarted(attemptId, settings.current().leaseTtlSeconds()).orElseThrow();
       if (attempts.markTargetRunning(attempt.targetId()) != 1) {
         throw new IllegalStateException("target of a CLAIMED attempt was not CLAIMED");
       }
@@ -141,7 +148,7 @@ public class AttemptService {
   public WorkerApi.HeartbeatResponse heartbeat(UUID attemptId, String leaseToken) {
     LockedAttempt attempt = lockForLeaseHolder(attemptId, leaseToken, "heartbeat");
     Instant leasedUntil =
-        attempts.extendLease(attemptId, properties.leaseTtlSeconds()).orElseThrow();
+        attempts.extendLease(attemptId, settings.current().leaseTtlSeconds()).orElseThrow();
     return new WorkerApi.HeartbeatResponse(leasedUntil, attempt.cancelRequested());
   }
 

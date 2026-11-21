@@ -1,6 +1,7 @@
 package dev.testgrid.api.run;
 
 import dev.testgrid.api.config.TestgridProperties;
+import dev.testgrid.api.dispatch.SchedulerSettingsRepository;
 import dev.testgrid.api.domain.EventType;
 import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.ShardingMode;
@@ -30,13 +31,19 @@ public class RunCreationService {
   private final TestgridProperties properties;
   private final JsonMapper mapper;
   private final CallerScope scope;
+  private final SchedulerSettingsRepository settings;
 
   public RunCreationService(
-      RunRepository runs, TestgridProperties properties, JsonMapper mapper, CallerScope scope) {
+      RunRepository runs,
+      TestgridProperties properties,
+      JsonMapper mapper,
+      CallerScope scope,
+      SchedulerSettingsRepository settings) {
     this.runs = runs;
     this.properties = properties;
     this.mapper = mapper;
     this.scope = scope;
+    this.settings = settings;
   }
 
   /** {@code replay} is true when the key was already used with the same request. */
@@ -91,10 +98,12 @@ public class RunCreationService {
     }
     UUID runId = inserted.get();
 
+    // Each target keeps the retry budget it was created with, even if the setting changes later.
+    int maxAttempts = settings.current().maxAttempts();
     List<String> targetKeys = new ArrayList<>();
     for (CreateRunRequest.Target target : request.targets()) {
       String key = targetKey(target);
-      runs.insertTarget(runId, key, target.executor(), target.engine());
+      runs.insertTarget(runId, key, target.executor(), target.engine(), maxAttempts);
       targetKeys.add(key);
     }
 
