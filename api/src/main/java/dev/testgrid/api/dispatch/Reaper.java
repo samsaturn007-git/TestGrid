@@ -6,10 +6,12 @@ import dev.testgrid.api.domain.TargetStatus;
 import dev.testgrid.api.internal.AttemptRepository;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.DoubleSupplier;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +37,8 @@ import tools.jackson.databind.json.JsonMapper;
  *       dispatch-timeout-ms} ago and never claimed has lost its message (dead-lettered, or lost on
  *       the way back from the retry queue). It is undispatched so the dispatcher sends a new
  *       generation, or ends {@code INFRA_ERROR} ({@code WORKER_LOST}) once {@code max_attempts}
- *       dispatches in a row went unclaimed. Without this the target would hold a cap slot forever.
+ *       dispatches of this target went unclaimed in total. Without this the target would hold a cap
+ *       slot forever.
  * </ol>
  *
  * Any freed slot nudges the dispatcher after commit.
@@ -93,7 +96,19 @@ public class Reaper {
     int retried = 0;
     int failed = 0;
     int cancelled = 0;
-    for (ReaperRepository.ExpiredLease lease : reaper.lockExpiredLeases(properties.batchSize())) {
+    List<ReaperRepository.ExpiredLease> leases = reaper.lockExpiredLeases(properties.batchSize());
+    List<ReaperRepository.StuckDispatch> lostDispatches =
+        reaper.lockStuckDispatches(properties.dispatchTimeoutMs(), properties.batchSize());
+    // Every run this pass touches, locked once in id order before any event insert. Locking them
+    // one per row in batch order would let two reapers (two API instances) take the same two run
+    // locks in opposite orders and deadlock.
+    Stream.concat(
+            leases.stream().map(ReaperRepository.ExpiredLease::runId),
+            lostDispatches.stream().map(ReaperRepository.StuckDispatch::runId))
+        .distinct()
+        .sorted()
+        .forEach(events::lockRun);
+    for (ReaperRepository.ExpiredLease lease : leases) {
       abandoned++;
       switch (abandon(lease)) {
         case QUEUED -> retried++;
@@ -103,8 +118,7 @@ public class Reaper {
     }
     int redispatched = 0;
     int lost = 0;
-    for (ReaperRepository.StuckDispatch stuck :
-        reaper.lockStuckDispatches(properties.dispatchTimeoutMs(), properties.batchSize())) {
+    for (ReaperRepository.StuckDispatch stuck : lostDispatches) {
       switch (recover(stuck)) {
         case QUEUED -> redispatched++;
         case CANCELLED -> cancelled++;
@@ -133,8 +147,6 @@ public class Reaper {
             .put("targetId", lease.targetId())
             .put("attemptId", lease.attemptId())
             .put("workerId", lease.workerId())) {
-      // Run lock before any event insert (AttemptRepository.lockRun): target, then run.
-      events.lockRun(lease.runId());
       String detail = "no heartbeat before the lease ran out at " + lease.leasedUntil();
       if (reaper.abandonAttempt(lease.attemptId(), detail) != 1) {
         throw new IllegalStateException("locked active attempt " + lease.attemptId() + " moved");
@@ -197,7 +209,6 @@ public class Reaper {
   private TargetStatus recover(ReaperRepository.StuckDispatch stuck) {
     try (var ctx =
         LogContext.open().put("runId", stuck.runId()).put("targetId", stuck.targetId())) {
-      events.lockRun(stuck.runId());
       if (stuck.cancelRequested()) {
         finishQueued(stuck, TargetStatus.CANCELLED, "CANCELLED");
         log.warn("lost dispatch; run has a cancel request: target CANCELLED");
@@ -206,7 +217,8 @@ public class Reaper {
       if (stuck.unclaimedDispatches() >= stuck.maxAttempts()) {
         finishQueued(stuck, TargetStatus.INFRA_ERROR, "WORKER_LOST");
         log.error(
-            "{} dispatches in a row were never claimed (last generation {}): target INFRA_ERROR",
+            "{} dispatches of this target were never claimed in total (last generation {}): target"
+                + " INFRA_ERROR",
             stuck.unclaimedDispatches(),
             stuck.dispatchGeneration());
         return TargetStatus.INFRA_ERROR;

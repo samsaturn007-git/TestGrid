@@ -226,7 +226,7 @@ class ReaperTest extends DispatchTestBase {
   }
 
   @Test
-  void maxAttemptsLostDispatchesInARowEndTheTargetInfraErrorWorkerLost() {
+  void maxAttemptsLostDispatchesInTotalEndTheTargetInfraErrorWorkerLost() {
     UUID runId = createRun(Engine.CHROMIUM);
     UUID target = targetOf(runId);
     for (int i = 1; i <= 3; i++) {
@@ -259,6 +259,66 @@ class ReaperTest extends DispatchTestBase {
     dispatcher.dispatchOnce();
     assertThat(reaper.reapOnce()).isEqualTo(new Reaper.Pass(0, 0, 0, 0, 0, 0));
     assertThat(properties.dispatchTimeoutMs()).isEqualTo(300_000);
+  }
+
+  @Autowired org.springframework.transaction.PlatformTransactionManager txManager;
+  @Autowired ReaperRepository reaperRepository;
+  @Autowired dev.testgrid.api.internal.AttemptRepository attemptRepository;
+  @Autowired DispatchSignal signal;
+  @Autowired tools.jackson.databind.json.JsonMapper mapper;
+
+  /**
+   * Review of PR #5: two reapers (two API instances) whose batches span the same two runs in
+   * opposite lease order. Locking each run as its lease came up let them deadlock; the pass now
+   * locks every run it touches in id order first.
+   */
+  @org.junit.jupiter.api.RepeatedTest(5)
+  void twoReapersWithOverlappingRunsDoNotDeadlock() throws Exception {
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 4").update();
+    UUID r1 = createRun(Engine.CHROMIUM, Engine.FIREFOX);
+    UUID r2 = createRun(Engine.CHROMIUM, Engine.FIREFOX);
+    dispatcher.dispatchOnce();
+    for (int i = 0; i < 4; i++) {
+      claim();
+    }
+    // Lease order a(r1) < b(r2) < c(r2) < d(r1): reaper A gets a, b; reaper B gets c, d.
+    expireTarget(r1, "chromium", 40);
+    expireTarget(r2, "chromium", 30);
+    expireTarget(r2, "firefox", 20);
+    expireTarget(r1, "firefox", 10);
+    var small = new ReaperProperties(5000, 2, 2000, 60_000, 300_000);
+    var tx = new org.springframework.transaction.support.TransactionTemplate(txManager);
+    java.util.function.Supplier<Reaper.Pass> pass =
+        () ->
+            tx.execute(status ->
+                new Reaper(reaperRepository, attemptRepository, small, signal, mapper, () -> 0.5)
+                    .reapOnce());
+    var go = new java.util.concurrent.CountDownLatch(1);
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var a =
+          pool.submit(() -> {
+            go.await();
+            return pass.get();
+          });
+      var b =
+          pool.submit(() -> {
+            go.await();
+            return pass.get();
+          });
+      go.countDown();
+      assertThat(a.get().abandoned() + b.get().abandoned()).isEqualTo(4);
+    }
+    assertThat(count("SELECT count(*) FROM attempts WHERE status = 'ABANDONED'")).isEqualTo(4);
+  }
+
+  private void expireTarget(UUID runId, String engine, int secondsAgo) {
+    jdbc.sql(
+            "UPDATE attempts SET leased_until = now() - make_interval(secs => :s)"
+                + " WHERE target_id = (SELECT id FROM run_targets WHERE run_id = :r AND engine = :e)")
+        .param("s", secondsAgo)
+        .param("r", runId)
+        .param("e", engine)
+        .update();
   }
 
   private void expireLease(UUID attemptId) {
