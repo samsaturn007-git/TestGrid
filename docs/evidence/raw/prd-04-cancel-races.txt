@@ -1,0 +1,2 @@
+# RunCancelTest race outcomes (10 runs each, cancel staggered 0-36 ms), from the last make test-api
+{claim-vs-cancel: cancel first=1, claim-vs-cancel: claim first=9, complete-vs-cancel: cancel first (cancel 202)=1, complete-vs-cancel: completion first (cancel 200)=9}

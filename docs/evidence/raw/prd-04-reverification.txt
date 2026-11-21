@@ -1,0 +1,155 @@
+PRD-04 re-verification of PRD-00..PRD-04, 2026-11-21 (UTC), at the developer's request.
+Code: prd-04/durable-queue @ f1db10d (working tree clean). Reference machine: Apple M4, OrbStack.
+Static checks and test suites ran in the main checkout and in a fresh `git clone` of the branch.
+The live drills ran from the clone in an isolated Compose project (COMPOSE_PROJECT_NAME=tgaudit,
+.env copied from .env.example, TESTGRID_WORKER_ENGINES=chromium,firefox,webkit for the e2e).
+The developer's own `testgrid` stack was stopped with `make down` (volumes kept) and started again
+with `make up` afterwards. The tgaudit stack was removed with its volumes.
+
+=== Static checks and suites
+$ python3 tools/progress.py lint        lint OK: tracker matches PRD files                     exit 0
+$ bash tools/vocab_check.sh             Canonical enum values (contracts §2.1): 52 / Non-canonical spellings: none / vocab_check OK   exit 0
+$ make doctor                           node 26.13.1, pnpm 12.21.0, java 21, docker 29.8.2, compose 5.5.0, GNU Make 3.81: doctor: ready   exit 0
+$ make check                            prettier OK, eslint 0 warnings, tsc (demo-shop, worker, contracts, web), spotless:check compile   exit 0 (main checkout and clone)
+$ make test-node                        demo-shop: tests 42 pass 42 fail 0 / worker: tests 82 pass 82 fail 0   exit 0
+$ make test-api                         surefire: 51 classes, 328 tests, 0 failures, 0 errors, 0 skipped   exit 0
+    crash.AckCrashTest 5, BrokerRestartTest 5, CancelRaceTest 10, CapTest 5, DeadLetterTest 5,
+    DuplicateMessageTest 5, PublishCrashTest 5, WorkerKillTest 10 (all passed)
+$ make contracts-check (clone)          contracts-check OK: api/openapi.yaml and packages/contracts/src/api.ts match the code   exit 0
+GitHub Actions run 44919519388 on f1db10d: "check + unit tests" pass (5m0s), "compose up + Chromium smoke and worker e2e" pass (4m22s)
+Secret scan of `git log -p --all` (AWS, GitHub, Slack, private-key, sk- patterns): 0 matches. .env is git-ignored and untracked.
+
+=== PRD-01 (clean clone)
+$ make up                               all services healthy in 22s (Docker layer cache warm; not a cold build)
+  api OK {"status":"UP"} / web OK {"status":"ok"} / demo-shop OK {"status":"ok","fixtures":"enabled"}
+$ make smoke                            18 passed (3.3s)   (checkout-smoke 6 + catalog-regression 12, Chromium)
+$ make fixture-checks                   1 passed: concurrent PASS and PRODUCT_DEFECT contexts do not affect each other @fixture-isolation
+$ make modes                            (starts with make reset)
+=== PASS seed=42: identical x3                exit=0
+=== PRODUCT_DEFECT seed=42: identical x3      @cart-total expect(locator).toHaveText | Expected "$80.99" | Received "$82.99"; @discounted-total likewise   exit=1
+=== SELECTOR_DRIFT seed=42: identical x3      @card-declined, @checkout-happy-path TimeoutError: locator.click: Timeout 5000ms exceeded.   exit=1
+=== TIMEOUT seed=42: identical x3             exit=1
+=== AUTOMATION_FLAKE seed=0: identical x3     @checkout-happy-path flaky failed>passed   exit=0
+=== AUTOMATION_FLAKE seed=7: identical x3     @checkout-happy-path unexpected failed>failed   exit=1
+=== AUTOMATION_FLAKE seed=42: identical x3    exit=0
+Fixtures disabled (DEMO_SHOP_FIXTURES=disabled, container recreated):
+  healthz {"status":"ok","fixtures":"disabled"}; POST /__fixture/session -> 404; POST /__fixture/reset -> 404; GET / -> 200
+  restored: {"status":"ok","fixtures":"enabled"}
+
+=== PRD-02
+$ make restart-check
+  api healthy again after 5s
+  run e217f390-44b3-42ff-af55-51c5e2f7ae9c unchanged after restart: status QUEUED, targets ['local:chromium:0', 'local:firefox:0']
+  same key after restart: HTTP 200, Idempotent-Replay: true, same run id
+  restart-check OK
+curl POST /api/v1/projects/{local}/runs:
+  new                              202  Location: /api/v1/runs/a474c769-…
+  same key, same body              200  Idempotent-Replay: true, same id
+  same key, engine firefox         409  idempotency-conflict
+  suiteKey "nope"                  422  unknown-suite
+  extra field baseUrl              400  validation-failed (unknown field baseUrl)
+  engine "ie6"                     400  validation-failed (invalid value for targets[0].engine)
+  rows persisted for rejected keys: 0; rows for the replayed key: 1; no stack trace in any problem body
+
+=== PRD-03 boundary (developer's stack, before it was stopped)
+  public port POST /internal/v1/workers/register -> 404
+  host 127.0.0.1:8081 -> connection refused (not published)
+  internal port, no token -> 401; wrong bearer token -> 401
+
+=== PRD-03 AC-6 / E2E-002 on the PRD-04 code (previously "not run in this PRD")
+$ make e2e ENGINES="chromium firefox webkit"
+  local:{chromium,firefox,webkit}:0 attempt 1 PASSED cases=6 (all PASSED)
+ok   checkout-smoke PASS → PASSED in 24.2s
+  local:{chromium,firefox,webkit}:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 42.3s
+  local:{chromium,firefox,webkit}:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 48.4s
+  local:{chromium,firefox,webkit}:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 134.1s
+  local:{chromium,firefox,webkit}:0 attempt 1 PASSED cases=12 (all PASSED)
+ok   catalog-regression PASS → PASSED in 18.1s
+e2e OK   (4m27s; per-engine lines collapsed here, each engine printed its own identical line)
+
+=== make kill-check
+created run 88c55a1a-e8bd-47c0-a32a-9ebe92e3f917 (TIMEOUT fixture: each attempt runs ~40 s)
+target RUNNING; sending SIGKILL to the worker container and starting it again
+waiting for the reaper to abandon attempt 1 and for attempt 2 to be claimed (bound 45 s)
+attempt 2 claimed 29 s after the kill
+waiting for attempt 2 to finish
+--- attempts (database)
+1 | ABANDONED | LEASE_EXPIRED | worker-c2ac4f8afd8a | 0
+2 | TIMED_OUT | TEST_TIMEOUT | worker-c2ac4f8afd8a | 6
+--- events
+RUN_CREATED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ATTEMPT_ABANDONED > TARGET_RETRY_SCHEDULED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > TARGET_FINISHED > RUN_FINISHED
+--- run
+run status: TIMED_OUT | target status: TIMED_OUT | attempts: 2
+kill-check OK
+exit 0
+
+=== make crash-check
+== after_complete_before_ack
+worker died: exited 137; target PASSED; attempts 1:PASSED:-
+after restart: target PASSED; attempts 1:PASSED:-
+redelivery refused (409) and acked by the restarted worker: 1
+== after_claim
+worker died: exited 137; target CLAIMED; attempts 1:CLAIMED:-
+after restart: target PASSED 40 s after the kill; attempts 1:ABANDONED:LEASE_EXPIRED, 2:PASSED:-
+redelivery refused (409) and acked by the restarted worker: 1
+crash-check OK
+exit 0
+
+=== make sigterm-check
+created run d3a6e901-28ac-4beb-b643-e10f56690af8
+target RUNNING; docker compose stop worker (SIGTERM)
+worker container stopped after 20 s
+run INFRA_ERROR | target INFRA_ERROR | attempt INFRA_ERROR WORKER_SHUTDOWN | detail: worker shut down before the attempt finished | cases 0
+--- worker log during shutdown
+"msg":"draining"
+"msg":"stopped consuming; finishing current attempts"
+"msg":"attempt finished; reporting"
+"msg":"completion accepted"
+"msg":"consumer stopped"
+"msg":"worker exited cleanly"
+sigterm-check OK
+exit 0
+
+=== PRD-04 demo moment (previously "not run in this PRD"): 3 workers, 20 targets, cap 3, docker kill one worker
+Script: scale-demo.sh (audit scratch script, not in the repo). scheduler_settings: global_max_sessions 3, max_attempts 3, lease_ttl_s 30.
+`up --scale worker=3`, 7 checkout-smoke PASS runs (6 × 3 engines + 1 × 2), active attempts (CLAIMED/RUNNING)
+sampled from the database every 200 ms, `docker kill` on the container of a worker with a RUNNING attempt.
+workers registered ACTIVE: 3
+created 7 runs, 20 targets
+docker kill worker-bff27b53519b (bff27b53519b) while RUNNING
+all runs terminal 65 s after the kill
+active-session samples: 247, max 3, over 3: 0
+--- run statuses
+PASSED|7
+--- target statuses
+PASSED|20
+--- attempts per worker
+worker-bee2be453300|11
+worker-bff27b53519b|1
+worker-fb7421ece63e|9
+--- targets with >1 attempt (history)
+local:webkit:0|1:ABANDONED:LEASE_EXPIRED@worker-bff27b53519b → 2:PASSED@worker-bee2be453300
+--- active attempts per target never > 1 (partial unique index): 0
+(The script's last query then failed on a wrong column name in the script itself, `registered_at`; not a system error.)
+GET /api/v1/workers about 75 s after the kill: worker-bff27b53519b still ACTIVE (documented 3 × TTL = 90 s limit);
+re-read shortly after: LOST, last_seen_at 2026-11-21T16:06:48Z. The other two workers ACTIVE.
+
+=== PRD-04 FR-8 cancel (live)
+A 2-target TIMEOUT run (chromium, firefox), cancelled 6 s after creation:
+  POST /runs/{id}/cancel -> 202; 14 s later run CANCELLED, both targets CANCELLED
+  POST /runs/{id}/cancel again (terminal) -> 200
+  events: RUN_CREATED > TARGET_DISPATCHED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > RUN_CANCEL_REQUESTED > TARGET_FINISHED > TARGET_FINISHED > RUN_FINISHED > RUN_CANCEL_REQUESTED
+
+=== Runbook tools (after the drills)
+$ make stuck-runs     0 stuck target(s)
+$ make dlq            tg.targets.dead holds 0 message(s)
+
+=== Observations (no change made)
+- PR #5 is open and green; main still ends at the PRD-03 merge (a41e4ae).
+- Testcontainers' Postgres and non-crash RabbitMQ containers publish on 0.0.0.0 during `make test-api`
+  (crash.CrashRabbit binds 127.0.0.1). Short-lived, fake credentials.
+- MANIFEST.sha256 (planning kit) no longer matches 6 edited files: MASTER_PRD.md, PROGRESS.md, README.md,
+  docs/API_AND_DATA_CONTRACTS.md, docs/ARCHITECTURE.md, progress.json.

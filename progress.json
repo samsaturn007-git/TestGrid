@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T08:23:09+00:00",
+  "updated_at": "2026-11-21T15:13:18+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -172,7 +172,7 @@
     "PRD-04": {
       "title": "RabbitMQ, transactional outbox, dispatcher, bounded workers and lease recovery",
       "filename": "prds/PRD-04-durable-queue.md",
-      "status": "not_started",
+      "status": "done",
       "deps": [
         "PRD-03"
       ],
@@ -183,34 +183,34 @@
       "tasks": {
         "T1": {
           "label": "Add migrations for outbox, worker registry, scheduler settings and dispatch columns.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement capacity-aware FIFO dispatcher and outbox publisher with publisher confirms.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Declare topology; implement consumer manual ack, retry queue and DLQ policy.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Implement reaper, bounded retries with backoff/jitter and stale-generation rejection.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Implement worker registry/draining and run cancellation with race handling.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Create Testcontainers integration tests: cap, duplicate message, worker kill, broker restart, ack-after-complete crash, cancel race.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Document failure guarantees, operator runbook (stuck runs, DLQ replay) and timing defaults.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-04.md",
       "blocker": null
     },
     "PRD-05": {

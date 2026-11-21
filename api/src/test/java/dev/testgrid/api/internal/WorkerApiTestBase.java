@@ -56,7 +56,10 @@ abstract class WorkerApiTestBase {
 
   @BeforeEach
   void clean() {
-    jdbc.sql("TRUNCATE case_results, attempts, run_events, run_targets, runs").update();
+    jdbc.sql(
+            "TRUNCATE workers, outbox_events, case_results, attempts, run_events, run_targets, runs")
+        .update();
+    jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
   }
 
   int internalPort() {
@@ -133,15 +136,45 @@ abstract class WorkerApiTestBase {
         response.body());
   }
 
+  /**
+   * What the dispatcher and the broker do for a real worker, done by hand: take the oldest
+   * undispatched QUEUED target for these engines, mark it dispatched (new generation) and claim it
+   * by ID. The background dispatch loops are off in tests.
+   */
   HttpResponse<String> claimResponse(String workerId, String... engines) {
-    String list = String.join("\",\"", engines);
+    var dispatched = dispatchOldest(engines);
+    return claimTarget(workerId, dispatched.targetId(), dispatched.generation());
+  }
+
+  record Dispatched(UUID targetId, int generation) {}
+
+  Dispatched dispatchOldest(String... engines) {
+    return jdbc.sql(
+            """
+            UPDATE run_targets
+            SET dispatched_at = now(), dispatch_generation = dispatch_generation + 1
+            WHERE id = (SELECT id FROM run_targets
+                        WHERE status = 'QUEUED' AND dispatched_at IS NULL
+                          AND engine IN (:engines)
+                        ORDER BY queued_at, id LIMIT 1)
+            RETURNING id, dispatch_generation
+            """)
+        .param("engines", List.of(engines))
+        .query((rs, i) ->
+            new Dispatched(rs.getObject("id", UUID.class), rs.getInt("dispatch_generation")))
+        .single();
+  }
+
+  HttpResponse<String> claimTarget(String workerId, UUID targetId, int generation) {
     return internalPost(
-        "/internal/v1/claims/next",
+        "/internal/v1/targets/" + targetId + "/claim",
         "{\"workerId\":\""
             + workerId
-            + "\",\"executor\":\"LOCAL\",\"engines\":[\""
-            + list
-            + "\"]}");
+            + "\",\"messageId\":\""
+            + UUID.randomUUID()
+            + "\",\"dispatchGeneration\":"
+            + generation
+            + "}");
   }
 
   HttpResponse<String> start(Claim claim) {

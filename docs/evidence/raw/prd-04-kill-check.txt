@@ -1,0 +1,15 @@
+$ make kill-check   # 2026-11-21T15:10:46Z, after the review fixes
+created run 2df4f3d6-0411-4383-b1b2-b013cbfa6f0c (TIMEOUT fixture: each attempt runs ~40 s)
+target RUNNING; sending SIGKILL to the worker container and starting it again
+waiting for the reaper to abandon attempt 1 and for attempt 2 to be claimed (bound 45 s)
+attempt 2 claimed 32 s after the kill
+waiting for attempt 2 to finish
+--- attempts (database)
+1 | ABANDONED | LEASE_EXPIRED | worker-f8d1a4bc9a8f | 0
+2 | TIMED_OUT | TEST_TIMEOUT | worker-f8d1a4bc9a8f | 6
+--- events
+RUN_CREATED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ATTEMPT_ABANDONED > TARGET_RETRY_SCHEDULED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > TARGET_FINISHED > RUN_FINISHED
+--- run
+run status: TIMED_OUT | target status: TIMED_OUT | attempts: 2
+kill-check OK
+exit 0

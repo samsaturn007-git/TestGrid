@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { loadConfig } from '../src/config.ts';
+
+const base = {
+  TESTGRID_API_URL: 'http://api:8081',
+  TESTGRID_WORKER_TOKEN: 'fake-service-token-for-tests-0123456789abcdef',
+  DEMO_SHOP_INTERNAL: 'http://demo-shop:4173',
+  RABBITMQ_USER: 'testgrid',
+  RABBITMQ_PASSWORD: 'fake-password',
+};
+
+describe('loadConfig', () => {
+  it('has no fault by default and falls back to worker-<hostname>', () => {
+    const c = loadConfig(base);
+    assert.equal(c.fault, null);
+    assert.match(c.workerId, /^worker-[A-Za-z0-9._-]+$/);
+    assert.equal(c.slots, 1);
+  });
+
+  it('honours TG_FAULT only with TESTGRID_PROFILE=local', () => {
+    assert.throws(
+      () => loadConfig({ ...base, TG_FAULT: 'after_claim' }),
+      /only honoured with TESTGRID_PROFILE=local/,
+    );
+    assert.equal(
+      loadConfig({ ...base, TG_FAULT: 'after_claim', TESTGRID_PROFILE: 'local' }).fault,
+      'after_claim',
+    );
+    // The API's point is accepted and ignored here.
+    assert.equal(
+      loadConfig({ ...base, TG_FAULT: 'after_publish_before_mark', TESTGRID_PROFILE: 'local' })
+        .fault,
+      null,
+    );
+    assert.throws(() => loadConfig({ ...base, TG_FAULT: 'rm -rf', TESTGRID_PROFILE: 'local' }));
+  });
+
+  it('refuses slots outside 1..16 and a non-hostname broker host', () => {
+    assert.throws(() => loadConfig({ ...base, TESTGRID_WORKER_SLOTS: '17' }));
+    assert.throws(() => loadConfig({ ...base, RABBITMQ_HOST: 'evil.example/x' }));
+  });
+});

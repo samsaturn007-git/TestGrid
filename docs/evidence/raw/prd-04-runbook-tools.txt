@@ -1,0 +1,51 @@
+# make stuck-runs / make dlq / make dlq-replay, live (2026-11-21T14:35:31Z)
+$ make stuck-runs   # idle
+ run_id | target_key | status | attempts | gen | reason | worker | queued | dispatched | lease_until 
+--------+------------+--------+----------+-----+--------+--------+--------+------------+-------------
+
+0 stuck target(s)
+$ docker compose stop worker; POST a catalog-regression run (chromium)
+run dfe7f6b4-805b-4b43-bba4-d7303bb53301
+$ make stuck-runs
+ run_id | target_key | status | attempts | gen | reason | worker | queued | dispatched | lease_until 
+--------+------------+--------+----------+-----+--------+--------+--------+------------+-------------
+
+0 stuck target(s)
+$ rabbitmqadmin get messages --queue tg.targets.chromium --ack-mode reject_requeue_false   # dead-letter the dispatch by hand
+$ make dlq
+tg.targets.dead holds 1 message(s)
+b75adde1-a135-4454-9fd4-e5db2ac00da3 gen 1 (rejected from tg.targets.chromium): claimable: a replay runs it now
+$ make dlq-replay
+replayed	b75adde1-a135-4454-9fd4-e5db2ac00da3	1	9ba0ceed-96dc-4954-a3a3-bf8af8eb28a0	tg.targets.chromium	rejected
+replayed 1, skipped 0
+$ docker compose start worker
+run status: PASSED
+target PASSED, generation 1, attempts 1
+$ make dlq
+tg.targets.dead holds 0 message(s)
+$ make stuck-runs
+ run_id | target_key | status | attempts | gen | reason | worker | queued | dispatched | lease_until 
+--------+------------+--------+----------+-----+--------+--------+--------+------------+-------------
+
+0 stuck target(s)
+
+# Note: the stuck-runs call above found no row although the worker was stopped. Two containers
+# killed with SIGKILL by make crash-check at 14:34 were still ACTIVE in the registry (a killed
+# worker can't drain; it turns LOST after 90 s of silence). Repeated once those rows were LOST:
+$ GET /api/v1/workers   # 14:36:11
+  live: [('worker-f8d1a4bc9a8f', 'ACTIVE')]
+$ docker compose stop worker; POST a catalog-regression run (chromium)
+run 75f05ce0-9f28-496b-8d2e-d9987faea987
+$ make stuck-runs
+                run_id                |    target_key    | status | attempts | gen |           reason            | worker |  queued  | dispatched | lease_until 
+--------------------------------------+------------------+--------+----------+-----+-----------------------------+--------+----------+------------+-------------
+ 75f05ce0-9f28-496b-8d2e-d9987faea987 | local:chromium:0 | QUEUED | 0/3      |   1 | NO_ACTIVE_WORKER_FOR_ENGINE | -      | 14:36:12 | 14:36:12   | 
+
+1 stuck target(s)
+$ docker compose start worker
+run status: PASSED
+$ make stuck-runs
+ run_id | target_key | status | attempts | gen | reason | worker | queued | dispatched | lease_until 
+--------+------------+--------+----------+-----+--------+--------+--------+------------+-------------
+
+0 stuck target(s)

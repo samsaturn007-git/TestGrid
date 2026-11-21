@@ -1,0 +1,6 @@
+# Live Compose stack, 2026-11-21T14:36:51Z: targets created in the last 40 minutes (e2e and drills) that were dispatched within 5 s of creation, i.e. not waiting for a free slot. One machine, one session; not a benchmark.
+ targets | p50_create_to_dispatch_ms | max_create_to_dispatch_ms | p50_dispatch_to_publish_ms | max_dispatch_to_publish_ms 
+---------+---------------------------+---------------------------+----------------------------+----------------------------
+      21 |                         7 |                        21 |                          4 |                          8
+(1 row)
+

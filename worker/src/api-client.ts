@@ -29,6 +29,23 @@ const Completed = z.looseObject({
 });
 export type CompletedResponse = z.infer<typeof Completed>;
 
+const WORKER_STATE = z.enum(['ACTIVE', 'DRAINING', 'LOST']);
+const Registered = z.looseObject({
+  id: z.uuid(),
+  name: z.string(),
+  state: WORKER_STATE,
+  heartbeatIntervalSeconds: z.number().int().min(1),
+});
+export type Registered = z.infer<typeof Registered>;
+const WorkerState = z.looseObject({ id: z.uuid(), state: WORKER_STATE });
+
+export interface Registration {
+  name: string;
+  version: string;
+  engines: readonly string[];
+  slots: number;
+}
+
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export function newTraceId(): string {
@@ -70,17 +87,42 @@ export class WorkerApiClient {
     return response;
   }
 
-  async claimNext(
-    workerId: string,
-    engines: readonly string[],
-    traceId: string,
-  ): Promise<Claim | null> {
-    const response = await this.post(
-      '/internal/v1/claims/next',
-      { workerId, executor: 'LOCAL', engines },
+  /** PRD-04 FR-7: a new registry row; a live row with the same name becomes LOST. */
+  async register(registration: Registration, traceId: string): Promise<Registered> {
+    const r = await this.post(
+      '/internal/v1/workers/register',
+      { ...registration, executor: 'LOCAL' },
       traceId,
     );
-    if (response.status === 204) return null;
+    return Registered.parse(await r.json());
+  }
+
+  /** 410 once the row is LOST: register again. */
+  async workerHeartbeat(id: string, traceId: string): Promise<string> {
+    const r = await this.post(
+      `/internal/v1/workers/${encodeURIComponent(id)}/heartbeat`,
+      {},
+      traceId,
+    );
+    return WorkerState.parse(await r.json()).state;
+  }
+
+  async drain(id: string, traceId: string): Promise<string> {
+    const r = await this.post(`/internal/v1/workers/${encodeURIComponent(id)}/drain`, {}, traceId);
+    return WorkerState.parse(await r.json()).state;
+  }
+
+  /** PRD-04 FR-5: claim the target a dispatch message names, fenced by its generation. */
+  async claim(
+    targetId: string,
+    request: { workerId: string; messageId: string; dispatchGeneration: number },
+    traceId: string,
+  ): Promise<Claim> {
+    const response = await this.post(
+      `/internal/v1/targets/${encodeURIComponent(targetId)}/claim`,
+      request,
+      traceId,
+    );
     return Claim.parse(await response.json());
   }
 

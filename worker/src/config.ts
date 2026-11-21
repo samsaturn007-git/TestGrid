@@ -2,6 +2,7 @@ import { hostname } from 'node:os';
 import { z } from 'zod';
 import { parseFixtureEnv } from '../suites/support/fixture-env.ts';
 import { ENGINE } from './claim.ts';
+import type { FaultPoint } from './worker.ts';
 
 // Worker settings come only from the operator's environment, validated at startup.
 // The worker refuses to start rather than run with a half-valid configuration.
@@ -13,9 +14,28 @@ const Env = z.object({
   TESTGRID_WORKER_TOKEN: z.string().min(32),
   TESTGRID_WORKER_ID: z.string().regex(WORKER_ID).optional(),
   TESTGRID_WORKER_ENGINES: z.string().default('chromium'),
+  // Shown in the registry (GET /api/v1/workers); the image build can set it.
+  TESTGRID_WORKER_VERSION: z
+    .string()
+    .regex(/^[A-Za-z0-9._+-]{1,64}$/)
+    .default('dev'),
   DEMO_SHOP_INTERNAL: z.string(),
-  TESTGRID_POLL_MIN_MS: z.coerce.number().int().min(50).default(500),
-  TESTGRID_POLL_MAX_MS: z.coerce.number().int().min(100).default(5000),
+  // PRD-04 FR-5: the broker the dispatch messages come from. Operator settings, never client input.
+  RABBITMQ_HOST: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]{1,253}$/)
+    .default('rabbitmq'),
+  RABBITMQ_PORT: z.coerce.number().int().min(1).max(65535).default(5672),
+  RABBITMQ_USER: z.string().min(1).max(128),
+  RABBITMQ_PASSWORD: z.string().min(1).max(256),
+  // prefetch = slots (contracts §9); docs/VERSIONS.md §3 allows 1 by default, 2 at most for now.
+  TESTGRID_WORKER_SLOTS: z.coerce.number().int().min(1).max(16).default(1),
+  // PRD-04 Verification fault points; refused outside the local profile, like the API's.
+  TESTGRID_PROFILE: z.string().optional(),
+  TG_FAULT: z
+    .enum(['', 'after_claim', 'after_complete_before_ack', 'after_publish_before_mark'])
+    .default(''),
+  TESTGRID_RECONNECT_MAX_MS: z.coerce.number().int().min(100).default(30_000),
   TESTGRID_SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(20_000),
 });
 
@@ -23,11 +43,22 @@ export interface WorkerConfig {
   apiUrl: string;
   token: string;
   workerId: string;
+  version: string;
   engines: z.infer<typeof ENGINE>[];
   baseUrl: string;
-  pollMinMs: number;
-  pollMaxMs: number;
+  amqp: AmqpConfig;
+  slots: number;
+  reconnectMaxMs: number;
   shutdownGraceMs: number;
+  /** A worker-side fault point to fire, or null. */
+  fault: FaultPoint | null;
+}
+
+export interface AmqpConfig {
+  hostname: string;
+  port: number;
+  username: string;
+  password: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
@@ -38,6 +69,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     throw new Error(`invalid worker configuration: ${fields}`);
   }
   const e = parsed.data;
+  if (e.TG_FAULT !== '' && e.TESTGRID_PROFILE !== 'local') {
+    throw new Error('TG_FAULT is only honoured with TESTGRID_PROFILE=local');
+  }
+  // after_publish_before_mark is the API's point; nothing to do in the worker.
+  const fault: FaultPoint | null =
+    e.TG_FAULT === 'after_claim' || e.TG_FAULT === 'after_complete_before_ack' ? e.TG_FAULT : null;
   const api = new URL(e.TESTGRID_API_URL);
   if (api.username || api.password || api.search || api.hash || api.pathname !== '/') {
     throw new Error('TESTGRID_API_URL must be a bare origin');
@@ -56,10 +93,18 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     apiUrl: api.origin,
     token: e.TESTGRID_WORKER_TOKEN,
     workerId: e.TESTGRID_WORKER_ID ?? fallbackId,
+    version: e.TESTGRID_WORKER_VERSION,
     engines,
     baseUrl,
-    pollMinMs: e.TESTGRID_POLL_MIN_MS,
-    pollMaxMs: Math.max(e.TESTGRID_POLL_MAX_MS, e.TESTGRID_POLL_MIN_MS),
+    amqp: {
+      hostname: e.RABBITMQ_HOST,
+      port: e.RABBITMQ_PORT,
+      username: e.RABBITMQ_USER,
+      password: e.RABBITMQ_PASSWORD,
+    },
+    slots: e.TESTGRID_WORKER_SLOTS,
+    reconnectMaxMs: e.TESTGRID_RECONNECT_MAX_MS,
+    fault,
     shutdownGraceMs: e.TESTGRID_SHUTDOWN_GRACE_MS,
   };
 }

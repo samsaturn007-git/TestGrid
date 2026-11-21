@@ -8,7 +8,10 @@ import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.TargetStatus;
+import dev.testgrid.api.worker.WorkerState;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -31,10 +34,29 @@ public final class WorkerApi {
 
   private WorkerApi() {}
 
+  /**
+   * PRD-04 FR-5: the worker claims the target named in an AMQP message. {@code dispatchGeneration}
+   * is the fencing token from the message; {@code messageId} is recorded for the audit trail.
+   */
   public record ClaimRequest(
       @NotNull @Pattern(regexp = WORKER_ID) String workerId,
+      @NotNull UUID messageId,
+      @NotNull @Min(1) Integer dispatchGeneration) {}
+
+  static final String WORKER_VERSION = "^[A-Za-z0-9._+-]{1,64}$";
+
+  /** PRD-04 FR-7: {@code name} is what this worker's claims record as {@code workerId}. */
+  public record RegisterRequest(
+      @NotNull @Pattern(regexp = WORKER_ID) String name,
+      @NotNull @Pattern(regexp = WORKER_VERSION) String version,
       @NotNull Executor executor,
-      @NotNull @Size(min = 1, max = 3) List<@NotNull Engine> engines) {}
+      @NotNull @Size(min = 1, max = 3) List<@NotNull Engine> engines,
+      @NotNull @Min(1) @Max(16) Integer slots) {}
+
+  public record RegisterResponse(
+      UUID id, String name, WorkerState state, int heartbeatIntervalSeconds) {}
+
+  public record WorkerStateResponse(UUID id, WorkerState state) {}
 
   public record Suite(String suiteKey, String revision) {}
 

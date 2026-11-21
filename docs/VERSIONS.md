@@ -81,6 +81,17 @@ Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, release date, d
 | zod | **4.6.7** (pin kept, still `latest`) | Worker: claim payload, environment and Playwright JSON report parsing. Same version as demo-shop. |
 | API JSON logs | Spring Boot 4.1.2 built-in structured logging (`logging.structured.format.console`) | No new dependency: Boot's ECS/Logstash formats replace a separate Logback encoder. |
 
+### 1.4 PRD-04 broker and client libraries (checked 2026-11-21)
+
+| Component | Pin | Source and note |
+|---|---|---|
+| RabbitMQ | **4.4.1** (pin kept), image `rabbitmq:4.4.1-management` | Re-checked before PRD-04: still the newest non-prerelease on [GitHub releases](https://github.com/rabbitmq/rabbitmq-server/releases) (4.4.1 and 4.3.8 both 2026-11-16). Docker Hub tag updated 2026-11-17, multi-arch incl. arm64; pulled locally, `rabbitmq-diagnostics --version` prints 4.4.1, 448 MB. |
+| Spring AMQP (`spring-boot-starter-amqp`) | **4.1.2** (Boot 4.1.2 BOM) | [spring-boot-dependencies-4.1.2.pom](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.2/spring-boot-dependencies-4.1.2.pom): `spring-amqp.version` 4.1.2, `rabbit-amqp-client.version` 5.30.0. Added to `api/pom.xml` in PRD-04 T2; `mvn dependency:list` resolves `spring-rabbit` 4.1.2 and `amqp-client` 5.30.0. |
+| Testcontainers RabbitMQ (`testcontainers-rabbitmq`) | **2.0.5** (Boot BOM) | Artifact exists on Maven Central (`testcontainers-rabbitmq-2.0.5.pom`, HTTP 200); same version as the Postgres module. Added in PRD-04 T2 (`org.testcontainers.rabbitmq.RabbitMQContainer`, image `rabbitmq:4.4.1-management`). |
+| amqplib (worker) | **2.4.0** (npm `latest`, 2026-11-16) | [npm registry](https://registry.npmjs.org/amqplib): `engines.node >=18`, ships its own `index.d.ts` (no `@types/amqplib`; that package is at 0.10.8 for the old 0.10 line), no dependencies. It is five days old at check time; re-check on install (T3) and fall back to 2.3.3 if a regression has been reported. **Re-checked and installed in T3 (2026-11-21):** still `latest`; the issues closed since 2.4.0 (#872 recovery when listeners throw, #873 docs) concern the built-in reconnect option, which the worker doesn't use (it reconnects itself). `pnpm --filter worker add amqplib@2.4.0 --save-exact`. |
+
+**PRD-04 memory budget** (§3): the default profile plus RabbitMQ is 4,864 + 512 = 5,376 MiB with 2 workers. The PRD-04 demo with `--scale worker=3` is 6,912 MiB of the 7.8 GiB OrbStack VM; don't run it alongside the `obs` profile.
+
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).
 - `.nvmrc`, `.tool-versions`, `package.json#packageManager` and `.mvn/wrapper/maven-wrapper.properties` must match this table (PRD-01 FR-3).
@@ -147,4 +158,4 @@ Planning limits, enforced as `mem_limit` / `cpus` in Compose from PRD-01 and har
 | **Browser concurrency cap** (`global_max_sessions`) | **3** | matches PRD-04 Q-001 (cap 3); with 2 workers this means one worker may run 2 slots |
 | Worker slots | 1 by default, 2 allowed only when `global_max_sessions` permits | keeps per-container memory predictable |
 
-Budget check (default profile, PRD-03 shape): 512 + 768 + 256 + 256 + 2 × 1,536 = 4,864 MiB ≤ 8 GiB. With `queue` (+512 MiB) = 5,376 MiB. With `obs` (+1,536 MiB) = 6,912 MiB — still under budget, but `obs` and benchmark runs should not overlap (benchmarks must record the profile used).
+Budget check (default profile, PRD-03 shape): 512 + 768 + 256 + 256 + 2 × 1,536 = 4,864 MiB ≤ 8 GiB. From PRD-04 RabbitMQ is in the default profile (+512 MiB) = 5,376 MiB (CONFLICT_REGISTER N14). With `obs` (+1,536 MiB) = 6,912 MiB — still under budget, but `obs` and benchmark runs should not overlap (benchmarks must record the profile used).

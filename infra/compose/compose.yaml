@@ -1,4 +1,5 @@
-# TestGrid local environment — PRD-01 `default` services.
+# TestGrid local environment — PRD-01 `default` services, plus RabbitMQ from PRD-04
+# (CONFLICT_REGISTER N14: dispatch needs the broker, so it is in the default profile).
 # Run through the root Makefile (make up / down / reset / logs). Every published port
 # binds to 127.0.0.1 only. Resource limits follow docs/VERSIONS.md §3.
 name: testgrid
@@ -29,6 +30,29 @@ services:
     mem_limit: 512m
     cpus: 1.0
 
+  rabbitmq:
+    image: rabbitmq:4.4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-testgrid}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env (copy .env.example)}
+    volumes:
+      # Quorum queues and their messages survive `make down` / a broker restart (PRD-04 AC-5).
+      - mqdata:/var/lib/rabbitmq
+    # A fixed node name keeps the data directory valid across container re-creation.
+    hostname: rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'check_port_connectivity']
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 15s
+    # The broker drops privileges itself on start, like postgres; hardened in PRD-12.
+    security_opt: ['no-new-privileges:true']
+    # Internal only: no published ports (the management UI is reachable with `docker exec`).
+    networks: [internal]
+    mem_limit: 512m
+    cpus: 1.0
+
   api:
     build:
       context: ../..
@@ -45,10 +69,21 @@ services:
       # Worker API (PRD-03 FR-2): its own port, reachable only inside Compose; never published.
       TESTGRID_INTERNAL_PORT: '8081'
       TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
+      # PRD-04 outbox publisher and topology.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-testgrid}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env (copy .env.example)}
+      # PRD-04 reaper timings (docs/RUNBOOK.md §2); scripts/stuck-runs.sh reads the same values.
+      TESTGRID_REAPER_INTERVAL_MS: ${TESTGRID_REAPER_INTERVAL_MS:-5000}
+      TESTGRID_RETRY_BACKOFF_BASE_MS: ${TESTGRID_RETRY_BACKOFF_BASE_MS:-2000}
+      TESTGRID_RETRY_BACKOFF_MAX_MS: ${TESTGRID_RETRY_BACKOFF_MAX_MS:-60000}
+      TESTGRID_DISPATCH_TIMEOUT_MS: ${TESTGRID_DISPATCH_TIMEOUT_MS:-300000}
     ports:
       - '127.0.0.1:${API_PORT:-8080}:8080'
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8080/healthz']
@@ -119,12 +154,24 @@ services:
     environment:
       TESTGRID_API_URL: http://api:8081
       TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
-      TESTGRID_WORKER_ID: worker-1
+      # No fixed TESTGRID_WORKER_ID (CONFLICT_REGISTER N13): each container is worker-<hostname>,
+      # so `--scale worker=N` gives N distinct names in the registry and on attempts.
       TESTGRID_WORKER_ENGINES: ${TESTGRID_WORKER_ENGINES:-chromium}
+      # PRD-04 FR-5: dispatch messages come from the broker; prefetch = slots.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-testgrid}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env (copy .env.example)}
+      TESTGRID_WORKER_SLOTS: ${TESTGRID_WORKER_SLOTS:-1}
+      # PRD-04 Verification fault points (scripts/crash-check.sh). Its own variable, so arming the
+      # worker never arms the API; refused unless TESTGRID_PROFILE=local.
+      TG_FAULT: ${TG_FAULT_WORKER:-}
+      TESTGRID_PROFILE: ${TESTGRID_PROFILE:-}
       # The allowlisted origin behind the manifest's baseUrlRef DEMO_SHOP_INTERNAL.
       DEMO_SHOP_INTERNAL: http://demo-shop:4173
     depends_on:
       api:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       demo-shop:
         condition: service_healthy
@@ -153,3 +200,4 @@ networks:
 
 volumes:
   pgdata: {}
+  mqdata: {}

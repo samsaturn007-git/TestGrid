@@ -1,0 +1,28 @@
+# GitHub Actions run 44915182214 on f0816f6 (PR #5), from 'gh run view 44915182214 --json …' and '--log --job 136879154257'
+# https://github.com/samsaturn007-git/TestGrid/actions/runs/44915182214
+conclusion: success (ubuntu-24.04 runners, Temurin JDK 21.0.13)
+check + unit tests                          success  14:40:56Z → 14:46:15Z (5m19s)
+  make check (format, lint, typecheck)      success
+  make test (node:test + ./mvnw verify)     success  14:41:39Z → 14:45:59Z
+    demo-shop test: ℹ tests 42  ℹ pass 42  ℹ fail 0
+    worker test:    ℹ tests 82  ℹ pass 82  ℹ fail 0
+    ./mvnw verify runs with -q: no per-class counts are printed; any failing test fails the step.
+  Vocabulary check                          success  vocab_check OK
+  Contract drift check                      success  contracts-check OK: api/openapi.yaml and packages/contracts/src/api.ts match the code
+compose up + Chromium smoke and worker e2e  success  14:40:56Z → 14:45:12Z (4m16s)
+  make up (all services healthy)            success
+  Run survives an API restart (PRD-02 AC-1) success
+  Worker end-to-end on Chromium (PRD-03 E2E-001, AC-1, AC-2)  success
+  make smoke (FIXTURE_MODE=PASS)            success
+  Fixture isolation (AC-3)                  success
+  Fixtures disabled → 404 (AC-4)            success
+
+# Markers in the 'check + unit tests' log showing the PRD-04 crash suite ran on the runner (line counts):
+  fault point fired: after_publish_before_mark     6
+  attempt abandoned (lease expired)                25
+  dispatches in a row were never claimed           6
+  CONNECTION_FORCED                                10
+  rejected stale dispatch                          86
+  rejected claim at capacity                       4
+  (after_publish_before_mark: 5 PublishCrashTest runs + 1 OutboxPublisherTest; 'never claimed': 5 DeadLetterTest runs + 1 ReaperTest;
+   CONNECTION_FORCED: BrokerRestartTest's docker restart of RabbitMQ.)

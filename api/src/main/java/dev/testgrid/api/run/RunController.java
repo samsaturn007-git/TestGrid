@@ -32,10 +32,13 @@ public class RunController {
 
   private final RunCreationService creation;
   private final RunQueryService queries;
+  private final RunCancelService cancels;
 
-  public RunController(RunCreationService creation, RunQueryService queries) {
+  public RunController(
+      RunCreationService creation, RunQueryService queries, RunCancelService cancels) {
     this.creation = creation;
     this.queries = queries;
+    this.cancels = cancels;
   }
 
   @GetMapping("/runs")
@@ -132,5 +135,42 @@ public class RunController {
           .body(result.run());
     }
     return ResponseEntity.accepted().location(location).body(result.run());
+  }
+
+  /**
+   * PRD-04 FR-8. 202 when the cancel was accepted: QUEUED targets are CANCELLED at once and active
+   * attempts stop on their next heartbeat. 200 with the run unchanged when it was already terminal.
+   */
+  @PostMapping("/runs/{runId}/cancel")
+  @Operation(
+      operationId = "cancelRun",
+      summary = "Cancel a run",
+      description =
+          "QUEUED targets end CANCELLED immediately; active attempts are told on their next"
+              + " heartbeat and finish CANCELLED unless their completion commits first. A run"
+              + " that is already terminal is returned unchanged with 200.")
+  @ApiResponse(
+      responseCode = "202",
+      description = "Cancel accepted",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = RunResponse.class)))
+  @ApiResponse(
+      responseCode = "200",
+      description = "Already terminal: nothing changed",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = RunResponse.class)))
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  public ResponseEntity<RunResponse> cancel(@PathVariable UUID runId) {
+    RunCancelService.Result result = cancels.cancel(runId);
+    return result.accepted()
+        ? ResponseEntity.accepted().body(result.run())
+        : ResponseEntity.ok(result.run());
   }
 }

@@ -1,0 +1,11 @@
+$ make crash-check   # 2026-11-21T14:34:01Z
+== after_complete_before_ack
+worker died: exited 137; target PASSED; attempts 1:PASSED:-
+after restart: target PASSED; attempts 1:PASSED:-
+redelivery refused (409) and acked by the restarted worker: 1
+== after_claim
+worker died: exited 137; target CLAIMED; attempts 1:CLAIMED:-
+after restart: target PASSED 39 s after the kill; attempts 1:ABANDONED:LEASE_EXPIRED, 2:PASSED:-
+redelivery refused (409) and acked by the restarted worker: 1
+crash-check OK
+exit 0

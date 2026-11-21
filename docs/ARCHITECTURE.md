@@ -28,7 +28,7 @@ flowchart LR
   W -->|start / heartbeat / complete| API
   W -->|allowlisted base URL| SHOP[demo-shop]
 ```
-- **Pull model:** the worker polls with `claims/next`.
+- **Pull model:** the worker polls with `claims/next` (PRD-03 only; removed in PRD-04 T3, where the worker claims the target named in a dispatch message, CONFLICT_REGISTER N11).
 - **Claim query:** `SELECT … FROM run_targets WHERE status='QUEUED' AND (not_before IS NULL OR not_before <= now()) ORDER BY queued_at, id LIMIT 1 FOR UPDATE SKIP LOCKED`, followed by the attempt insert in the same transaction.
 - Even with a single worker, the lease protocol is real from day one. Statuses are never faked in the UI.
 
@@ -95,9 +95,13 @@ sequenceDiagram
 **Worker crash**
 1. Heartbeats stop.
 2. The reaper runs every 5 s: `SELECT … WHERE status IN ('CLAIMED','RUNNING') AND leased_until < now() FOR UPDATE SKIP LOCKED`.
-3. The attempt becomes `ABANDONED` (`LEASE_EXPIRED`).
-4. If retries remain, the target returns to `QUEUED` with `not_before = now() + backoff`; otherwise it becomes `INFRA_ERROR`.
+3. The attempt becomes `ABANDONED` (`LEASE_EXPIRED`) and is kept (`ATTEMPT_ABANDONED`).
+4. If the run has a cancel request the target becomes `CANCELLED`. Otherwise, if retries remain (`attempt_count < max_attempts`), it returns to `QUEUED` with `dispatched_at = NULL` and `not_before = now() + backoff` (`TARGET_RETRY_SCHEDULED`); otherwise it becomes `INFRA_ERROR`.
 5. The dispatcher re-dispatches it with a new generation, and the broker's redelivery of the old message is rejected as `stale-dispatch`.
+
+**Lost dispatch** (PRD-04 T4, CONFLICT_REGISTER N17): the same pass also locks `QUEUED` targets whose `dispatched_at` is older than the dispatch timeout, i.e. whose message was dead-lettered or lost on the way back from the retry queue. They are undispatched so the dispatcher sends a new generation (`TARGET_RETRY_SCHEDULED`, reason `DISPATCH_TIMEOUT`), or end `INFRA_ERROR` (`WORKER_LOST`) once `max_attempts` of its dispatches went unclaimed in total (`dispatch_generation − attempt_count`; a claimed dispatch doesn't reset the count, so the limit is per target, not consecutive). The timeout must be longer than the longest legitimate queue wait; with more cap than worker slots a message can wait for a free slot, and a redispatch then is harmless (the old message gets `409`) but counts toward that limit.
+
+**Lock order (PRD-04 T6):** every transaction that changes a target locks it before its run, and takes the run's `FOR UPDATE` lock **before its first `run_events` insert**. Each insert takes `FOR KEY SHARE` on the run through the foreign key, so asking for `FOR UPDATE` afterwards is a lock upgrade; two completions of one run did exactly that and PostgreSQL aborted one with `deadlock detected` (found by the T6 crash tests, regression test `ConcurrentCompletionTest`). Claim, complete, cancel and the reaper follow the rule; the dispatcher and `start` only ever take the shared lock.
 
 **Late callback:** an old worker that wakes up (for example after `SIGSTOP`/`SIGCONT`) and calls `complete` gets `410 lease-expired`. It is logged with the attempt ID. Nothing is overwritten.
 
@@ -117,7 +121,7 @@ sequenceDiagram
 
 ## 6. Default timings
 
-These are starting values to tune with evidence, not claims.
+These are starting values to tune with evidence, not claims. The full PRD-04 list, with where each one is configured and the failure bounds they produce, is in `docs/RUNBOOK.md` §1–§2.
 
 | Setting | Default |
 |---|---|
@@ -125,7 +129,8 @@ These are starting values to tune with evidence, not claims.
 | Heartbeat interval | 10 s |
 | Reaper interval | 5 s |
 | Max attempts | 3 |
-| Retry backoff | 2 s × 2ⁿ, ±20 % jitter |
+| Retry backoff | 2 s × 2ⁿ⁻¹ after the n-th attempt (2 s, 4 s, 8 s …), max 60 s, ±20 % jitter |
+| Dispatch timeout (lost message) | 5 min |
 | Dispatcher tick | 250 ms |
 | Outbox poll | 500 ms, batch of 100 |
 | SSE ping | 15 s |
@@ -167,8 +172,7 @@ These are starting values to tune with evidence, not claims.
 - Only `web` and the API public port are bound, to `127.0.0.1`.
 - The worker reaches only the demo-shop (and BrowserStack hosts when that executor is enabled).
 - Profiles:
-  - `default`: db, api, web, demo-shop, worker
-  - `queue`: rabbitmq (PRD-04+)
+  - `default`: db, api, web, demo-shop, worker, and rabbitmq from PRD-04 (CONFLICT_REGISTER N14: dispatch needs the broker, so a separate `queue` profile would leave targets queued forever)
   - `obs`: collector, prometheus, grafana, jaeger
   - `s3`: S3-compatible store (optional)
   - `chaos`: chaos runner

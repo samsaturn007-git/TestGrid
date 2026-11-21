@@ -92,6 +92,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a run
+         * @description QUEUED targets end CANCELLED immediately; active attempts are told on their next heartbeat and finish CANCELLED unless their completion commits first. A run that is already terminal is returned unchanged with 200.
+         */
+        post: operations["cancelRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}/results": {
         parameters: {
             query?: never;
@@ -118,6 +138,26 @@ export interface paths {
         };
         /** One suite revision with its cases */
         get: operations["getSuite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Worker registry and slot usage
+         * @description Live workers (ACTIVE, DRAINING) and those LOST in the last hour.
+         */
+        get: operations["listWorkers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -369,6 +409,34 @@ export interface components {
             tag: string;
             title: string;
         };
+        WorkerView: {
+            /** Format: int32 */
+            activeAttempts: number;
+            engines: ("chromium" | "firefox" | "webkit")[];
+            /** @enum {string} */
+            executor: "LOCAL" | "BROWSERSTACK";
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            name: string;
+            /** Format: int32 */
+            slots: number;
+            /** Format: date-time */
+            startedAt: string;
+            /** @enum {string} */
+            state: "ACTIVE" | "DRAINING" | "LOST";
+            version: string;
+        };
+        WorkersResponse: {
+            /** Format: int32 */
+            activeSessions: number;
+            /** Format: int32 */
+            dispatchedUnclaimed: number;
+            /** Format: int32 */
+            globalMaxSessions: number;
+            items: components["schemas"]["WorkerView"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -571,6 +639,46 @@ export interface operations {
             };
         };
     };
+    cancelRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Already terminal: nothing changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description Cancel accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getRunResults: {
         parameters: {
             query?: never;
@@ -629,6 +737,26 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listWorkers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The registry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkersResponse"];
                 };
             };
         };

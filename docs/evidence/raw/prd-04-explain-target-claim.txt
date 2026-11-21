@@ -1,0 +1,23 @@
+-- POST /internal/v1/targets/{targetId}/claim, 5000 targets (ANALYZEd)
+LockRows  (cost=0.71..16.79 rows=1 width=196) (actual time=0.008..0.009 rows=1.00 loops=1)
+  Buffers: shared hit=9
+  ->  Nested Loop  (cost=0.71..16.78 rows=1 width=196) (actual time=0.007..0.007 rows=1.00 loops=1)
+        Buffers: shared hit=8
+        ->  Nested Loop  (cost=0.56..16.60 rows=1 width=136) (actual time=0.005..0.005 rows=1.00 loops=1)
+              Buffers: shared hit=6
+              ->  Index Scan using run_targets_pkey on run_targets t  (cost=0.28..8.30 rows=1 width=70) (actual time=0.003..0.003 rows=1.00 loops=1)
+                    Index Cond: (id = '3b0011e1-e7b6-4a8a-86c2-2c9166982669'::uuid)
+                    Index Searches: 1
+                    Buffers: shared hit=3
+              ->  Index Scan using runs_pkey on runs r  (cost=0.28..8.30 rows=1 width=82) (actual time=0.001..0.001 rows=1.00 loops=1)
+                    Index Cond: (id = t.run_id)
+                    Index Searches: 1
+                    Buffers: shared hit=3
+        ->  Index Scan using suites_pkey on suites s  (cost=0.15..0.17 rows=1 width=90) (actual time=0.001..0.001 rows=1.00 loops=1)
+              Index Cond: (id = r.suite_id)
+              Index Searches: 1
+              Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=131 read=1
+Planning Time: 0.152 ms
+Execution Time: 0.018 ms

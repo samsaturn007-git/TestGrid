@@ -15,11 +15,6 @@ import org.springframework.dao.DataAccessException;
 class LeaseProtocolTest extends WorkerApiTestBase {
 
   @Test
-  void nothingQueuedIs204() {
-    assertThat(claimResponse("w-1", "chromium").statusCode()).isEqualTo(204);
-  }
-
-  @Test
   void aClaimCreatesTheAttemptWithAHashedTokenAndADatabaseClockLease() {
     String runId = createRun("checkout-smoke", "PASS", "chromium");
     Claim claim = claim("chromium", "firefox");
@@ -60,23 +55,16 @@ class LeaseProtocolTest extends WorkerApiTestBase {
                 "SELECT string_agg(type, ',' ORDER BY id) FROM run_events WHERE run_id = :id",
                 runId))
         .isEqualTo("RUN_CREATED,TARGET_CLAIMED");
-    // The only target is taken now.
-    assertThat(claimResponse("w-2", "chromium").statusCode()).isEqualTo(204);
-  }
-
-  @Test
-  void claimsMatchOnlyTheWorkersEngines() {
-    createRun("checkout-smoke", null, "webkit");
-    assertThat(claimResponse("w-1", "chromium", "firefox").statusCode()).isEqualTo(204);
-    assertThat(claimResponse("w-1", "webkit").statusCode()).isEqualTo(200);
-  }
-
-  @Test
-  void claimsTakeTheOldestQueuedTargetFirst() {
-    String first = createRun("checkout-smoke", null, "chromium");
-    String second = createRun("checkout-smoke", null, "chromium");
-    assertThat(claim("chromium").runId()).isEqualTo(first);
-    assertThat(claim("chromium").runId()).isEqualTo(second);
+    // The same message again (a redelivery) cannot claim the target a second time.
+    int generation =
+        Integer.parseInt(
+            one(
+                "SELECT dispatch_generation::text FROM run_targets WHERE id = :id",
+                claim.targetId()));
+    var again = claimTarget("w-2", UUID.fromString(claim.targetId()), generation);
+    assertThat(again.statusCode()).isEqualTo(409);
+    assertThat(again.body()).contains("/problems/stale-dispatch");
+    assertThat(count("SELECT count(*) FROM attempts")).isEqualTo(1);
   }
 
   @Test
@@ -286,13 +274,17 @@ class LeaseProtocolTest extends WorkerApiTestBase {
     assertThat(badToken.statusCode()).isEqualTo(400);
     var unknownField =
         internalPost(
-            "/internal/v1/claims/next",
-            "{\"workerId\":\"w\",\"executor\":\"LOCAL\",\"engines\":[\"chromium\"],\"x\":1}");
+            "/internal/v1/targets/" + claim.targetId() + "/claim",
+            "{\"workerId\":\"w\",\"messageId\":\""
+                + UUID.randomUUID()
+                + "\",\"dispatchGeneration\":1,\"x\":1}");
     assertThat(unknownField.statusCode()).isEqualTo(400);
     var shellWorker =
         internalPost(
-            "/internal/v1/claims/next",
-            "{\"workerId\":\"w;rm -rf\",\"executor\":\"LOCAL\",\"engines\":[\"chromium\"]}");
+            "/internal/v1/targets/" + claim.targetId() + "/claim",
+            "{\"workerId\":\"w;rm -rf\",\"messageId\":\""
+                + UUID.randomUUID()
+                + "\",\"dispatchGeneration\":1}");
     assertThat(shellWorker.statusCode()).isEqualTo(400);
   }
 
