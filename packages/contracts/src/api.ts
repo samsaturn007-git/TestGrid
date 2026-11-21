@@ -81,7 +81,7 @@ export interface paths {
         };
         /**
          * List runs, newest first
-         * @description Keyset-paginated: pass nextCursor back as cursor. Null on the last page.
+         * @description Keyset-paginated: pass nextCursor back as cursor, with the same filters. Null on the last page. Repeat status or trigger to match any of several values; different filters must all match.
          */
         get: operations["listRuns"];
         put?: never;
@@ -621,6 +621,16 @@ export interface operations {
                 limit?: number;
                 /** @description Opaque; from a previous page's nextCursor */
                 cursor?: string;
+                /** @description Defaults to the caller's project */
+                projectId?: string;
+                /** @description Aggregate run status; repeat for several */
+                status?: ("QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED")[];
+                /** @description Exact suite key, any revision */
+                suiteKey?: string;
+                /** @description Exact branch name */
+                branch?: string;
+                /** @description Repeat for several */
+                trigger?: ("MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS")[];
             };
             header?: never;
             path?: never;
@@ -637,8 +647,17 @@ export interface operations {
                     "application/json": components["schemas"]["PageRunSummary"];
                 };
             };
-            /** @description validation-failed (limit or cursor) */
+            /** @description validation-failed (limit, cursor or a filter) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (projectId outside the caller's scope) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

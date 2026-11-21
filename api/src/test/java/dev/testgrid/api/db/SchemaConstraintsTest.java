@@ -61,7 +61,12 @@ class SchemaConstraintsTest {
     assertThat(defs)
         .anyMatch(
             d -> d.contains("ON public.runs USING btree (project_id, queued_at DESC, id DESC)"))
-        .anyMatch(d -> d.contains("ON public.runs USING btree (project_id, status)"))
+        // runs(project_id, status): from V5 the leading columns of the filtered keyset index.
+        .anyMatch(d ->
+            d.contains("ON public.runs USING btree (project_id, status, queued_at DESC, id DESC)"))
+        .anyMatch(d ->
+            d.contains("ON public.runs USING btree (project_id, branch, queued_at DESC, id DESC)")
+                && d.contains("WHERE (branch IS NOT NULL)"))
         .anyMatch(d -> d.contains("ON public.run_targets USING btree (run_id, target_key)"))
         .anyMatch(d ->
             d.contains("ON public.run_targets USING btree (status, not_before)")

@@ -1,7 +1,12 @@
 package dev.testgrid.api.run;
 
 import dev.testgrid.api.common.Page;
+import dev.testgrid.api.domain.RunStatus;
+import dev.testgrid.api.domain.Trigger;
+import dev.testgrid.api.problem.ApiProblemException;
+import dev.testgrid.api.problem.FieldError;
 import dev.testgrid.api.problem.ProblemBody;
+import dev.testgrid.api.problem.ProblemType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -11,9 +16,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,22 +49,55 @@ public class RunController {
     this.cancels = cancels;
   }
 
+  private static final Set<String> LIST_PARAMS =
+      Set.of("limit", "cursor", "projectId", "status", "suiteKey", "branch", "trigger");
+
   @GetMapping("/runs")
   @Operation(
       operationId = "listRuns",
       summary = "List runs, newest first",
-      description = "Keyset-paginated: pass nextCursor back as cursor. Null on the last page.")
+      description =
+          "Keyset-paginated: pass nextCursor back as cursor, with the same filters. Null on the"
+              + " last page. Repeat status or trigger to match any of several values; different"
+              + " filters must all match.")
   @ApiResponse(responseCode = "200", description = "A page of runs")
   @ApiResponse(
       responseCode = "400",
-      description = "validation-failed (limit or cursor)",
+      description = "validation-failed (limit, cursor or a filter)",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found (projectId outside the caller's scope)",
       content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
   public Page<RunSummary> list(
       @Parameter(description = "1-100, default 20") @RequestParam(required = false) Integer limit,
       @Parameter(description = "Opaque; from a previous page's nextCursor")
           @RequestParam(required = false)
-          String cursor) {
-    return queries.list(limit, cursor);
+          String cursor,
+      @Parameter(description = "Defaults to the caller's project") @RequestParam(required = false)
+          UUID projectId,
+      @Parameter(description = "Aggregate run status; repeat for several")
+          @RequestParam(name = "status", required = false)
+          List<RunStatus> status,
+      @Parameter(description = "Exact suite key, any revision") @RequestParam(required = false)
+          String suiteKey,
+      @Parameter(description = "Exact branch name") @RequestParam(required = false) String branch,
+      @Parameter(description = "Repeat for several")
+          @RequestParam(name = "trigger", required = false)
+          List<Trigger> trigger,
+      @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> all) {
+    // A misspelt filter (?suite=) must not quietly return the unfiltered list.
+    List<FieldError> unknown =
+        all.keySet().stream()
+            .filter(name -> !LIST_PARAMS.contains(name))
+            .sorted()
+            .map(name -> new FieldError(name, "unknown query parameter"))
+            .toList();
+    if (!unknown.isEmpty()) {
+      throw new ApiProblemException(
+          ProblemType.VALIDATION_FAILED, "the run list query has unknown parameters", unknown);
+    }
+    return queries.list(limit, cursor, projectId, status, suiteKey, branch, trigger);
   }
 
   @GetMapping("/runs/{runId}")

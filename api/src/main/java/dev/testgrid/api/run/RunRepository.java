@@ -190,36 +190,57 @@ public class RunRepository {
   // Keyset pagination (FR-6). The row comparison is an index condition on
   // runs(project_id, queued_at DESC, id DESC), so every page is an index range scan of at most
   // limit+1 rows: O(limit) per page however deep the client pages. id breaks queued_at ties.
-  static final String LIST_FIRST_PAGE =
+  // The PRD-05 filters only add conditions; V5's indexes keep the same order after the status
+  // and branch columns, so a filtered page is still a range scan. Every value is a bound
+  // parameter: the SQL text depends only on which filters are present, never on their values.
+  private static final String LIST_SELECT =
       """
       SELECT r.id, r.project_id, r.status, r.trigger, r.fixture_mode, r.fixture_seed,
              r.commit_sha, r.branch, r.ci_ref, r.queued_at, r.started_at, r.finished_at,
              s.suite_key, s.revision,
              (SELECT count(*) FROM run_targets t WHERE t.run_id = r.id) AS target_count
       FROM runs r JOIN suites s ON s.id = r.suite_id
-      WHERE r.project_id = :p
-      ORDER BY r.queued_at DESC, r.id DESC
-      LIMIT :limit
       """;
 
-  static final String LIST_AFTER_CURSOR =
-      """
-      SELECT r.id, r.project_id, r.status, r.trigger, r.fixture_mode, r.fixture_seed,
-             r.commit_sha, r.branch, r.ci_ref, r.queued_at, r.started_at, r.finished_at,
-             s.suite_key, s.revision,
-             (SELECT count(*) FROM run_targets t WHERE t.run_id = r.id) AS target_count
-      FROM runs r JOIN suites s ON s.id = r.suite_id
-      WHERE r.project_id = :p AND (r.queued_at, r.id) < (:queuedAt, :id)
-      ORDER BY r.queued_at DESC, r.id DESC
-      LIMIT :limit
-      """;
+  static String listSql(RunFilter filter, boolean afterCursor) {
+    StringBuilder where = new StringBuilder("WHERE r.project_id = :p");
+    if (!filter.statuses().isEmpty()) {
+      where.append(" AND r.status IN (:statuses)");
+    }
+    if (filter.suiteKey() != null) {
+      where.append(" AND s.suite_key = :suiteKey");
+    }
+    if (filter.branch() != null) {
+      where.append(" AND r.branch = :branch");
+    }
+    if (!filter.triggers().isEmpty()) {
+      where.append(" AND r.trigger IN (:triggers)");
+    }
+    if (afterCursor) {
+      where.append(" AND (r.queued_at, r.id) < (:queuedAt, :id)");
+    }
+    return LIST_SELECT + where + "\nORDER BY r.queued_at DESC, r.id DESC\nLIMIT :limit\n";
+  }
 
-  /** Up to {@code limit} runs after {@code cursor} (or from the newest), newest first. */
-  public List<RunSummary> listRuns(UUID projectId, RunCursor cursor, int limit) {
+  static final String LIST_FIRST_PAGE = listSql(RunFilter.NONE, false);
+  static final String LIST_AFTER_CURSOR = listSql(RunFilter.NONE, true);
+
+  /** Up to {@code limit} matching runs after {@code cursor} (or from the newest), newest first. */
+  public List<RunSummary> listRuns(UUID projectId, RunFilter filter, RunCursor cursor, int limit) {
     var query =
-        jdbc.sql(cursor == null ? LIST_FIRST_PAGE : LIST_AFTER_CURSOR)
-            .param("p", projectId)
-            .param("limit", limit);
+        jdbc.sql(listSql(filter, cursor != null)).param("p", projectId).param("limit", limit);
+    if (!filter.statuses().isEmpty()) {
+      query = query.param("statuses", filter.statuses().stream().map(Enum::name).toList());
+    }
+    if (filter.suiteKey() != null) {
+      query = query.param("suiteKey", filter.suiteKey());
+    }
+    if (filter.branch() != null) {
+      query = query.param("branch", filter.branch());
+    }
+    if (!filter.triggers().isEmpty()) {
+      query = query.param("triggers", filter.triggers().stream().map(Enum::name).toList());
+    }
     if (cursor != null) {
       query =
           query
