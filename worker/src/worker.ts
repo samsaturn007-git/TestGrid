@@ -20,7 +20,14 @@ export interface DeliveryDeps {
   /** Aborted on the worker's own SIGTERM: the current attempt gets the grace period. */
   stopping: AbortSignal;
   execute?: typeof executeAttempt;
+  /**
+   * PRD-04 Verification fault points (TG_FAULT, local profile only). In the real worker the hook
+   * kills the process with SIGKILL at that point; tests pass a recorder.
+   */
+  fault?: (point: FaultPoint) => void;
 }
+
+export type FaultPoint = 'after_claim' | 'after_complete_before_ack';
 
 export type Decision =
   /** The database has the outcome (or never will need this message): remove it. */
@@ -65,7 +72,9 @@ export async function handleDelivery(
   } catch (e) {
     return claimRefused(e, log);
   }
-  await runAttempt(deps, claim, traceId);
+  deps.fault?.('after_claim');
+  const completed = await runAttempt(deps, claim, traceId);
+  if (completed) deps.fault?.('after_complete_before_ack');
   // Ack only now: the completion was accepted, refused, or will be recovered by the lease
   // reaper (which dispatches a new generation); this message can't do anything more.
   return { action: 'ack', reason: 'attempt finished' };
@@ -98,7 +107,8 @@ function claimRefused(e: unknown, log: Logger): Decision {
   return { action: 'dead-letter', reason: `api ${e.status}` };
 }
 
-async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Promise<void> {
+/** True when the API accepted the completion (a replay included). */
+async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Promise<boolean> {
   const log = deps.log.child({
     runId: claim.runId,
     targetId: claim.targetId,
@@ -114,7 +124,7 @@ async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Pr
     await deps.api.start(claim.attemptId, claim.leaseToken, traceId);
   } catch (e) {
     log.warn({ err: describe(e) }, 'start rejected; dropping the claim');
-    return;
+    return false;
   }
 
   const abort = new AbortController();
@@ -159,7 +169,7 @@ async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Pr
   if (abort.signal.reason === 'lease-lost') {
     // The attempt is no longer ours; a completion would only be refused with 410.
     log.warn('not completing an attempt whose lease was lost');
-    return;
+    return false;
   }
   log.info(
     {
@@ -169,7 +179,7 @@ async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Pr
     },
     'attempt finished; reporting',
   );
-  await report(deps, claim, completion, traceId, log);
+  return report(deps, claim, completion, traceId, log);
 }
 
 async function report(
@@ -178,7 +188,7 @@ async function report(
   completion: Completion,
   traceId: string,
   log: Logger,
-): Promise<void> {
+): Promise<boolean> {
   // The completion key is fixed per attempt, so a retry after a lost response is a replay.
   for (let i = 1; i <= COMPLETE_RETRIES; i++) {
     try {
@@ -189,17 +199,18 @@ async function report(
         traceId,
       );
       log.info(result, 'completion accepted');
-      return;
+      return true;
     } catch (e) {
       if (e instanceof ApiError && e.status < 500) {
         log.error({ err: describe(e) }, 'completion refused');
-        return;
+        return false;
       }
       log.warn({ err: describe(e), try: i }, 'completion failed; retrying');
       await sleep(Math.min(500 * 2 ** i, 8000));
     }
   }
   log.error('completion not delivered; the lease will expire and the reaper takes over');
+  return false;
 }
 
 export function describe(e: unknown): string {

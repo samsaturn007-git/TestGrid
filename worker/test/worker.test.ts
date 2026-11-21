@@ -119,7 +119,12 @@ function body(overrides: Record<string, unknown> = {}): Buffer {
 
 async function run(
   script: Script,
-  opts: { stopAfterMs?: number; message?: Buffer; traceparent?: unknown } = {},
+  opts: {
+    stopAfterMs?: number;
+    message?: Buffer;
+    traceparent?: unknown;
+    fault?: (point: string) => void;
+  } = {},
 ) {
   const api = await fakeApi(script);
   const lines: string[] = [];
@@ -131,28 +136,34 @@ async function run(
   });
   const stopping = new AbortController();
   if (opts.stopAfterMs !== undefined) setTimeout(() => stopping.abort(), opts.stopAfterMs);
-  const decision = await handleDelivery(
-    {
-      api: new WorkerApiClient(api.url, TOKEN),
-      log: createLogger([TOKEN], { workerId: 'w-test' }, sink),
-      workerId: 'w-test',
-      attemptDeps: {
-        suites,
-        workerRoot: DEFAULT_WORKER_ROOT,
-        configPath: path.join(DEFAULT_WORKER_ROOT, 'playwright.config.ts'),
-        baseUrl: 'http://127.0.0.1:4173',
-        secrets: [TOKEN],
-        parentEnv: { ...process.env, TESTGRID_WORKER_TOKEN: TOKEN },
-        killGraceMs: 200,
-        cliPath: path.join(import.meta.dirname, 'fixtures', 'fake-cli', 'replay.mjs'),
+  let decision: Awaited<ReturnType<typeof handleDelivery>>;
+  try {
+    decision = await handleDelivery(
+      {
+        api: new WorkerApiClient(api.url, TOKEN),
+        log: createLogger([TOKEN], { workerId: 'w-test' }, sink),
+        workerId: 'w-test',
+        attemptDeps: {
+          suites,
+          workerRoot: DEFAULT_WORKER_ROOT,
+          configPath: path.join(DEFAULT_WORKER_ROOT, 'playwright.config.ts'),
+          baseUrl: 'http://127.0.0.1:4173',
+          secrets: [TOKEN],
+          parentEnv: { ...process.env, TESTGRID_WORKER_TOKEN: TOKEN },
+          killGraceMs: 200,
+          cliPath: path.join(import.meta.dirname, 'fixtures', 'fake-cli', 'replay.mjs'),
+        },
+        shutdownGraceMs: 300,
+        stopping: stopping.signal,
+        ...(opts.fault ? { fault: opts.fault } : {}),
       },
-      shutdownGraceMs: 300,
-      stopping: stopping.signal,
-    },
-    opts.message ?? body(),
-    'traceparent' in opts ? opts.traceparent : `00-${TRACE}-00f067aa0ba902b7-01`,
-  );
-  await api.close();
+      opts.message ?? body(),
+      'traceparent' in opts ? opts.traceparent : `00-${TRACE}-00f067aa0ba902b7-01`,
+    );
+  } finally {
+    // Also when the handler throws (a fault hook in a test), or the open server keeps Node alive.
+    await api.close();
+  }
   const logs = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
   const completes = api.calls.filter((c) => c.path.endsWith('/complete'));
   return { decision, calls: api.calls, completes, logs, raw: lines.join('\n') };
@@ -306,5 +317,34 @@ describe('handleDelivery against a fake worker API', () => {
     const traceId = String(calls[0]?.headers.traceparent).split('-')[1];
     assert.match(traceId ?? '', /^[0-9a-f]{32}$/);
     assert.notEqual(traceId, TRACE);
+  });
+
+  it('TG_FAULT after_claim fires right after the claim, before start', async () => {
+    const points: string[] = [];
+    await assert.rejects(
+      run(
+        {},
+        {
+          fault: (p) => {
+            points.push(p);
+            if (p === 'after_claim') throw new Error('killed');
+          },
+        },
+      ),
+      /killed/,
+    );
+    assert.deepEqual(points, ['after_claim']);
+  });
+
+  it('TG_FAULT after_complete_before_ack fires after an accepted completion only', async () => {
+    const points: string[] = [];
+    const { calls, decision } = await run({}, { fault: (p) => points.push(p) });
+    assert.deepEqual(points, ['after_claim', 'after_complete_before_ack']);
+    assert.equal(calls.at(-1)?.path.split('/').pop(), 'complete');
+    assert.equal(decision.action, 'ack');
+
+    const refused: string[] = [];
+    await run({ complete: () => 409 }, { fault: (p) => refused.push(p) });
+    assert.deepEqual(refused, ['after_claim'], 'a refused completion is not "after complete"');
   });
 });

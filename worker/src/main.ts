@@ -7,6 +7,7 @@ import { createLogger } from './logger.ts';
 import { DEFAULT_WORKER_ROOT, loadManifest } from './manifest.ts';
 import { WorkerRegistration } from './registration.ts';
 import { handleDelivery } from './worker.ts';
+import type { FaultPoint } from './worker.ts';
 
 const config = loadConfig(process.env);
 const secrets = [config.token, config.amqp.password];
@@ -66,7 +67,14 @@ const deps = {
   },
   shutdownGraceMs: config.shutdownGraceMs,
   stopping: stopping.signal,
+  fault: (point: FaultPoint) => {
+    if (point !== config.fault) return;
+    // A kill -9 at this exact point: no completion, no ack, no drain, no clean close.
+    log.warn({ fault: point }, 'TG_FAULT fired: killing the worker process');
+    process.kill(process.pid, 'SIGKILL');
+  },
 };
+if (config.fault) log.warn({ fault: config.fault }, 'TG_FAULT armed');
 
 // FR-7: register before taking any message.
 if (await registration.start()) {

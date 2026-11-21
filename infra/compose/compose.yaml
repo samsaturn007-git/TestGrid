@@ -157,6 +157,10 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-testgrid}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env (copy .env.example)}
       TESTGRID_WORKER_SLOTS: ${TESTGRID_WORKER_SLOTS:-1}
+      # PRD-04 Verification fault points (scripts/crash-check.sh). Its own variable, so arming the
+      # worker never arms the API; refused unless TESTGRID_PROFILE=local.
+      TG_FAULT: ${TG_FAULT_WORKER:-}
+      TESTGRID_PROFILE: ${TESTGRID_PROFILE:-}
       # The allowlisted origin behind the manifest's baseUrlRef DEMO_SHOP_INTERNAL.
       DEMO_SHOP_INTERNAL: http://demo-shop:4173
     depends_on:
