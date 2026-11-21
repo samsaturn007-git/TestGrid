@@ -121,7 +121,7 @@ sequenceDiagram
 
 ## 6. Default timings
 
-These are starting values to tune with evidence, not claims.
+These are starting values to tune with evidence, not claims. The full PRD-04 list, with where each one is configured and the failure bounds they produce, is in `docs/RUNBOOK.md` §1–§2.
 
 | Setting | Default |
 |---|---|
