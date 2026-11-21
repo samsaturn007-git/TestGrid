@@ -188,13 +188,49 @@ A code review of the whole branch (`main...prd-04/durable-queue`) found seven is
 - **The crash tests shorten the timings:** lease TTL 5 s, heartbeat 1 s, reaper 200 ms, retry backoff 200 ms (max 1 s), dispatch timeout 2 s. The bounds are computed from those values; the live drills use the defaults.
 - **AC-6's metric** is not implemented (PRD-12).
 - **CI coverage:** GitHub Actions (run 44915182214) runs `make test`, which now includes the crash suite and took 4m20s, plus `make up`, `restart-check` and the Chromium e2e. The drills (`kill-check`, `crash-check`, `sigterm-check`), `stuck-runs` and the DLQ tools ran locally only.
-- **Not run in this PRD:** the three-engine e2e (`ENGINES="chromium firefox webkit"`), and the demo with 3 workers, 20 targets and one `docker kill`. Two workers and a 3-engine cancel were run live.
+- **Not run during the PRD itself:** the three-engine e2e (`ENGINES="chromium firefox webkit"`), and the demo with 3 workers, 20 targets and one `docker kill`. Two workers and a 3-engine cancel were run live. Both were run afterwards in the re-verification below, and both passed.
+
+## Re-verification of PRD-00 to PRD-04 (2026-11-21, at the developer's request)
+
+The developer asked for an independent check that PRD-00 to PRD-04 are set up and done. Claude reran everything on `f1db10d` (clean working tree), once in the main checkout and once in a fresh `git clone` of the branch. The live drills used a separate Compose project (`COMPOSE_PROJECT_NAME=tgaudit`, `.env` copied from `.env.example`), so the developer's database and broker volumes were left alone. All outputs are in `raw/prd-04-reverification.txt`.
+
+| Area | Command or check | Result |
+|---|---|---|
+| Tracker, vocabulary, toolchain | `progress.py lint`, `vocab_check.sh`, `make doctor` | OK, exit 0 |
+| Format, lint, types | `make check` (main checkout and clone) | exit 0 |
+| Node suites | `make test-node` | demo-shop 42/42, worker 82/82 |
+| API suites (live Testcontainers) | `make test-api` | 51 classes, 328 tests, 0 failures, 0 errors, 0 skipped; crash classes all passed (5 runs per scenario) |
+| Contract drift (clone) | `make contracts-check` | OK |
+| CI | run 44919519388 on `f1db10d` | both jobs pass |
+| Secrets | `git log -p --all` pattern scan; `.env` tracking | 0 matches; `.env` ignored and untracked |
+| PRD-01 AC-1 | clean clone `make up && make smoke` | healthy in 22 s (warm layer cache), 18 passed |
+| PRD-01 AC-2, NFR | `make modes` (after `make reset`) | every mode and seed identical ×3; `PRODUCT_DEFECT` fails `@cart-total` on an assertion; `SELECTOR_DRIFT` fails on `locator.click` timeouts |
+| PRD-01 AC-3 | `make fixture-checks` | 1 passed |
+| PRD-01 AC-4 | `DEMO_SHOP_FIXTURES=disabled` | `/__fixture/session` and `/__fixture/reset` → `404`; shop `200` |
+| PRD-02 AC-1, AC-2, AC-3 | `make restart-check`; `curl` create-run | `202` + `Location`, replay `200` + `Idempotent-Replay: true` with the same ID, changed payload `409`, unknown suite `422`, unknown field or bad engine `400`, nothing persisted for rejected requests |
+| PRD-03 FR-2 | public `/internal/*`, host port 8081, token | `404`; not published; no or wrong token `401` |
+| PRD-03 AC-1, AC-2, AC-6 | `make e2e ENGINES="chromium firefox webkit"` | all 5 scenarios correct on all 3 engines, no false pass |
+| PRD-04 AC-4 | `make kill-check` | attempt 2 claimed 29 s after the kill (bound 45 s); attempt 1 `ABANDONED`/`LEASE_EXPIRED` kept |
+| PRD-04 AC-3, AC-4 | `make crash-check` | `after_complete_before_ack`: `1:PASSED`, redelivery `409` and acked; `after_claim`: `1:ABANDONED, 2:PASSED` 40 s after the kill |
+| PRD-03 FR-6 | `make sigterm-check` | `INFRA_ERROR`/`WORKER_SHUTDOWN` after a clean drain |
+| PRD-04 AC-1, AC-4, FR-10 (demo moment) | 3 workers, 20 targets, cap 3, `docker kill` of a worker with a `RUNNING` attempt | 247 samples at 200 ms: **max 3, never above**; 20/20 `PASSED`; the killed target `1:ABANDONED:LEASE_EXPIRED → 2:PASSED` on another worker; never two active attempts for one target |
+| PRD-04 FR-8 | live cancel of a 2-target run | `202`, both targets `CANCELLED`; second cancel `200`; both `RUN_CANCEL_REQUESTED` events recorded |
+| PRD-04 T7 | `make stuck-runs`, `make dlq` | 0 stuck, 0 dead letters |
+
+Observations from the re-verification (nothing was changed):
+
+- **PR #5 is not merged.** `main` still ends at the PRD-03 merge (`a41e4ae`), so PRD-04 is done on its branch only. Merging stays with the developer.
+- **Explain-backs are still owed** for PRD-01 to PRD-04 (Claude wrote them on the developer's behalf), and the PRD-00 ones were never written.
+- **Registry liveness,** already listed under known limitations, was seen live: the killed worker still showed `ACTIVE` about 75 s after the kill and `LOST` soon after (3 × TTL = 90 s).
+- **Testcontainers** publish Postgres and the non-crash RabbitMQ containers on `0.0.0.0` during `make test-api` (`CrashRabbit` binds `127.0.0.1`). They're short-lived and use fake credentials.
+- **`MANIFEST.sha256`** is from the planning kit and no longer matches six files that were edited on purpose (`MASTER_PRD.md`, `PROGRESS.md`, `README.md`, contracts, architecture, `progress.json`).
 
 ## Screenshots / demo / raw data links
 
 - `docs/evidence/raw/prd-04-ci.txt` (GitHub Actions run 44915182214).
 - `docs/evidence/raw/prd-04-api-tests.txt`, `prd-04-crash-tests.txt`, `prd-04-cancel-races.txt`, `prd-04-deadlock-before-fix.txt`, `prd-04-explain-target-claim.txt`.
 - `docs/evidence/raw/prd-04-e2e.txt`, `prd-04-kill-check.txt`, `prd-04-crash-check.txt`, `prd-04-sigterm-check.txt`, `prd-04-runbook-tools.txt`, `prd-04-dispatch-latency.txt`, `prd-04-secret-scan.txt`.
+- `docs/evidence/raw/prd-04-reverification.txt` (the re-verification of PRD-00 to PRD-04).
 
 ## Known limitations and deferred improvements
 
