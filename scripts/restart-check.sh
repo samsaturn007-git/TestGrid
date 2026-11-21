@@ -10,7 +10,19 @@ compose=(docker compose -f infra/compose/compose.yaml --env-file .env)
 key="restart-check-$(date +%s)-$$"
 body='{"suiteKey":"checkout-smoke","targets":[{"executor":"LOCAL","engine":"chromium"},{"executor":"LOCAL","engine":"firefox"}],"trigger":"MANUAL","idempotencyKey":"'"$key"'"}'
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+
+# This checks API persistence, not execution: hold the worker (PRD-03) so it can't claim the
+# run between the two reads. It is started again on exit if it was running before.
+worker_was_running=$("${compose[@]}" ps --status running --services 2>/dev/null | /usr/bin/grep -cx worker || true)
+cleanup() {
+  rm -rf "$work"
+  if [ "$worker_was_running" = 1 ]; then "${compose[@]}" up -d --no-recreate worker >/dev/null 2>&1 || true; fi
+}
+trap cleanup EXIT
+if [ "$worker_was_running" = 1 ]; then
+  echo "stopping the worker for the duration of the check"
+  "${compose[@]}" stop worker >/dev/null 2>&1
+fi
 
 status=$(curl -sS -o "$work/created.json" -w '%{http_code}' -X POST "$api/api/v1/projects/$project/runs" \
   -H 'content-type: application/json' -d "$body")
