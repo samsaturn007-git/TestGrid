@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T20:28:12+00:00",
+  "updated_at": "2026-11-21T21:53:14+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -231,7 +231,7 @@
         },
         "T2": {
           "label": "Connect suites view and new-run dialog posting with an idempotency key.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Build run list with URL-synced filters and cursor pagination; add API filters.",
