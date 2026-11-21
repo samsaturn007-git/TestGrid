@@ -28,3 +28,4 @@ export type CreateRunRequest = Schemas['CreateRunRequest'];
 export type RunResponse = Schemas['RunResponse'];
 export type FieldError = Schemas['FieldError'];
 export type FixtureMode = Schemas['Fixture']['mode'];
+export type PageRunSummary = Schemas['PageRunSummary'];

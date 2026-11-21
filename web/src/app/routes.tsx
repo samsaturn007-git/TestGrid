@@ -3,10 +3,10 @@ import {
   NotFoundPage,
   OverviewPage,
   RunDetailPage,
-  RunsPage,
   SuitesRedirect,
   WorkersPage,
 } from '../pages/placeholders.tsx';
+import { RunsPage } from '../pages/RunsPage.tsx';
 import { SuitesPage } from '../pages/SuitesPage.tsx';
 import { AppShell } from './AppShell.tsx';
 

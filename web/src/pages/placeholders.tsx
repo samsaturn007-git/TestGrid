@@ -21,14 +21,6 @@ export function OverviewPage() {
   );
 }
 
-export function RunsPage() {
-  return (
-    <Page title="Runs">
-      <NotBuiltYet task="T3" />
-    </Page>
-  );
-}
-
 export function RunDetailPage() {
   const { runId } = useParams();
   return (

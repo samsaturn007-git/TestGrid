@@ -1,5 +1,13 @@
 import { vi } from 'vitest';
-import type { PageProject, Problem, Suite, SuiteDetail, TestCase } from '../api/types.ts';
+import type {
+  PageProject,
+  PageRunSummary,
+  Problem,
+  RunSummary,
+  Suite,
+  SuiteDetail,
+  TestCase,
+} from '../api/types.ts';
 
 // A fake API for component tests (mocked, not live): routes by method and path, and records
 // every request so a test can assert what the UI sent. Values mirror worker/manifest/suites.json.
@@ -119,6 +127,8 @@ export function catalogApi(options: ApiOptions = {}): StubHandler {
     if (path === '/projects') return json(PROJECTS);
     if (path === '/capabilities') return json({ fixturesAllowed: options.fixturesAllowed ?? true });
     if (path === `/projects/${PROJECT_ID}/suites`) return json({ items: suites, nextCursor: null });
+    // The run list defaults to empty; runListApi() answers it with real pages.
+    if (path === '/runs' || path.startsWith('/runs?')) return json({ items: [], nextCursor: null });
     const detail = /^\/suites\/(.+)$/.exec(path)?.[1];
     if (detail && details[detail]) return json(details[detail]);
     return undefined;
@@ -145,4 +155,55 @@ export function stubApi(...handlers: StubHandler[]) {
   });
   vi.stubGlobal('fetch', fetchMock);
   return { fetchMock, requests, posts: () => requests.filter((r) => r.method === 'POST') };
+}
+
+let runCounter = 0;
+
+/** A run summary with a unique id; queued `minutesAgo` before 2026-11-22T12:00:00Z. */
+export function runSummary(
+  overrides: Partial<RunSummary> & { minutesAgo?: number } = {},
+): RunSummary {
+  const { minutesAgo = 1, ...rest } = overrides;
+  runCounter += 1;
+  // Real UUIDv4s differ in their first 8 characters, which the UI shows as the short ID.
+  const id = `${(0x1a2b3c00 + runCounter).toString(16)}-0000-4000-8000-000000000000`;
+  const queuedAt = new Date(Date.UTC(2026, 10, 22, 12, 0, 0) - minutesAgo * 60_000).toISOString();
+  return {
+    id,
+    projectId: PROJECT_ID,
+    suiteKey: 'checkout-smoke',
+    suiteRevision: CHECKOUT.revision,
+    status: 'PASSED',
+    trigger: 'MANUAL',
+    fixture: null,
+    source: null,
+    targetCount: 3,
+    queuedAt,
+    startedAt: queuedAt,
+    finishedAt: new Date(Date.parse(queuedAt) + 42_000).toISOString(),
+    links: { self: `/api/v1/runs/${id}`, suite: null },
+    ...rest,
+  };
+}
+
+/**
+ * GET /runs answered page by page: no cursor gets pages[0], cursor `pN` gets pages[N]. Each
+ * page's nextCursor is filled in for you. `onRequest` sees the parsed query of every call.
+ */
+export function runListApi(
+  pages: RunSummary[][],
+  onRequest: (query: URLSearchParams) => Response | undefined = () => undefined,
+): StubHandler {
+  return ({ method, path }) => {
+    if (method !== 'GET' || !(path === '/runs' || path.startsWith('/runs?'))) return undefined;
+    const query = new URLSearchParams(path.split('?')[1] ?? '');
+    const answer = onRequest(query);
+    if (answer) return answer;
+    const index = Number(query.get('cursor')?.slice(1) ?? 0);
+    const page: PageRunSummary = {
+      items: pages[index] ?? [],
+      nextCursor: index + 1 < pages.length ? `p${index + 1}` : null,
+    };
+    return json(page);
+  };
 }

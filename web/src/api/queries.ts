@@ -1,9 +1,17 @@
-import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { apiSearch, type RunFilters } from '../runs/runFilters.ts';
 import { ApiError, apiGet, apiPost } from './client.ts';
 import type {
   Capabilities,
   CreateRunRequest,
   PageProject,
+  PageRunSummary,
   PageSuite,
   RunResponse,
   SuiteDetail,
@@ -87,5 +95,19 @@ export function useCreateRun(projectId: string) {
       client.setQueryData(queryKeys.run(result.data.id), result.data);
       await client.invalidateQueries({ queryKey: queryKeys.runLists });
     },
+  });
+}
+
+/**
+ * The run list, one keyset page at a time ("Load more"). Filters are part of the key, so each
+ * filter combination has its own cache entry and switching back to one is instant.
+ */
+export function useRunList(filters: RunFilters) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.runLists, filters] as const,
+    queryFn: ({ pageParam, signal }) =>
+      apiGet<PageRunSummary>(`/runs?${apiSearch(filters, pageParam)}`, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
   });
 }
