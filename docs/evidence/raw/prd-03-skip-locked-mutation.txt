@@ -1,0 +1,17 @@
+# ClaimConcurrencyTest with and without SKIP LOCKED (2026-11-20, Testcontainers postgres:18.7-bookworm)
+# The 6 repeated concurrency tests pass even without SKIP LOCKED: plain FOR UPDATE makes the loser
+# wait, then Postgres re-checks the row (no longer QUEUED) and moves on, so each target is still
+# claimed once. aClaimSkipsATargetLockedByAnotherTransactionInsteadOfWaiting tests what SKIP
+# LOCKED itself adds: not waiting for a row another transaction holds.
+
+== with SKIP LOCKED
+$ ./mvnw -B test -Dtest=ClaimConcurrencyTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+
+== "FOR UPDATE OF t SKIP LOCKED" changed to "FOR UPDATE OF t" in AttemptRepository
+$ ./mvnw -B test -Dtest=ClaimConcurrencyTest
+[ERROR] dev.testgrid.api.internal.ClaimConcurrencyTest.aClaimSkipsATargetLockedByAnotherTransactionInsteadOfWaiting -- Time elapsed: 5.446 s <<< ERROR!
+java.util.concurrent.TimeoutException
+[ERROR] Tests run: 7, Failures: 0, Errors: 1, Skipped: 0
+
+== restored (git diff clean)

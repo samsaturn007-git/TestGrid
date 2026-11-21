@@ -1,0 +1,426 @@
+{
+ "config": {
+  "note": "trimmed: machine-specific paths removed; the parser does not read config"
+ },
+ "suites": [
+  {
+   "title": "suites/checkout-smoke.spec.ts",
+   "file": "suites/checkout-smoke.spec.ts",
+   "column": 0,
+   "line": 0,
+   "specs": [
+    {
+     "title": "catalog lists the seeded products and opens a product",
+     "ok": true,
+     "tags": [
+      "browse-catalog"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 260,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:56.734Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-c02e7c7daafb956c9ee3",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 6,
+     "column": 1
+    },
+    {
+     "title": "cart supports add, quantity change and remove",
+     "ok": true,
+     "tags": [
+      "add-to-cart"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 506,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:56.734Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-473495b24f4bf6725fb4",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 19,
+     "column": 1
+    },
+    {
+     "title": "cart total includes the fixed 8% tax",
+     "ok": true,
+     "tags": [
+      "cart-total"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "passed",
+         "duration": 379,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:56.734Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-bfb34222b35905c9e3ca",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 40,
+     "column": 1
+    },
+    {
+     "title": "coupon SAVE10 takes 10% off and unknown codes are rejected",
+     "ok": true,
+     "tags": [
+      "apply-coupon"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 354,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:57.114Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-ca3cdd9bec289af5e534",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 56,
+     "column": 1
+    },
+    {
+     "title": "checkout with an approved card shows an order number",
+     "ok": false,
+     "tags": [
+      "checkout-happy-path"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "failed",
+         "duration": 5246,
+         "error": {
+          "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n",
+          "stack": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:80:47",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 47,
+           "line": 80
+          },
+          "snippet": "  78 |     await addToCart(page, 'drift-notebook');\n  79 |     await page.goto('/cart');\n> 80 |     await page.getByTestId('checkout-button').click();\n     |                                               ^\n  81 |     await expect(page.getByTestId('checkout-page')).toBeVisible();\n  82 |\n  83 |     await fillCheckout(page, '4242 4242 4242 4242');"
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 47,
+            "line": 80
+           },
+           "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n\n  78 |     await addToCart(page, 'drift-notebook');\n  79 |     await page.goto('/cart');\n> 80 |     await page.getByTestId('checkout-button').click();\n     |                                               ^\n  81 |     await expect(page.getByTestId('checkout-page')).toBeVisible();\n  82 |\n  83 |     await fillCheckout(page, '4242 4242 4242 4242');\n    at /repo/worker/suites/checkout-smoke.spec.ts:80:47"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:57.230Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 47,
+          "line": 80
+         }
+        },
+        {
+         "workerIndex": 3,
+         "parallelIndex": 0,
+         "status": "failed",
+         "duration": 5225,
+         "error": {
+          "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n",
+          "stack": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:80:47",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 47,
+           "line": 80
+          },
+          "snippet": "  78 |     await addToCart(page, 'drift-notebook');\n  79 |     await page.goto('/cart');\n> 80 |     await page.getByTestId('checkout-button').click();\n     |                                               ^\n  81 |     await expect(page.getByTestId('checkout-page')).toBeVisible();\n  82 |\n  83 |     await fillCheckout(page, '4242 4242 4242 4242');"
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 47,
+            "line": 80
+           },
+           "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n\n  78 |     await addToCart(page, 'drift-notebook');\n  79 |     await page.goto('/cart');\n> 80 |     await page.getByTestId('checkout-button').click();\n     |                                               ^\n  81 |     await expect(page.getByTestId('checkout-page')).toBeVisible();\n  82 |\n  83 |     await fillCheckout(page, '4242 4242 4242 4242');\n    at /repo/worker/suites/checkout-smoke.spec.ts:80:47"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:15:02.722Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 47,
+          "line": 80
+         }
+        }
+       ],
+       "status": "unexpected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97a2d3ada96cea474552",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 74,
+     "column": 1
+    },
+    {
+     "title": "a card ending in 0002 is declined",
+     "ok": false,
+     "tags": [
+      "card-declined"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "failed",
+         "duration": 5204,
+         "error": {
+          "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n",
+          "stack": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:94:45",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 45,
+           "line": 94
+          },
+          "snippet": "  92 |   await addToCart(page, 'ember-candle');\n  93 |   await page.goto('/cart');\n> 94 |   await page.getByTestId('checkout-button').click();\n     |                                             ^\n  95 |\n  96 |   await fillCheckout(page, '4000 0000 0000 0002');\n  97 |   expect(await placeOrder(page)).toBe(402);"
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 45,
+            "line": 94
+           },
+           "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n\n  92 |   await addToCart(page, 'ember-candle');\n  93 |   await page.goto('/cart');\n> 94 |   await page.getByTestId('checkout-button').click();\n     |                                             ^\n  95 |\n  96 |   await fillCheckout(page, '4000 0000 0000 0002');\n  97 |   expect(await placeOrder(page)).toBe(402);\n    at /repo/worker/suites/checkout-smoke.spec.ts:94:45"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:57.360Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 45,
+          "line": 94
+         }
+        },
+        {
+         "workerIndex": 4,
+         "parallelIndex": 1,
+         "status": "failed",
+         "duration": 5216,
+         "error": {
+          "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n",
+          "stack": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:94:45",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 45,
+           "line": 94
+          },
+          "snippet": "  92 |   await addToCart(page, 'ember-candle');\n  93 |   await page.goto('/cart');\n> 94 |   await page.getByTestId('checkout-button').click();\n     |                                             ^\n  95 |\n  96 |   await fillCheckout(page, '4000 0000 0000 0002');\n  97 |   expect(await placeOrder(page)).toBe(402);"
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 45,
+            "line": 94
+           },
+           "message": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('checkout-button')\u001b[22m\n\n\n  92 |   await addToCart(page, 'ember-candle');\n  93 |   await page.goto('/cart');\n> 94 |   await page.getByTestId('checkout-button').click();\n     |                                             ^\n  95 |\n  96 |   await fillCheckout(page, '4000 0000 0000 0002');\n  97 |   expect(await placeOrder(page)).toBe(402);\n    at /repo/worker/suites/checkout-smoke.spec.ts:94:45"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:15:02.826Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-SELECTOR_DRIFT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 45,
+          "line": 94
+         }
+        }
+       ],
+       "status": "unexpected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97027f930a591e2b0542",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 91,
+     "column": 1
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-11-20T11:14:56.500Z",
+  "duration": 11653.939,
+  "expected": 4,
+  "skipped": 0,
+  "unexpected": 2,
+  "flaky": 0
+ }
+}

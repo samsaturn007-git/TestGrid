@@ -1,0 +1,23 @@
+node scripts/e2e.mjs chromium firefox webkit
+e2e: engines chromium, firefox, webkit against http://127.0.0.1:8080
+  local:chromium:0 attempt 1 PASSED cases=6 (all PASSED)
+  local:firefox:0 attempt 1 PASSED cases=6 (all PASSED)
+  local:webkit:0 attempt 1 PASSED cases=6 (all PASSED)
+ok   checkout-smoke PASS → PASSED in 20.2s run=ebcf21f9-1dd6-4601-b571-e2ffa26aa8ec
+  local:chromium:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+  local:firefox:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+  local:webkit:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 43.4s run=355f5da2-0f63-4ecb-88a6-2c852ca77aa1
+  local:chromium:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+  local:firefox:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+  local:webkit:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 49.4s run=4d4692d9-24b4-4cb1-b3e2-6997be2ca9cb
+  local:chromium:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+  local:firefox:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+  local:webkit:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 135.0s run=9dc1366d-6e01-4898-ac26-c9e760476ca0
+  local:chromium:0 attempt 1 PASSED cases=12 (all PASSED)
+  local:firefox:0 attempt 1 PASSED cases=12 (all PASSED)
+  local:webkit:0 attempt 1 PASSED cases=12 (all PASSED)
+ok   catalog-regression PASS → PASSED in 18.1s run=c14467a5-4543-4144-98f7-69ad15007bd9
+e2e OK

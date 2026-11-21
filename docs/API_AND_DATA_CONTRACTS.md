@@ -167,7 +167,8 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 **Read endpoints (PRD-02)**
 - **Caller scope:** every endpoint resolves the caller's project in one place (`CallerScope`; today always the local project). A project, suite or run outside that scope answers `404 not-found`, exactly like one that doesn't exist. `POST /projects/{projectId}/runs` applies the same rule.
 - **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`. The filters arrive in PRD-05.
-- **`GET /runs/{runId}`:** the run, its targets ordered by `targetKey`, `status` computed as in §2.3, and `links {self, suite}`. The latest attempt per target is added in PRD-03.
+- **`GET /runs/{runId}`:** the run, its targets ordered by `targetKey`, `status` computed as in §2.3, and `links {self, suite}`. Each target carries `latestAttempt` (or `null`): `{id, attemptNo, workerId, status, claimedAt, startedAt, finishedAt, leasedUntil, leaseExpired, lastHeartbeatAt, errorClass}`. `leaseExpired` is `true` when the attempt is still `CLAIMED`/`RUNNING` but `leased_until < now()` (database clock), so a dead worker is visible rather than shown as running (PRD-03 AC-4).
+- **`GET /runs/{runId}/results` (PRD-03 FR-9):** `{runId, status, targets[{id, targetKey, engine, status, attempts[{attempt, errorDetail, caseResults[{caseKey, status, durationMs, retryCount, errorClass, errorMessage}]}]}]}`. Attempts are newest first; case results are ordered by `caseKey`. Lease tokens never appear.
 - **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
 
 **Create-run request**
@@ -233,6 +234,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `validation-failed` | 400 | malformed JSON, too long, unknown field |
 | `unknown-suite` / `engine-not-allowed` / `fixture-not-allowed` | 422 | not in the manifest, or a fixture mode used outside the local profile |
 | `idempotency-conflict` | 409 | same key, different payload, or a different completion key after a terminal state |
+| `invalid-completion` | 422 | a well-formed completion that doesn't fit its claim: unknown, missing or duplicate case key, duration or retry count out of range, a status without its required error (PRD-03) |
 | `not-found` | 404 | |
 | `attempt-not-active` | 409 | late or duplicate transition on a terminal attempt |
 | `lease-expired` | 410 | stale lease token |
@@ -258,9 +260,26 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `POST /workers/register`, `POST /workers/{id}/drain` | | | 04 |
 | `POST /attempts/{id}/external-session` | `{provider, buildId, sessionId}` | | 09 |
 
+**Access (PRD-03 FR-2)**
+- The worker API listens on its own port (`TESTGRID_INTERNAL_PORT`, default 8081), opened only when `TESTGRID_WORKER_TOKEN` (≥ 32 characters) is set. Compose never publishes it.
+- Every call sends `Authorization: Bearer <TESTGRID_WORKER_TOKEN>`; the API compares sha256 hashes in constant time. Missing or wrong → `401 unauthorized`.
+- `/internal/*` on the public port, and any other path on the internal port, is `404 not-found`, the same answer as a path that doesn't exist.
+
+**Check order for start, heartbeat and complete** (all inside one transaction that locks the attempt and its target; the lease is checked against the database's `now()`):
+1. Unknown attempt → `404`.
+2. Lease token doesn't match the attempt's hash → `410 lease-expired`.
+3. Attempt already terminal:
+   - complete with the attempt's own `completionKey` → `200`, `Idempotent-Replay: true`, the stored outcome, nothing written;
+   - attempt `ABANDONED` (lease lost) → `410 lease-expired`;
+   - complete with another key → `409 idempotency-conflict`; start or heartbeat → `409 attempt-not-active`.
+4. `leased_until <= now()` → `410 lease-expired`.
+5. Complete only: a payload that doesn't fit the claim → `422 invalid-completion`, nothing written.
+
+A repeated `start` by the lease holder is answered `200` without a second transition.
+
 **Claim response**
 ```json
-{"attemptId": "…", "attemptNo": 1, "leaseToken": "<opaque, 32 random bytes, base64url>", "leaseTtlSeconds": 30,
+{"attemptId": "…", "attemptNo": 1, "runId": "…", "targetId": "…", "leaseToken": "<opaque, 32 random bytes, base64url>", "leaseTtlSeconds": 30,
  "heartbeatIntervalSeconds": 10, "suite": {"suiteKey": "checkout-smoke", "revision": "a1b2c3d4e5f6"},
  "engine": "chromium", "caseKeys": ["cart-total", "checkout-happy-path"], "fixture": {"mode": "PASS", "seed": 42}, "timeoutMs": 120000}
 ```
@@ -274,7 +293,11 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 ```
 - `status` is `COMPLETED_WITH_RESULTS`, `INFRA_ERROR`, `TIMED_OUT` or `CANCELLED`.
 - The API checks the case keys against the claimed `caseKeys` and rejects any unknown, missing or duplicate key with `422`.
-- Durations must be between 0 and the suite timeout plus a grace period.
+- Durations must be between 0 and the suite timeout plus a grace period (60 s).
+- `COMPLETED_WITH_RESULTS`: exactly one result per claimed case and `workerError: null`. `errorClass` is required for `FAILED` and `TIMED_OUT`, and `PASSED` / `SKIPPED` carry no error. `retryCount` is 0 … the suite's `playwrightRetries`, and `FLAKY` needs at least 1. The target status is computed from these results (§2.2); the worker's opinion is not asked.
+- `INFRA_ERROR`, `TIMED_OUT`, `CANCELLED`: `caseResults: []`. `INFRA_ERROR` needs `workerError {errorClass, message}`; `TIMED_OUT` defaults to `TEST_TIMEOUT`; `CANCELLED` is accepted only when the run has a cancel request.
+- Error messages are redacted (bearer values and long opaque strings masked, control characters removed, ≤ 2,000 characters) before they are stored.
+- Response `200 {attemptId, attemptStatus, errorClass, targetId, targetStatus, runId, runStatus}`; a replay returns the same body.
 - Lease tokens are stored only as a sha256 hash, compared in constant time, and never logged.
 
 ---

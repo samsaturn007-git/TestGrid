@@ -12,3 +12,6 @@ api/
 **/blob-report/
 # Generated from api/openapi.yaml by `make contracts`; checked for drift, not formatted.
 packages/contracts/src/api.ts
+
+# Recorded Playwright reports are kept byte-for-byte (one is deliberately truncated).
+worker/test/fixtures/

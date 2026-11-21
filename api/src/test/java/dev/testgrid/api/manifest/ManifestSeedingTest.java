@@ -76,7 +76,7 @@ class ManifestSeedingTest {
 
     List<SeededSuite> again = seeder.seed(LocalProject.ID, loader.load(REPO_WORKER_ROOT));
 
-    assertThat(again).singleElement().extracting(SeededSuite::created).isEqualTo(false);
+    assertThat(again).hasSize(2).noneMatch(SeededSuite::created);
     assertThat(count("SELECT count(*) FROM suites")).isEqualTo(suitesBefore);
     assertThat(count("SELECT count(*) FROM test_cases")).isEqualTo(casesBefore);
   }

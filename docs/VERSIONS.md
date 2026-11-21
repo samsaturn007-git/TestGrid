@@ -69,6 +69,18 @@ Java libraries without a `<version>` in `api/pom.xml` come from the Spring Boot 
 | networknt `json-schema-validator` | **3.0.9** (2026-11-03) | Manifest validation (FR-2). Depends on Jackson 3 (`tools.jackson`), same major as Boot 4. Added in T1. |
 | `openapi-typescript` | **7.13.0** (npm `latest`, 2026-02-11) | Pinned in `packages/contracts`. Declares `peerDependencies: typescript ^5.x` and the repo uses TypeScript 6.0.3, so `pnpm install` prints an unmet-peer warning. Checked in T5: it generates `src/api.ts` from the 3.1 spec, and the output passes `tsc --noEmit` under 6.0.3. Revisit when a release declares TS 6 support. |
 
+### 1.3 PRD-03 libraries (checked 2026-11-20)
+
+Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, release date, dependencies). Exact versions, no `^`.
+
+| Component | Pin | Source and note |
+|---|---|---|
+| `@playwright/test` | **1.65.1** (pin kept) | Re-checked: still npm `latest` (`next` is 1.66.0-alpha). The worker image is `mcr.microsoft.com/playwright:v1.65.1-noble` (§1), so npm and image match exactly. |
+| pino | **10.4.0** (2026-10-02) | Worker JSON logs (FR-8). Ships its own types (`pino.d.ts`). Redaction through its bundled `@pinojs/redact`. |
+| ajv | **8.20.0** (2026-04-24) | Worker-side manifest validation against the same `packages/contracts/schema/suite-manifest.schema.json` the API uses (draft 2020-12 via `ajv/dist/2020`), so there is one schema, not a zod copy of it. |
+| zod | **4.6.7** (pin kept, still `latest`) | Worker: claim payload, environment and Playwright JSON report parsing. Same version as demo-shop. |
+| API JSON logs | Spring Boot 4.1.2 built-in structured logging (`logging.structured.format.console`) | No new dependency: Boot's ECS/Logstash formats replace a separate Logback encoder. |
+
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).
 - `.nvmrc`, `.tool-versions`, `package.json#packageManager` and `.mvn/wrapper/maven-wrapper.properties` must match this table (PRD-01 FR-3).

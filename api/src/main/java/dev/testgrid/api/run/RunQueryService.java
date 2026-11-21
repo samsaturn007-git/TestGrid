@@ -46,6 +46,13 @@ public class RunQueryService {
     return new Page<>(List.copyOf(page), new RunCursor(last.queuedAt(), last.id()).encode());
   }
 
+  /** FR-9: same scope rule as {@link #get}; one snapshot for the run and its results. */
+  @Transactional(readOnly = true)
+  public RunResults results(UUID runId) {
+    RunResponse run = get(runId);
+    return new RunResults(run.id(), run.status(), runs.findResults(run.id(), run.targets()));
+  }
+
   @Transactional(readOnly = true)
   public RunResponse get(UUID runId) {
     return runs.findRun(scope.projectId(), runId)

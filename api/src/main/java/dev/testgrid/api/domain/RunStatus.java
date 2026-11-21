@@ -8,5 +8,9 @@ public enum RunStatus {
   FAILED,
   TIMED_OUT,
   INFRA_ERROR,
-  CANCELLED
+  CANCELLED;
+
+  public boolean isTerminal() {
+    return this != QUEUED && this != RUNNING;
+  }
 }

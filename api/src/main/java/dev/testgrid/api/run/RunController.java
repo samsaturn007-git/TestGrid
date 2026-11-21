@@ -67,6 +67,19 @@ public class RunController {
     return queries.get(runId);
   }
 
+  @GetMapping("/runs/{runId}/results")
+  @Operation(
+      operationId = "getRunResults",
+      summary = "Every attempt per target with its case results, newest attempt first")
+  @ApiResponse(responseCode = "200", description = "The results")
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  public RunResults results(@PathVariable UUID runId) {
+    return queries.results(runId);
+  }
+
   /**
    * 202 for a new run (queued, not executed); 200 with {@code Idempotent-Replay: true} when the
    * same key and request were seen before; 409 when the key was used with a different request.

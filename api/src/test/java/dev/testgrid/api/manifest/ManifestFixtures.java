@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -12,7 +13,10 @@ import tools.jackson.databind.node.ObjectNode;
 final class ManifestFixtures {
 
   static final Path REPO_WORKER_ROOT = Path.of("../worker");
+
+  /** The checkout-smoke spec, the first suite's only spec file; tests edit it to move revisions. */
   static final String SPEC = "suites/checkout-smoke.spec.ts";
+
   static final JsonMapper MAPPER = JsonMapper.builder().build();
 
   private ManifestFixtures() {}
@@ -24,7 +28,11 @@ final class ManifestFixtures {
       Files.copy(
           REPO_WORKER_ROOT.resolve(ManifestLoader.MANIFEST_PATH),
           dir.resolve(ManifestLoader.MANIFEST_PATH));
-      Files.copy(REPO_WORKER_ROOT.resolve(SPEC), dir.resolve(SPEC));
+      for (JsonNode suite : readManifest(dir).get("suites")) {
+        for (JsonNode spec : suite.get("specFiles")) {
+          Files.copy(REPO_WORKER_ROOT.resolve(spec.asString()), dir.resolve(spec.asString()));
+        }
+      }
       return dir;
     } catch (IOException e) {
       throw new UncheckedIOException(e);

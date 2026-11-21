@@ -42,6 +42,9 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
       # Safe default: fixture modes are refused unless .env says exactly "local".
       TESTGRID_PROFILE: ${TESTGRID_PROFILE:-}
+      # Worker API (PRD-03 FR-2): its own port, reachable only inside Compose; never published.
+      TESTGRID_INTERNAL_PORT: '8081'
+      TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
     ports:
       - '127.0.0.1:${API_PORT:-8080}:8080'
     depends_on:
@@ -89,8 +92,8 @@ services:
       # Safe default: fixtures are off unless .env says exactly "enabled".
       DEMO_SHOP_FIXTURES: ${DEMO_SHOP_FIXTURES:-disabled}
     ports:
-      # PRD-01 only: published on loopback so `make smoke` can drive the shop from the
-      # host. PRD-03 runs the worker inside `internal` and removes this port and `edge`.
+      # Loopback only, for the host-side `make smoke`, `make fixture-checks` and `make modes`
+      # (CONFLICT_REGISTER N9). The worker reaches the shop over `internal`, not this port.
       - '127.0.0.1:${DEMO_SHOP_PORT:-4173}:4173'
     healthcheck:
       test:
@@ -107,6 +110,41 @@ services:
     networks: [internal, edge]
     mem_limit: 256m
     cpus: 0.5
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: worker/Dockerfile
+    image: testgrid/worker:dev
+    environment:
+      TESTGRID_API_URL: http://api:8081
+      TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
+      TESTGRID_WORKER_ID: worker-1
+      TESTGRID_WORKER_ENGINES: ${TESTGRID_WORKER_ENGINES:-chromium}
+      # The allowlisted origin behind the manifest's baseUrlRef DEMO_SHOP_INTERNAL.
+      DEMO_SHOP_INTERNAL: http://demo-shop:4173
+    depends_on:
+      api:
+        condition: service_healthy
+      demo-shop:
+        condition: service_healthy
+    # tini as PID 1 reaps orphaned browser processes and forwards SIGTERM to the worker.
+    init: true
+    # FR-6: 20 s for the current attempt, 10 s SIGTERM→SIGKILL on Playwright, then margin.
+    stop_grace_period: 40s
+    <<: *hardening
+    read_only: true
+    # The root filesystem is read-only; browsers write profiles under HOME (Firefox refuses
+    # to start without a writable one), so HOME is a tmpfs owned by pwuser (uid 1001).
+    tmpfs:
+      - /tmp
+      - /home/pwuser:uid=1001,gid=1001,mode=0700
+    shm_size: 512m
+    # Internal network only: the worker reaches the API's worker port and the demo-shop.
+    networks: [internal]
+    mem_limit: 1536m
+    cpus: 1.5
+    pids_limit: 512
 
 networks:
   edge: {}

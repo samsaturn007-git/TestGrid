@@ -10,7 +10,7 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // Matches the manifest's playwrightRetries for checkout-smoke (contracts §10).
+  // Default for `make smoke`; the worker passes --retries from the manifest's playwrightRetries.
   retries: 1,
   workers: 3,
   reporter: [
@@ -25,7 +25,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
+    // Project names are the contracts' Engine values; the worker passes --project=<engine>.
     { name: 'chromium', testDir: './suites', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', testDir: './suites', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', testDir: './suites', use: { ...devices['Desktop Safari'] } },
     {
       name: 'fixture-checks',
       testDir: './fixture-checks',

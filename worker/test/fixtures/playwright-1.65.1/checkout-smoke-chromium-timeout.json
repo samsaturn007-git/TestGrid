@@ -1,0 +1,394 @@
+{
+ "config": {
+  "note": "trimmed: machine-specific paths removed; the parser does not read config"
+ },
+ "suites": [
+  {
+   "title": "suites/checkout-smoke.spec.ts",
+   "file": "suites/checkout-smoke.spec.ts",
+   "column": 0,
+   "line": 0,
+   "specs": [
+    {
+     "title": "catalog lists the seeded products and opens a product",
+     "ok": true,
+     "tags": [
+      "browse-catalog"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 258,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:32.444Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-c02e7c7daafb956c9ee3",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 6,
+     "column": 1
+    },
+    {
+     "title": "cart supports add, quantity change and remove",
+     "ok": true,
+     "tags": [
+      "add-to-cart"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 477,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:32.444Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-473495b24f4bf6725fb4",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 19,
+     "column": 1
+    },
+    {
+     "title": "cart total includes the fixed 8% tax",
+     "ok": true,
+     "tags": [
+      "cart-total"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "passed",
+         "duration": 382,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:32.444Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-bfb34222b35905c9e3ca",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 40,
+     "column": 1
+    },
+    {
+     "title": "coupon SAVE10 takes 10% off and unknown codes are rejected",
+     "ok": true,
+     "tags": [
+      "apply-coupon"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 356,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:32.822Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-ca3cdd9bec289af5e534",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 56,
+     "column": 1
+    },
+    {
+     "title": "checkout with an approved card shows an order number",
+     "ok": false,
+     "tags": [
+      "checkout-happy-path"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "timedOut",
+         "duration": 20059,
+         "error": {
+          "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+         },
+         "errors": [
+          {
+           "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+          },
+          {
+           "location": {
+            "file": "/repo/worker/suites/support/shop-test.ts",
+            "column": 10,
+            "line": 51
+           },
+           "message": "Error: page.waitForResponse: Test timeout of 20000ms exceeded.\n\n   at suites/support/shop-test.ts:51\n\n  49 | export async function placeOrder(page: Page): Promise<number> {\n  50 |   const [response] = await Promise.all([\n> 51 |     page.waitForResponse(\n     |          ^\n  52 |       (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',\n  53 |       { timeout: 0 },\n  54 |     ),\n    at placeOrder (/repo/worker/suites/support/shop-test.ts:51:10)\n    at /repo/worker/suites/checkout-smoke.spec.ts:84:18"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:32.946Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/trace.zip"
+          }
+         ]
+        },
+        {
+         "workerIndex": 3,
+         "parallelIndex": 0,
+         "status": "timedOut",
+         "duration": 20063,
+         "error": {
+          "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+         },
+         "errors": [
+          {
+           "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+          },
+          {
+           "location": {
+            "file": "/repo/worker/suites/support/shop-test.ts",
+            "column": 10,
+            "line": 51
+           },
+           "message": "Error: page.waitForResponse: Test timeout of 20000ms exceeded.\n\n   at suites/support/shop-test.ts:51\n\n  49 | export async function placeOrder(page: Page): Promise<number> {\n  50 |   const [response] = await Promise.all([\n> 51 |     page.waitForResponse(\n     |          ^\n  52 |       (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',\n  53 |       { timeout: 0 },\n  54 |     ),\n    at placeOrder (/repo/worker/suites/support/shop-test.ts:51:10)\n    at /repo/worker/suites/checkout-smoke.spec.ts:84:18"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:15:53.256Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium-retry1/trace.zip"
+          }
+         ]
+        }
+       ],
+       "status": "unexpected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97a2d3ada96cea474552",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 74,
+     "column": 1
+    },
+    {
+     "title": "a card ending in 0002 is declined",
+     "ok": false,
+     "tags": [
+      "card-declined"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "timedOut",
+         "duration": 20033,
+         "error": {
+          "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+         },
+         "errors": [
+          {
+           "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+          },
+          {
+           "location": {
+            "file": "/repo/worker/suites/support/shop-test.ts",
+            "column": 10,
+            "line": 51
+           },
+           "message": "Error: page.waitForResponse: Test timeout of 20000ms exceeded.\n\n   at suites/support/shop-test.ts:51\n\n  49 | export async function placeOrder(page: Page): Promise<number> {\n  50 |   const [response] = await Promise.all([\n> 51 |     page.waitForResponse(\n     |          ^\n  52 |       (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',\n  53 |       { timeout: 0 },\n  54 |     ),\n    at placeOrder (/repo/worker/suites/support/shop-test.ts:51:10)\n    at /repo/worker/suites/checkout-smoke.spec.ts:97:16"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:33.039Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium/trace.zip"
+          }
+         ]
+        },
+        {
+         "workerIndex": 4,
+         "parallelIndex": 1,
+         "status": "timedOut",
+         "duration": 20039,
+         "error": {
+          "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+         },
+         "errors": [
+          {
+           "message": "\u001b[31mTest timeout of 20000ms exceeded.\u001b[39m"
+          },
+          {
+           "location": {
+            "file": "/repo/worker/suites/support/shop-test.ts",
+            "column": 10,
+            "line": 51
+           },
+           "message": "Error: page.waitForResponse: Test timeout of 20000ms exceeded.\n\n   at suites/support/shop-test.ts:51\n\n  49 | export async function placeOrder(page: Page): Promise<number> {\n  50 |   const [response] = await Promise.all([\n> 51 |     page.waitForResponse(\n     |          ^\n  52 |       (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',\n  53 |       { timeout: 0 },\n  54 |     ),\n    at placeOrder (/repo/worker/suites/support/shop-test.ts:51:10)\n    at /repo/worker/suites/checkout-smoke.spec.ts:97:16"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:15:53.322Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-TIMEOUT/checkout-smoke-a-card-ending-in-0002-is-declined-chromium-retry1/trace.zip"
+          }
+         ]
+        }
+       ],
+       "status": "unexpected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97027f930a591e2b0542",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 91,
+     "column": 1
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-11-20T11:15:32.207Z",
+  "duration": 41274.925,
+  "expected": 4,
+  "skipped": 0,
+  "unexpected": 2,
+  "flaky": 0
+ }
+}

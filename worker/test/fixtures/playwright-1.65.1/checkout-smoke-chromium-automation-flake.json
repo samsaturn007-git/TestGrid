@@ -1,0 +1,293 @@
+{
+ "config": {
+  "note": "trimmed: machine-specific paths removed; the parser does not read config"
+ },
+ "suites": [
+  {
+   "title": "suites/checkout-smoke.spec.ts",
+   "file": "suites/checkout-smoke.spec.ts",
+   "column": 0,
+   "line": 0,
+   "specs": [
+    {
+     "title": "catalog lists the seeded products and opens a product",
+     "ok": true,
+     "tags": [
+      "browse-catalog"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 256,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:08.650Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-c02e7c7daafb956c9ee3",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 6,
+     "column": 1
+    },
+    {
+     "title": "cart supports add, quantity change and remove",
+     "ok": true,
+     "tags": [
+      "add-to-cart"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 473,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:08.649Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-473495b24f4bf6725fb4",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 19,
+     "column": 1
+    },
+    {
+     "title": "cart total includes the fixed 8% tax",
+     "ok": true,
+     "tags": [
+      "cart-total"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "passed",
+         "duration": 408,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:08.649Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-bfb34222b35905c9e3ca",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 40,
+     "column": 1
+    },
+    {
+     "title": "coupon SAVE10 takes 10% off and unknown codes are rejected",
+     "ok": true,
+     "tags": [
+      "apply-coupon"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 347,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:09.026Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-ca3cdd9bec289af5e534",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 56,
+     "column": 1
+    },
+    {
+     "title": "checkout with an approved card shows an order number",
+     "ok": true,
+     "tags": [
+      "checkout-happy-path"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "failed",
+         "duration": 5347,
+         "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('order-confirmation-banner')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('order-confirmation-banner') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('order-confirmation-banner')\u001b[22m\n",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('order-confirmation-banner')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('order-confirmation-banner') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('order-confirmation-banner')\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:86:65",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 65,
+           "line": 86
+          },
+          "snippet": "  84 |     expect(await placeOrder(page)).toBe(201);\n  85 |\n> 86 |     await expect(page.getByTestId('order-confirmation-banner')).toBeVisible();\n     |                                                                 ^\n  87 |     await expect(page.getByTestId('order-number')).toHaveText(/^ORD-\\d{6}$/);\n  88 |   },\n  89 | );"
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 65,
+            "line": 86
+           },
+           "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('order-confirmation-banner')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('order-confirmation-banner') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('order-confirmation-banner')\u001b[22m\n\n\n  84 |     expect(await placeOrder(page)).toBe(201);\n  85 |\n> 86 |     await expect(page.getByTestId('order-confirmation-banner')).toBeVisible();\n     |                                                                 ^\n  87 |     await expect(page.getByTestId('order-number')).toHaveText(/^ORD-\\d{6}$/);\n  88 |   },\n  89 | );\n    at /repo/worker/suites/checkout-smoke.spec.ts:86:65"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:09.180Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-AUTOMATION_FLAKE/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-AUTOMATION_FLAKE/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-AUTOMATION_FLAKE/checkout-smoke-checkout-wi-4259b--card-shows-an-order-number-chromium/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 65,
+          "line": 86
+         }
+        },
+        {
+         "workerIndex": 3,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 320,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:15:14.768Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "flaky"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97a2d3ada96cea474552",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 74,
+     "column": 1
+    },
+    {
+     "title": "a card ending in 0002 is declined",
+     "ok": true,
+     "tags": [
+      "card-declined"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 313,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:15:09.242Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97027f930a591e2b0542",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 91,
+     "column": 1
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-11-20T11:15:08.414Z",
+  "duration": 6766.797,
+  "expected": 5,
+  "skipped": 0,
+  "unexpected": 0,
+  "flaky": 1
+ }
+}

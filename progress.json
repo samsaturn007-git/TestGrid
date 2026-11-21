@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-20T10:41:27+00:00",
+  "updated_at": "2026-11-21T08:23:09+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -128,7 +128,7 @@
     "PRD-03": {
       "title": "Single Playwright worker and end-to-end first run",
       "filename": "prds/PRD-03-single-worker-runner.md",
-      "status": "not_started",
+      "status": "done",
       "deps": [
         "PRD-02"
       ],
@@ -139,34 +139,34 @@
       "tasks": {
         "T1": {
           "label": "Create worker package, manifest loader with schema validation, and two registered suites.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement service-token internal API: claims/next, start, heartbeat, complete with DB state transitions.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement safe Playwright spawning, JSON reporter parsing and case mapping by tag.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Write first happy-path run end to end and the PRODUCT_DEFECT failure path.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Add timeout/cancel/shutdown process-group cleanup and error-class mapping.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Add structured log correlation and token-redaction test.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Run on Chromium, Firefox and WebKit and document platform limitations.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-03.md",
       "blocker": null
     },
     "PRD-04": {

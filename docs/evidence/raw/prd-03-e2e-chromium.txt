@@ -1,0 +1,13 @@
+node scripts/e2e.mjs chromium
+e2e: engines chromium against http://127.0.0.1:8080
+  local:chromium:0 attempt 1 PASSED cases=6 (all PASSED)
+ok   checkout-smoke PASS → PASSED in 6.2s run=bbe143f1-ec57-48c0-9456-ccc2de69b17d
+  local:chromium:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 13.2s run=b6532d35-34d7-4578-ae23-47d603796d05
+  local:chromium:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 14.2s run=c467d045-ee16-4a8c-93ab-fb78e76d31c9
+  local:chromium:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 43.5s run=95c46be8-67df-4ddf-a50d-adcfcfd3aa72
+  local:chromium:0 attempt 1 PASSED cases=12 (all PASSED)
+ok   catalog-regression PASS → PASSED in 3.1s run=631fa3d5-83da-45a6-ab0b-d206ceb95fe2
+e2e OK

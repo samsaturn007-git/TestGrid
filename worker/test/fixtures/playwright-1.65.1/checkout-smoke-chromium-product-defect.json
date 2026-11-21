@@ -1,0 +1,333 @@
+{
+ "config": {
+  "note": "trimmed: machine-specific paths removed; the parser does not read config"
+ },
+ "suites": [
+  {
+   "title": "suites/checkout-smoke.spec.ts",
+   "file": "suites/checkout-smoke.spec.ts",
+   "column": 0,
+   "line": 0,
+   "specs": [
+    {
+     "title": "catalog lists the seeded products and opens a product",
+     "ok": true,
+     "tags": [
+      "browse-catalog"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 334,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:44.794Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-c02e7c7daafb956c9ee3",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 6,
+     "column": 1
+    },
+    {
+     "title": "cart supports add, quantity change and remove",
+     "ok": true,
+     "tags": [
+      "add-to-cart"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 581,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:44.797Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-473495b24f4bf6725fb4",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 19,
+     "column": 1
+    },
+    {
+     "title": "cart total includes the fixed 8% tax",
+     "ok": false,
+     "tags": [
+      "cart-total"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 2,
+         "parallelIndex": 2,
+         "status": "failed",
+         "duration": 5489,
+         "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:53:48",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 48,
+           "line": 53
+          },
+          "snippet": "  51 |   await expect(page.getByTestId('cart-subtotal')).toHaveText('$74.99');\n  52 |   await expect(page.getByTestId('cart-tax')).toHaveText('$6.00');\n> 53 |   await expect(page.getByTestId('cart-total')).toHaveText('$80.99');\n     |                                                ^\n  54 | });\n  55 |\n  56 | test("
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 48,
+            "line": 53
+           },
+           "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n\n\n  51 |   await expect(page.getByTestId('cart-subtotal')).toHaveText('$74.99');\n  52 |   await expect(page.getByTestId('cart-tax')).toHaveText('$6.00');\n> 53 |   await expect(page.getByTestId('cart-total')).toHaveText('$80.99');\n     |                                                ^\n  54 | });\n  55 |\n  56 | test(\n    at /repo/worker/suites/checkout-smoke.spec.ts:53:48"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:44.794Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 48,
+          "line": 53
+         }
+        },
+        {
+         "workerIndex": 3,
+         "parallelIndex": 0,
+         "status": "failed",
+         "duration": 5372,
+         "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n\n    at /repo/worker/suites/checkout-smoke.spec.ts:53:48",
+          "location": {
+           "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+           "column": 48,
+           "line": 53
+          },
+          "snippet": "  51 |   await expect(page.getByTestId('cart-subtotal')).toHaveText('$74.99');\n  52 |   await expect(page.getByTestId('cart-tax')).toHaveText('$6.00');\n> 53 |   await expect(page.getByTestId('cart-total')).toHaveText('$80.99');\n     |                                                ^\n  54 | });\n  55 |\n  56 | test("
+         },
+         "errors": [
+          {
+           "location": {
+            "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+            "column": 48,
+            "line": 53
+           },
+           "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('cart-total')\nExpected: \u001b[32m\"$8\u001b[7m0\u001b[27m.99\"\u001b[39m\nReceived: \u001b[31m\"$8\u001b[7m2\u001b[27m.99\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('cart-total') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cart-total')\u001b[22m\n\u001b[2m    14 \u00d7 locator resolved to <dd data-testid=\"cart-total\">\u2026</dd>\u001b[22m\n\u001b[2m       - unexpected value \"$82.99\"\u001b[22m\n\n\n  51 |   await expect(page.getByTestId('cart-subtotal')).toHaveText('$74.99');\n  52 |   await expect(page.getByTestId('cart-tax')).toHaveText('$6.00');\n> 53 |   await expect(page.getByTestId('cart-total')).toHaveText('$80.99');\n     |                                                ^\n  54 | });\n  55 |\n  56 | test(\n    at /repo/worker/suites/checkout-smoke.spec.ts:53:48"
+          }
+         ],
+         "stdout": [],
+         "stderr": [],
+         "retry": 1,
+         "startTime": "2026-11-20T11:14:50.757Z",
+         "annotations": [],
+         "attachments": [
+          {
+           "name": "screenshot",
+           "contentType": "image/png",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium-retry1/test-failed-1.png"
+          },
+          {
+           "name": "error-context",
+           "contentType": "text/markdown",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium-retry1/error-context.md"
+          },
+          {
+           "name": "trace",
+           "contentType": "application/zip",
+           "path": "/tmp/tg-attempt/out-PRODUCT_DEFECT/checkout-smoke-cart-total-includes-the-fixed-8-tax-chromium-retry1/trace.zip"
+          }
+         ],
+         "errorLocation": {
+          "file": "/repo/worker/suites/checkout-smoke.spec.ts",
+          "column": 48,
+          "line": 53
+         }
+        }
+       ],
+       "status": "unexpected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-bfb34222b35905c9e3ca",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 40,
+     "column": 1
+    },
+    {
+     "title": "coupon SAVE10 takes 10% off and unknown codes are rejected",
+     "ok": true,
+     "tags": [
+      "apply-coupon"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 345,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:45.377Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-ca3cdd9bec289af5e534",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 56,
+     "column": 1
+    },
+    {
+     "title": "checkout with an approved card shows an order number",
+     "ok": true,
+     "tags": [
+      "checkout-happy-path"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 1,
+         "parallelIndex": 1,
+         "status": "passed",
+         "duration": 306,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:45.622Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97a2d3ada96cea474552",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 74,
+     "column": 1
+    },
+    {
+     "title": "a card ending in 0002 is declined",
+     "ok": true,
+     "tags": [
+      "card-declined"
+     ],
+     "tests": [
+      {
+       "timeout": 20000,
+       "annotations": [],
+       "expectedStatus": "passed",
+       "projectId": "chromium",
+       "projectName": "chromium",
+       "results": [
+        {
+         "workerIndex": 0,
+         "parallelIndex": 0,
+         "status": "passed",
+         "duration": 306,
+         "errors": [],
+         "stdout": [],
+         "stderr": [],
+         "retry": 0,
+         "startTime": "2026-11-20T11:14:45.726Z",
+         "annotations": [],
+         "attachments": []
+        }
+       ],
+       "status": "expected"
+      }
+     ],
+     "id": "baa54ecd0c4d0248c569-97027f930a591e2b0542",
+     "file": "suites/checkout-smoke.spec.ts",
+     "line": 91,
+     "column": 1
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-11-20T11:14:44.556Z",
+  "duration": 11681.072,
+  "expected": 5,
+  "skipped": 0,
+  "unexpected": 1,
+  "flaky": 0
+ }
+}

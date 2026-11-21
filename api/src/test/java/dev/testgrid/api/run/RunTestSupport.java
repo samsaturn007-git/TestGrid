@@ -13,7 +13,7 @@ final class RunTestSupport {
 
   static void clearRuns(JdbcClient jdbc) {
     // TRUNCATE doesn't fire run_events' row-level append-only trigger.
-    jdbc.sql("TRUNCATE run_events, run_targets, runs").update();
+    jdbc.sql("TRUNCATE case_results, attempts, run_events, run_targets, runs").update();
   }
 
   /** A current suite that allows only chromium and the PASS fixture mode. */

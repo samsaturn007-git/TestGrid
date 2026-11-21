@@ -44,7 +44,8 @@ public record RunResponse(
       int attemptCount,
       int maxAttempts,
       Instant queuedAt,
-      @ApiNullable Instant finishedAt) {}
+      @ApiNullable Instant finishedAt,
+      @ApiNullable AttemptSummary latestAttempt) {}
 
   /** {@code suite} is null in list rows, which don't load it. */
   @Schema(name = "RunLinks")

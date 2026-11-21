@@ -14,9 +14,11 @@ COMPOSE := docker compose -f infra/compose/compose.yaml --env-file .env
 MVNW := cd api && ./mvnw -B -q
 FIXTURE_MODE ?= PASS
 FIXTURE_SEED ?= 42
-export FIXTURE_MODE FIXTURE_SEED
+# The spec support reads the worker → Playwright names (PRD-03 FR-5, CONFLICT_REGISTER N8).
+export TG_FIXTURE_MODE := $(FIXTURE_MODE)
+export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e kill-check sigterm-check doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -74,7 +76,7 @@ contracts-check: contracts ## Fail if the committed contract files differ from t
 restart-check: ## Create a run, restart the api container, check it reads back unchanged (PRD-02 AC-1)
 	@bash scripts/restart-check.sh
 
-smoke: ## Health checks plus the checkout-smoke spec on Chromium (FIXTURE_MODE=PASS by default)
+smoke: ## Health checks plus every registered suite on Chromium (FIXTURE_MODE=PASS by default)
 	@bash scripts/health.sh
 	pnpm --filter worker exec playwright test --project=chromium
 
@@ -83,6 +85,15 @@ fixture-checks: ## Browser-level fixture isolation check (AC-3)
 
 modes: ## Run every fixture mode 3 times after a reset and compare results (AC-2)
 	bash scripts/mode-matrix.sh
+
+e2e: ## Submit runs through the API and check the worker's real results (PRD-03; ENGINES=chromium)
+	node scripts/e2e.mjs $(or $(ENGINES),chromium)
+
+kill-check: ## kill -9 the worker mid-run; the lease must expire visibly, nothing passes (PRD-03 AC-4)
+	@bash scripts/kill-check.sh
+
+sigterm-check: ## SIGTERM the worker mid-run; grace period, then INFRA_ERROR/WORKER_SHUTDOWN (PRD-03 FR-6)
+	@bash scripts/sigterm-check.sh
 
 doctor: ## Check the local toolchain against docs/VERSIONS.md
 	@bash scripts/doctor.sh

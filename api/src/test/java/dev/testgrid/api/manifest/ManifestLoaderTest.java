@@ -29,7 +29,11 @@ class ManifestLoaderTest {
   void loadsTheRepositoryManifest() {
     List<LoadedSuite> suites = loader.load(ManifestFixtures.REPO_WORKER_ROOT);
 
-    assertThat(suites).hasSize(1);
+    assertThat(suites)
+        .extracting(s -> s.suite().suiteKey())
+        .containsExactly("checkout-smoke", "catalog-regression");
+    assertThat(suites.get(1).suite().cases()).hasSize(12);
+    assertThat(suites.get(1).revision()).matches("^[0-9a-f]{12}$");
     LoadedSuite smoke = suites.getFirst();
     assertThat(smoke.suite().suiteKey()).isEqualTo("checkout-smoke");
     assertThat(smoke.suite().cases())
@@ -79,6 +83,9 @@ class ManifestLoaderTest {
     String expected = Hashing.sha256Hex(input.getBytes(StandardCharsets.UTF_8)).substring(0, 12);
 
     assertThat(loader.load(tmp).getFirst().revision()).isEqualTo(expected);
+    // The worker's manifest test (worker/test/manifest.test.ts) pins the same value, so the two
+    // implementations of contracts §10 are checked against each other.
+    assertThat(expected).isEqualTo("3f3ac231f888");
   }
 
   @Test

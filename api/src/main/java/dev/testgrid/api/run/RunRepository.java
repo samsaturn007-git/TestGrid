@@ -1,6 +1,9 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.domain.AttemptStatus;
+import dev.testgrid.api.domain.CaseStatus;
 import dev.testgrid.api.domain.Engine;
+import dev.testgrid.api.domain.ErrorClass;
 import dev.testgrid.api.domain.EventType;
 import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
@@ -16,8 +19,11 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -152,10 +158,17 @@ public class RunRepository {
     List<RunResponse.Target> targets =
         jdbc.sql(
                 """
-                SELECT t.* FROM run_targets t JOIN runs r ON r.id = t.run_id
-                WHERE r.project_id = :p AND t.run_id = :id
-                ORDER BY t.target_key
-                """)
+                SELECT t.*,\
+                """
+                    + ATTEMPT_COLUMNS
+                    + """
+                    FROM run_targets t JOIN runs r ON r.id = t.run_id
+                    LEFT JOIN LATERAL (
+                      SELECT * FROM attempts x WHERE x.target_id = t.id
+                      ORDER BY x.attempt_no DESC LIMIT 1) a ON true
+                    WHERE r.project_id = :p AND t.run_id = :id
+                    ORDER BY t.target_key
+                    """)
             .param("p", projectId)
             .param("id", runId)
             .query((rs, i) -> mapTarget(rs))
@@ -291,7 +304,94 @@ public class RunRepository {
         rs.getInt("attempt_count"),
         rs.getInt("max_attempts"),
         instant(rs, "queued_at"),
-        instant(rs, "finished_at"));
+        instant(rs, "finished_at"),
+        rs.getObject("a_id") == null ? null : mapAttempt(rs));
+  }
+
+  /** Attempt columns with an {@code a_} prefix, so they can sit next to target columns. */
+  static final String ATTEMPT_COLUMNS =
+      """
+      a.id AS a_id, a.attempt_no AS a_attempt_no, a.worker_id AS a_worker_id,
+      a.status AS a_status, a.claimed_at AS a_claimed_at, a.started_at AS a_started_at,
+      a.finished_at AS a_finished_at, a.leased_until AS a_leased_until,
+      (a.status IN ('CLAIMED', 'RUNNING') AND a.leased_until < now()) AS a_lease_expired,
+      a.last_heartbeat_at AS a_last_heartbeat_at, a.error_class AS a_error_class,
+      a.error_detail_redacted AS a_error_detail
+      """;
+
+  static AttemptSummary mapAttempt(ResultSet rs) throws SQLException {
+    String errorClass = rs.getString("a_error_class");
+    return new AttemptSummary(
+        rs.getObject("a_id", UUID.class),
+        rs.getInt("a_attempt_no"),
+        rs.getString("a_worker_id"),
+        AttemptStatus.valueOf(rs.getString("a_status")),
+        instant(rs, "a_claimed_at"),
+        instant(rs, "a_started_at"),
+        instant(rs, "a_finished_at"),
+        instant(rs, "a_leased_until"),
+        rs.getBoolean("a_lease_expired"),
+        instant(rs, "a_last_heartbeat_at"),
+        errorClass == null ? null : ErrorClass.valueOf(errorClass));
+  }
+
+  /** Every attempt of the run's targets, newest attempt first within each target. */
+  public List<RunResults.Target> findResults(UUID runId, List<RunResponse.Target> targets) {
+    record Row(UUID targetId, RunResults.Attempt attempt) {}
+    List<Row> attempts =
+        jdbc.sql(
+                "SELECT a.target_id, "
+                    + ATTEMPT_COLUMNS
+                    + """
+                    FROM attempts a JOIN run_targets t ON t.id = a.target_id
+                    WHERE t.run_id = :run
+                    ORDER BY a.target_id, a.attempt_no DESC
+                    """)
+            .param("run", runId)
+            .query((rs, i) ->
+                new Row(
+                    rs.getObject("target_id", UUID.class),
+                    new RunResults.Attempt(
+                        mapAttempt(rs), rs.getString("a_error_detail"), new ArrayList<>())))
+            .list();
+    Map<UUID, List<RunResults.CaseResult>> cases = new HashMap<>();
+    jdbc.sql(
+            """
+            SELECT c.* FROM case_results c
+            JOIN attempts a ON a.id = c.attempt_id JOIN run_targets t ON t.id = a.target_id
+            WHERE t.run_id = :run
+            ORDER BY c.attempt_id, c.case_key
+            """)
+        .param("run", runId)
+        .query(rs -> {
+          String errorClass = rs.getString("error_class");
+          cases
+              .computeIfAbsent(rs.getObject("attempt_id", UUID.class), k -> new ArrayList<>())
+              .add(
+                  new RunResults.CaseResult(
+                      rs.getString("case_key"),
+                      CaseStatus.valueOf(rs.getString("status")),
+                      rs.getInt("duration_ms"),
+                      rs.getInt("retry_count"),
+                      errorClass == null ? null : ErrorClass.valueOf(errorClass),
+                      rs.getString("error_message_redacted")));
+        });
+    return targets.stream()
+        .map(t ->
+            new RunResults.Target(
+                t.id(),
+                t.targetKey(),
+                t.engine(),
+                t.status(),
+                attempts.stream()
+                    .filter(r -> r.targetId().equals(t.id()))
+                    .map(r ->
+                        new RunResults.Attempt(
+                            r.attempt().attempt(),
+                            r.attempt().errorDetail(),
+                            List.copyOf(cases.getOrDefault(r.attempt().attempt().id(), List.of()))))
+                    .toList()))
+        .toList();
   }
 
   private static Instant instant(ResultSet rs, String column) throws SQLException {
