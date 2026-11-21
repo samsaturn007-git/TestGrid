@@ -89,7 +89,7 @@ modes: ## Run every fixture mode 3 times after a reset and compare results (AC-2
 e2e: ## Submit runs through the API and check the worker's real results (PRD-03; ENGINES=chromium)
 	node scripts/e2e.mjs $(or $(ENGINES),chromium)
 
-kill-check: ## kill -9 the worker mid-run; the lease must expire visibly, nothing passes (PRD-03 AC-4)
+kill-check: ## kill -9 the worker mid-run; attempt 1 ABANDONED and kept, attempt 2 runs within the bound (PRD-04 AC-4)
 	@bash scripts/kill-check.sh
 
 sigterm-check: ## SIGTERM the worker mid-run; grace period, then INFRA_ERROR/WORKER_SHUTDOWN (PRD-03 FR-6)
