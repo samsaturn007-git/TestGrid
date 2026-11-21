@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T09:00:44+00:00",
+  "updated_at": "2026-11-21T09:12:33+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -183,7 +183,7 @@
       "tasks": {
         "T1": {
           "label": "Add migrations for outbox, worker registry, scheduler settings and dispatch columns.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement capacity-aware FIFO dispatcher and outbox publisher with publisher confirms.",
