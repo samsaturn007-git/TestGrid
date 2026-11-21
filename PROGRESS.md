@@ -11,7 +11,7 @@
 | [PRD-02](prds/PRD-02-domain-and-api.md) | done | 6/6 | 14–20 h | PRD-01 | [docs/evidence/PRD-02.md](docs/evidence/PRD-02.md) |
 | [PRD-03](prds/PRD-03-single-worker-runner.md) | done | 7/7 | 14–22 h | PRD-02 | [docs/evidence/PRD-03.md](docs/evidence/PRD-03.md) |
 | [PRD-04](prds/PRD-04-durable-queue.md) | done | 7/7 | 20–30 h | PRD-03 | [docs/evidence/PRD-04.md](docs/evidence/PRD-04.md) |
-| [PRD-05](prds/PRD-05-live-dashboard.md) | not_started | 0/7 | 14–20 h | PRD-04 | — |
+| [PRD-05](prds/PRD-05-live-dashboard.md) | in_progress | 0/7 | 14–20 h | PRD-04 | — |
 | [PRD-06](prds/PRD-06-artifacts-and-timeline.md) | not_started | 0/6 | 12–18 h | PRD-05 | — |
 | [PRD-07](prds/PRD-07-failure-intelligence.md) | not_started | 0/7 | 16–24 h | PRD-06 | — |
 | [PRD-08](prds/PRD-08-ci-quality-gates.md) | not_started | 0/7 | 14–20 h | PRD-07 | — |
@@ -34,7 +34,7 @@
 - **Optional:** PRD-14 to PRD-15.
 
 ## Next action
-Start [PRD-05](prds/PRD-05-live-dashboard.md) and open `CODEX_PLAYBOOK.md`.
+Continue [PRD-05](prds/PRD-05-live-dashboard.md) (in_progress); complete unfinished checkboxes and add genuine evidence.
 
 ## Progress update commands
 

@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T15:13:18+00:00",
+  "updated_at": "2026-11-21T20:27:47+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -216,7 +216,7 @@
     "PRD-05": {
       "title": "React run dashboard, browser matrix, live state and accessible UX",
       "filename": "prds/PRD-05-live-dashboard.md",
-      "status": "not_started",
+      "status": "in_progress",
       "deps": [
         "PRD-04"
       ],
