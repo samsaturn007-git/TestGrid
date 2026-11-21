@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T13:24:53+00:00",
+  "updated_at": "2026-11-21T14:00:29+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -203,7 +203,7 @@
         },
         "T6": {
           "label": "Create Testcontainers integration tests: cap, duplicate message, worker kill, broker restart, ack-after-complete crash, cancel race.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Document failure guarantees, operator runbook (stuck runs, DLQ replay) and timing defaults.",
