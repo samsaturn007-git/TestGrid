@@ -1,10 +1,10 @@
 # Evidence — PRD-04
 
 **PRD:** `prds/PRD-04-durable-queue.md`  
-**Branch / commits:** `prd-04/durable-queue` — `187ba6a` (start, N11–N16); T1 `5ff8113`; T2 `11bdf49`, `ec8ea1f`; T3 `5518982`, `e829fff`, `25921ae`; T4 `fe491ac`, `1b2ae3b`; T5 `dd48145`, `1a48afb`; T6 `af2c046` (deadlock fix), `8cefbe1`, `599f2cf`; T7 `7638915`; tracker ticks `2c04427`, `4ee8b95`, `3b074bb`, `ba83ee6`, `2d09de6`, `0204a76`, `cdba9b4`. Nothing pushed; no PR yet.  
+**Branch / commits:** `prd-04/durable-queue` — `187ba6a` (start, N11–N16); T1 `5ff8113`; T2 `11bdf49`, `ec8ea1f`; T3 `5518982`, `e829fff`, `25921ae`; T4 `fe491ac`, `1b2ae3b`; T5 `dd48145`, `1a48afb`; T6 `af2c046` (deadlock fix), `8cefbe1`, `599f2cf`; T7 `7638915`; tracker ticks `2c04427`, `4ee8b95`, `3b074bb`, `ba83ee6`, `2d09de6`, `0204a76`, `cdba9b4`; evidence `f0816f6`. PR https://github.com/samsaturn007-git/TestGrid/pull/5  
 **Reviewer:** pending — the developer (repository owner) has not reviewed this file yet.  
 **Date:** 2026-11-21 (UTC)  
-**Outcome:** pass locally (all seven ACs verified against Testcontainers and the live Compose stack). **Not yet verified in GitHub Actions**: the branch has not been pushed. `tools/progress.py done` has not been run and waits for the developer's review.
+**Outcome:** pass (all seven ACs verified against Testcontainers and the live Compose stack; GitHub Actions run 44915182214 on `f0816f6` green on both jobs). `tools/progress.py done` has not been run and waits for the developer's review.
 
 Reference machine: Apple M4, 16 GiB, macOS 27.2, OrbStack, JDK 21.0.13.1, Node 26.13.1, pnpm 12.21.0, PostgreSQL 18.7, RabbitMQ 4.4.1 (`rabbitmq:4.4.1-management`), Spring Boot / Spring AMQP 4.1.2 (amqp-client 5.30.0), amqplib 2.4.0, `@playwright/test` 1.65.1. API tests are **live** against Testcontainers PostgreSQL and RabbitMQ. The drills are **live** against Compose with real browsers. The T6 crash tests use a **simulated** worker (see "Skipped or mocked tests"). Only the fake values from `.env.example` were used.
 
@@ -92,6 +92,25 @@ WorkerKillTest.aTargetWhoseWorkerAlwaysDiesEndsInfraErrorWithinTheBound: 5/5 pas
 
 These counts are from the crash classes inside the full `make test-api` run. The suite also passed on its own before that, 50/50.
 
+### GitHub Actions (`raw/prd-04-ci.txt`)
+
+Run 44915182214 on `f0816f6` (PR #5) passed on fresh `ubuntu-24.04` runners: https://github.com/samsaturn007-git/TestGrid/actions/runs/44915182214
+
+```text
+check + unit tests: success (5m19s)
+  make check (format, lint, typecheck)                         success
+  make test (node:test + ./mvnw verify)                        success   demo-shop 42/42, worker 82/82; mvnw -q prints no per-class counts
+  Vocabulary check                                             success   vocab_check OK
+  Contract drift check                                         success   contracts-check OK
+compose up + Chromium smoke and worker e2e: success (4m16s)
+  make up (all services healthy, RabbitMQ included)            success
+  Run survives an API restart (PRD-02 AC-1)                    success
+  Worker end-to-end on Chromium (PRD-03 E2E-001, AC-1, AC-2)   success   (AMQP consumer and targeted claim)
+  make smoke, fixture isolation, fixtures disabled → 404       success
+```
+
+The crash suite ran on the runner. The log shows each fault point firing as many times as the local tallies predict, the broker restart's `CONNECTION_FORCED`, and the reaper's abandon and lost-dispatch passes (counts in the raw file). The fixed-port RabbitMQ container works on hosted runners.
+
 ### Live drills (Compose, real worker image and browsers)
 
 ```text
@@ -154,11 +173,12 @@ With 5,000 targets, ANALYZEd: `Index Scan using run_targets_pkey on run_targets`
   - What covers the Node worker instead: its decision table is unit-tested against an in-memory channel and a fake HTTP API (**mocked**), and its fault points are run **live** by `make crash-check` (real image, broker and browsers).
 - **The crash tests shorten the timings:** lease TTL 5 s, heartbeat 1 s, reaper 200 ms, retry backoff 200 ms (max 1 s), dispatch timeout 2 s. The bounds are computed from those values; the live drills use the defaults.
 - **AC-6's metric** is not implemented (PRD-12).
-- **GitHub Actions has not run on this branch.** The CI workflow runs `make test` (which now includes the crash suite, about 4 extra minutes), `make up` and `make e2e`. Whether the fixed-port broker container and the crash timings behave on the hosted runners is **unverified** until the branch is pushed.
+- **CI coverage:** GitHub Actions (run 44915182214) runs `make test`, which now includes the crash suite and took 4m20s, plus `make up`, `restart-check` and the Chromium e2e. The drills (`kill-check`, `crash-check`, `sigterm-check`), `stuck-runs` and the DLQ tools ran locally only.
 - **Not run in this PRD:** the three-engine e2e (`ENGINES="chromium firefox webkit"`), and the demo with 3 workers, 20 targets and one `docker kill`. Two workers and a 3-engine cancel were run live.
 
 ## Screenshots / demo / raw data links
 
+- `docs/evidence/raw/prd-04-ci.txt` (GitHub Actions run 44915182214).
 - `docs/evidence/raw/prd-04-api-tests.txt`, `prd-04-crash-tests.txt`, `prd-04-cancel-races.txt`, `prd-04-deadlock-before-fix.txt`, `prd-04-explain-target-claim.txt`.
 - `docs/evidence/raw/prd-04-e2e.txt`, `prd-04-kill-check.txt`, `prd-04-crash-check.txt`, `prd-04-sigterm-check.txt`, `prd-04-runbook-tools.txt`, `prd-04-dispatch-latency.txt`, `prd-04-secret-scan.txt`.
 
