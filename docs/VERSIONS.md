@@ -92,6 +92,21 @@ Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, release date, d
 
 **PRD-04 memory budget** (§3): the default profile plus RabbitMQ is 4,864 + 512 = 5,376 MiB with 2 workers. The PRD-04 demo with `--scale worker=3` is 6,912 MiB of the 7.8 GiB OrbStack VM; don't run it alongside the `obs` profile.
 
+### 1.5 PRD-05 web libraries (checked 2026-11-22)
+
+Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, `time.modified`, `peerDependencies`). Exact versions in `web/package.json`, no `^`. All of them accept the pinned React 19.3.1, Vite 8.3.8, TypeScript 6.0.3 and ESLint 10; `pnpm install` prints no unmet-peer warning for them.
+
+| Component | Pin | Note |
+|---|---|---|
+| `react-router` | **8.5.2** (pin kept from §1.1) | Data router (`createBrowserRouter`; `createMemoryRouter` in tests). |
+| `@tanstack/react-query` | **5.108.2** (2026-11-20) | Server state for every API read (FR-1). Peer `react ^18 \|\| ^19`. |
+| `tailwindcss` / `@tailwindcss/vite` | **4.3.5** / **4.3.5** (2026-11-20) | CSS-first `@theme` reading the `--tg-*` variables from `docs/design/tokens.css`; Vite peer `^5.2 \|\| ^6 \|\| ^7 \|\| ^8`. |
+| `@fontsource-variable/inter` / `@fontsource-variable/jetbrains-mono` | **5.3.0** / **5.3.0** (OFL-1.1) | Self-hosted Inter and JetBrains Mono, so the dashboard makes no font request to a third party. They register as `Inter Variable` / `JetBrains Mono Variable`; `tokens.css` lists those names first. |
+| `vitest` | **5.1.1** (2026-11-18) | Peer `vite ^6.4 \|\| ^7 \|\| ^8`, `@types/node >=24`. Config in `web/vite.config.ts` (`vitest/config`). |
+| `jsdom` | **31.0.1** (2026-11-13) | Vitest environment. No layout, so colour contrast is left to the Playwright axe run (T7). |
+| `@testing-library/react` / `dom` / `user-event` / `jest-dom` | **16.3.3** / **10.4.2** / **14.6.13** / **8.0.0** | `jest-dom` 8 requires `vitest >=5 <6`. Under `NodeNext`, import `{ userEvent }` by name: the default import of this CJS package is its namespace. |
+| `axe-core` | **4.14.1** (2026-11-16) | Called directly from Vitest (`web/src/test/axe.ts`). `vitest-axe` was not used: its last release, 0.1.0, is from 2025-01-22. `@axe-core/playwright` 4.14.0 (2026-11-19) is the candidate for the T7 browser run; re-check then. |
+
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).
 - `.nvmrc`, `.tool-versions`, `package.json#packageManager` and `.mvn/wrapper/maven-wrapper.properties` must match this table (PRD-01 FR-3).

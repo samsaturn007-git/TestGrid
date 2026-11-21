@@ -41,7 +41,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: make check (format, lint, typecheck)
         run: make check
-      - name: make test (node:test + ./mvnw verify)
+      - name: make test (node:test, Vitest + ./mvnw verify)
         run: make test
       - name: Vocabulary check
         run: bash tools/vocab_check.sh

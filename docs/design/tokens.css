@@ -65,8 +65,10 @@
   --tg-scrim: rgba(7, 8, 10, 0.55);
 
   /* Type */
-  --tg-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --tg-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* The web app self-hosts both faces (@fontsource-variable), which names them '… Variable'. */
+  --tg-font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tg-font-mono:
+    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Radius */
   --tg-radius-tag: 4px;
@@ -174,6 +176,10 @@
 }
 
 /* Running pulse: opacity only, never on anything but the RUNNING icon. */
+.tg-pulse {
+  animation: tg-pulse var(--tg-dur-pulse) ease-in-out infinite;
+}
+
 @keyframes tg-pulse {
   0%,
   100% {
@@ -189,5 +195,8 @@
     --tg-dur-status: 0ms;
     --tg-dur-arrival: 0ms;
     --tg-dur-pulse: 0ms;
+  }
+  .tg-pulse {
+    animation: none;
   }
 }

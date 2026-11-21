@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+/* The Signal tokens are defined once, in docs/design (PRD-05 FR-1). */
+@import '../../../docs/design/tokens.css';
+
+/*
+ * Tailwind utilities read the --tg-* variables, so the light theme and reduced motion switch
+ * without a rebuild. The default palette and type scale are cleared so nothing off-token can
+ * slip in (`bg-red-500` simply doesn't exist).
+ */
+@theme inline {
+  --color-*: initial;
+  --color-canvas: var(--tg-canvas);
+  --color-surface: var(--tg-surface);
+  --color-raised: var(--tg-raised);
+  --color-overlay: var(--tg-overlay);
+  --color-hairline-soft: var(--tg-hairline-soft);
+  --color-hairline: var(--tg-hairline);
+  --color-hairline-strong: var(--tg-hairline-strong);
+  --color-text: var(--tg-text);
+  --color-text-secondary: var(--tg-text-secondary);
+  --color-text-muted: var(--tg-text-muted);
+  --color-primary-bg: var(--tg-primary-bg);
+  --color-primary-fg: var(--tg-primary-fg);
+  --color-focus: var(--tg-focus);
+  --color-scrim: var(--tg-scrim);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-info: var(--tg-info);
+  --color-info-tint: var(--tg-info-tint);
+  --color-info-rim: var(--tg-info-rim);
+  --color-success: var(--tg-success);
+  --color-success-tint: var(--tg-success-tint);
+  --color-success-rim: var(--tg-success-rim);
+  --color-danger: var(--tg-danger);
+  --color-danger-tint: var(--tg-danger-tint);
+  --color-danger-rim: var(--tg-danger-rim);
+  --color-warning: var(--tg-warning);
+  --color-warning-tint: var(--tg-warning-tint);
+  --color-warning-rim: var(--tg-warning-rim);
+  --color-infra: var(--tg-infra);
+  --color-infra-tint: var(--tg-infra-tint);
+  --color-infra-rim: var(--tg-infra-rim);
+  --color-abandoned: var(--tg-abandoned);
+  --color-abandoned-tint: var(--tg-abandoned-tint);
+  --color-abandoned-rim: var(--tg-abandoned-rim);
+  --color-flaky: var(--tg-flaky);
+  --color-flaky-tint: var(--tg-flaky-tint);
+  --color-flaky-rim: var(--tg-flaky-rim);
+  --color-neutral: var(--tg-neutral);
+  --color-neutral-tint: var(--tg-neutral-tint);
+  --color-neutral-rim: var(--tg-neutral-rim);
+
+  --font-sans: var(--tg-font-sans);
+  --font-mono: var(--tg-font-mono);
+
+  /* tokens.json "space" is a 4 px grid, which is Tailwind's spacing unit. */
+  --spacing: 4px;
+
+  --radius-*: initial;
+  --radius-tag: var(--tg-radius-tag);
+  --radius-chip: var(--tg-radius-chip);
+  --radius-card: var(--tg-radius-card);
+  --radius-panel: var(--tg-radius-panel);
+  --radius-dialog: var(--tg-radius-dialog);
+  --radius-full: var(--tg-radius-full);
+
+  --shadow-*: initial;
+  --shadow-popover: var(--tg-shadow-popover);
+  --shadow-dialog: var(--tg-shadow-dialog);
+
+  /* Type scale from tokens.json "type". */
+  --text-*: initial;
+  --text-display: 32px;
+  --text-display--line-height: 40px;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 700;
+  --text-title: 22px;
+  --text-title--line-height: 28px;
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+  --text-heading: 16px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-label: 11px;
+  --text-label--line-height: 16px;
+  --text-label--letter-spacing: 0.08em;
+  --text-label--font-weight: 500;
+  --text-mono: 13px;
+  --text-mono--line-height: 20px;
+  --text-mono-sm: 12px;
+  --text-mono-sm--line-height: 16px;
+  --text-mono-sm--font-weight: 500;
+  --text-numeral: 28px;
+  --text-numeral--line-height: 32px;
+  --text-numeral--font-weight: 600;
+
+  --ease-out: var(--tg-ease-out);
+}
+
+@layer base {
+  html {
+    background: var(--tg-canvas);
+    color: var(--tg-text);
+    font-family: var(--tg-font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus ring for everything, keyboard focus only (tokens.json "focus"). */
+  :focus-visible {
+    outline: 2px solid var(--tg-focus);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: var(--tg-info);
+  }
+}
