@@ -149,7 +149,7 @@ A code review of the whole branch (`main...prd-04/durable-queue`) found seven is
 | Two registrations of one worker name at once could answer `500` (unique-index race) | nit | `b6d5a06`: advisory lock on the name | `WorkerRegistryTest.concurrentRegistrationsOfOneNameLeaveOneLiveRow`: 5/5 failed before, 5/5 pass after |
 | A message still waiting for capacity past the dispatch timeout counts toward `WORKER_LOST` | nit | `a6b5fa4`: documented in `ReaperProperties` and RUNBOOK §2 | — |
 | `stuck-runs` hard-coded the 5-minute dispatch timeout; Compose forwarded none of the reaper settings to the API | nit | `54c3d4f`: `stuck-runs` reads `TESTGRID_DISPATCH_TIMEOUT_MS`, and Compose forwards all four reaper variables | Live: `env` in the API container shows them; `make stuck-runs` runs with the variable |
-| The crash suite's free-port choice for RabbitMQ is a small time-of-check race | nit | **not fixed** (rare, test-only; CI passed) | — |
+| The crash suite's free-port choice for RabbitMQ is a small time-of-check race | nit | Fixed after it bit: CI run 44918053915 on `7004414` failed all 50 crash tests with `address already in use` on a random binding for port 15671. `CrashRabbit` now exposes only AMQP, picks the port inside the create step and tries the start 3 times | Locally: crash suite 50/50, `make test-api` 328/328 |
 
 ## Negative / failure tests
 
