@@ -1,5 +1,6 @@
 package dev.testgrid.api.dispatch;
 
+import dev.testgrid.api.worker.WorkerRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,6 +31,7 @@ public class DispatchLoops implements SmartLifecycle {
   private final Dispatcher dispatcher;
   private final OutboxPublisher publisher;
   private final Reaper reaper;
+  private final WorkerRegistry registry;
   private final ReaperProperties reaperProperties;
   private final DispatchSignal signal;
   private final DispatchProperties properties;
@@ -41,6 +43,7 @@ public class DispatchLoops implements SmartLifecycle {
       Dispatcher dispatcher,
       OutboxPublisher publisher,
       Reaper reaper,
+      WorkerRegistry registry,
       ReaperProperties reaperProperties,
       DispatchSignal signal,
       DispatchProperties properties,
@@ -48,6 +51,7 @@ public class DispatchLoops implements SmartLifecycle {
     this.dispatcher = dispatcher;
     this.publisher = publisher;
     this.reaper = reaper;
+    this.registry = registry;
     this.reaperProperties = reaperProperties;
     this.signal = signal;
     this.properties = properties;
@@ -154,6 +158,7 @@ public class DispatchLoops implements SmartLifecycle {
       boolean full = false;
       try {
         Reaper.Pass pass = reaper.reapOnce();
+        registry.sweep();
         // A full batch means more may be waiting: go again straight away.
         full =
             pass.abandoned() >= reaperProperties.batchSize()

@@ -167,6 +167,15 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | `GET` / `PUT /scheduler` | Read or change policy and cap | local profile only; admin scope | 11 |
 | `POST /tokens`, `DELETE /tokens/{id}` | Personal and CI tokens | admin scope | 12 |
 
+**Cancel (PRD-04 FR-8)**
+- `POST /runs/{runId}/cancel`, no body. One transaction that locks the run's targets (in id order) and then the run, the same order as claim, complete and the reaper.
+- Already terminal: `200` with the run unchanged. The request is still recorded as `RUN_CANCEL_REQUESTED {accepted: false, runStatus}`.
+- Otherwise `202` with the run: `cancel_requested_at` is set (kept on a repeat), every `QUEUED` target ends `CANCELLED` (`TARGET_FINISHED` each, dispatched or not), and `RUN_CANCEL_REQUESTED {accepted: true, alreadyRequested, cancelledTargets, activeTargets}` is written. Active attempts see `cancelRequested: true` on their next heartbeat and complete with `CANCELLED`.
+- Races resolve by commit order: a completion that commits first keeps its result (the cancel then finds a terminal run, `200`, or leaves that target alone); a claim that commits first gives an active attempt the cancel reaches by heartbeat; a cancel that commits first makes the claim `409 stale-dispatch`. Each target ends in exactly one terminal state.
+
+**Workers (PRD-04 FR-7)**
+- `GET /workers`: `{items[{id, name, version, executor, engines, slots, state, startedAt, lastSeenAt, activeAttempts}], globalMaxSessions, activeSessions, dispatchedUnclaimed}`. Live workers first (`ACTIVE`, `DRAINING`), then those `LOST` in the last hour; at most 200. `activeAttempts` counts the worker's `CLAIMED`/`RUNNING` attempts by name (0 for a `LOST` row).
+
 **Read endpoints (PRD-02)**
 - **Caller scope:** every endpoint resolves the caller's project in one place (`CallerScope`; today always the local project). A project, suite or run outside that scope answers `404 not-found`, exactly like one that doesn't exist. `POST /projects/{projectId}/runs` applies the same rule.
 - **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`. The filters arrive in PRD-05.
@@ -264,7 +273,9 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `POST /attempts/{id}/heartbeat` | `{leaseToken}` | `200 {leasedUntil, cancelRequested}`; `410` | 03 |
 | `POST /attempts/{id}/complete` | the completion payload below | `200` (including an idempotent replay); `409`; `410`; `422` | 03 |
 | `POST /attempts/{id}/artifacts` | bounded multipart upload | `201`; `413`; `415` | 06 |
-| `POST /workers/register`, `POST /workers/{id}/drain` | | | 04 |
+| `POST /workers/register` | `{name, version, executor, engines[], slots}` | `201 {id, name, state, heartbeatIntervalSeconds}`; `400` | 04 |
+| `POST /workers/{id}/heartbeat` | `{}` | `200 {id, state}`; `404`; `410` (row is `LOST`: register again) | 04 |
+| `POST /workers/{id}/drain` | `{}` | `200 {id, state: DRAINING}` (idempotent); `404`; `410` | 04 |
 | `POST /attempts/{id}/external-session` | `{provider, buildId, sessionId}` | | 09 |
 
 **Access (PRD-03 FR-2)**
@@ -293,6 +304,13 @@ A repeated `start` by the lease holder is answered `200` without a second transi
   4. `429 capacity-exhausted` when active attempts (`CLAIMED`/`RUNNING`) already equal `global_max_sessions`. A claim normally can't hit this, because the target was counted as dispatched-but-unclaimed; it happens when the cap was lowered after dispatch.
   5. Insert the attempt, set the target `CLAIMED`, write `TARGET_CLAIMED` with `{workerId, attemptNo, messageId, dispatchGeneration}`.
 - Nothing is written on `404`, `409` or `429`.
+
+**Worker registry (PRD-04 FR-7)**
+- `name` is what the worker's claims record as `workerId` (`^[A-Za-z0-9._-]{1,64}$`; Compose gives each container `worker-<hostname>`). `version` matches `^[A-Za-z0-9._+-]{1,64}$`; `slots` is 1–16.
+- Registering under a name that has a live row (the container restarted) marks that row `LOST` and inserts a new one; a `LOST` row is never revived.
+- The worker registers before it consumes, heartbeats every `heartbeatIntervalSeconds`, and on `410` registers again. On `SIGTERM` it calls `drain` and then stops consuming.
+- The reaper marks a live worker not heard from for 3 × `lease_ttl_s` `LOST`. A drained worker that exits stays `DRAINING` until then.
+- Claims and leases don't depend on the registry: the lease protocol already fences a dead worker.
 
 **Claim response**
 ```json
