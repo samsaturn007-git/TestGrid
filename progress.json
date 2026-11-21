@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T20:27:47+00:00",
+  "updated_at": "2026-11-21T20:28:12+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -227,7 +227,7 @@
       "tasks": {
         "T1": {
           "label": "Build accessible app shell, routing, design tokens and StatusBadge for every status.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Connect suites view and new-run dialog posting with an idempotency key.",
