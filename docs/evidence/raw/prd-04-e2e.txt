@@ -1,15 +1,15 @@
-$ make e2e   # 2026-11-21T14:31:26Z
+$ make e2e   # 2026-11-21T15:08:10Z, after the review fixes
 node scripts/e2e.mjs chromium
 e2e: engines chromium against http://127.0.0.1:8080
   local:chromium:0 attempt 1 PASSED cases=6 (all PASSED)
-ok   checkout-smoke PASS → PASSED in 3.1s run=82daef3a-d1b3-4785-ae8c-6193c874d00a
+ok   checkout-smoke PASS → PASSED in 3.2s run=3cbcc326-24ec-4f01-b85a-a544b303954c
   local:chromium:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
-ok   checkout-smoke PRODUCT_DEFECT → FAILED in 13.2s run=d33d87ed-7bc1-4456-b102-a8b8896f368b
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 13.2s run=c94b8ee3-9752-4ef7-8cb2-f5c37692bdad
   local:chromium:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
-ok   checkout-smoke SELECTOR_DRIFT → FAILED in 13.2s run=302cd002-c19d-461c-b6b3-8b1de0be29cc
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 14.2s run=0e6651a1-031f-4613-8bc4-13e5cba3bcbf
   local:chromium:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
-ok   checkout-smoke TIMEOUT → TIMED_OUT in 43.5s run=50146736-d3ee-4fca-9ce2-ce7bfcfe75ef
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 43.4s run=474859a2-2734-4518-a276-b3c0f65d20f9
   local:chromium:0 attempt 1 PASSED cases=12 (all PASSED)
-ok   catalog-regression PASS → PASSED in 3.1s run=5c0ee71b-f08f-4087-8a2e-2126b0874aef
+ok   catalog-regression PASS → PASSED in 3.0s run=60d05c04-a6ec-4c9d-a671-bf8025408027
 e2e OK
 exit 0
