@@ -87,7 +87,7 @@ When a test fails, developers struggle to tell whether the product, the automati
 - **Scheduling:** the DB dispatcher owns ordering and the cap; the broker is transport only (ADR-004).
 - **Artifacts:** a local volume, with an optional S3-compatible adapter; never blobs in SQL.
 - **Observability:** OpenTelemetry (Java agent and Node SDK) → Collector → Jaeger and Prometheus → Grafana.
-- **Local environment:** Docker Compose profiles `default`, `queue`, `obs`, `s3`, `chaos`; `.env.example` with fake values.
+- **Local environment:** Docker Compose profiles `default` (RabbitMQ included from PRD-04, CONFLICT_REGISTER N14), `obs`, `s3`, `chaos`; `.env.example` with fake values.
 - **Contracts:** `docs/API_AND_DATA_CONTRACTS.md` is the vocabulary source of truth; a CI drift check on the generated types.
 - **Cloud:** official BrowserStack SDK and REST API, with credentials from the environment only.
 

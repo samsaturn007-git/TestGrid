@@ -167,8 +167,7 @@ These are starting values to tune with evidence, not claims.
 - Only `web` and the API public port are bound, to `127.0.0.1`.
 - The worker reaches only the demo-shop (and BrowserStack hosts when that executor is enabled).
 - Profiles:
-  - `default`: db, api, web, demo-shop, worker
-  - `queue`: rabbitmq (PRD-04+)
+  - `default`: db, api, web, demo-shop, worker, and rabbitmq from PRD-04 (CONFLICT_REGISTER N14: dispatch needs the broker, so a separate `queue` profile would leave targets queued forever)
   - `obs`: collector, prometheus, grafana, jaeger
   - `s3`: S3-compatible store (optional)
   - `chaos`: chaos runner
