@@ -7,6 +7,7 @@ import {
   headerStatus,
   isTerminal,
   restartProxy,
+  servedEngines,
   runIdFromUrl,
   tabTo,
   waitForRun,
@@ -107,13 +108,14 @@ test.describe('dashboard end to end (PRD-05)', () => {
     page,
     request,
   }) => {
-    // TIMEOUT keeps the run going long enough to block and restore the stream.
-    const run = await createRun(
-      request,
-      'checkout-smoke',
-      ['chromium', 'firefox', 'webkit'],
-      'TIMEOUT',
-    );
+    // TIMEOUT keeps the run going long enough to block and restore the stream: about 45 s per
+    // target on one worker slot, and the restore needs the run unfinished ~50 s in.
+    const engines = await servedEngines(request);
+    expect(
+      engines.length,
+      'UI-001 needs a worker serving at least two engines (TESTGRID_WORKER_ENGINES)',
+    ).toBeGreaterThanOrEqual(2);
+    const run = await createRun(request, 'checkout-smoke', engines, 'TIMEOUT');
     created.push(run.id);
     await page.goto(`/runs/${run.id}`);
     await expect(page.getByText('Live')).toBeVisible();
@@ -158,12 +160,13 @@ test.describe('dashboard end to end (PRD-05)', () => {
   }) => {
     // One slot: the first target runs while the others wait. Cancel once it has FAILED, so the
     // run ends with FAILED and CANCELLED targets.
-    const parent = await createRun(
-      request,
-      'checkout-smoke',
-      ['chromium', 'firefox', 'webkit'],
-      'PRODUCT_DEFECT',
-    );
+    const engines = await servedEngines(request);
+    // A rerun of only the failed targets needs a run with failed and other targets: two engines.
+    expect(
+      engines.length,
+      'UI-003 needs a worker serving at least two engines (TESTGRID_WORKER_ENGINES)',
+    ).toBeGreaterThanOrEqual(2);
+    const parent = await createRun(request, 'checkout-smoke', engines, 'PRODUCT_DEFECT');
     created.push(parent.id);
     await waitForRun(request, parent.id, (r) => r.targets.some((t) => t.status === 'FAILED'));
     await cancelRun(request, parent.id);

@@ -116,10 +116,22 @@ Every new test set was checked by breaking the code on purpose and confirming a 
 
 ## Screenshots / demo / raw data links
 
-- `docs/evidence/raw/prd-05-dashboard-e2e.txt`: full Playwright output, 18 passed.
+- `docs/evidence/raw/prd-05-dashboard-e2e.txt`: full Playwright output, 18 passed (before the CI fix; the run after it also passed 18, see "CI finding after the merge").
 - `docs/evidence/raw/prd-05-explain-runs-list.txt`: `EXPLAIN (ANALYZE, BUFFERS)` for the run list, unfiltered and filtered.
 
+## CI finding after the merge (PR #8)
+
+The first CI run of the close PR (run 45057363087, docs-only change) failed UI-003: no target of a fresh three-engine PRODUCT_DEFECT run reached FAILED within 3 minutes. Cause, from the CI service logs:
+
+- CI's worker served only `chromium` (`.env.example` default); locally it served all three, which is why it never failed here.
+- `make restart-check`, earlier in the same job, leaves a chromium + firefox run behind. Its firefox target was dispatched and never claimed, holding one of the three global-cap slots for the rest of the job.
+- UI-003's three targets share `queued_at` (one transaction), so the dispatcher's FIFO tie-break is by `id`, effectively random. With two free slots it dispatched firefox and webkit first about a third of the time; neither is ever claimed, so chromium was never dispatched.
+
+Fix (no product code change): the compose job's worker now serves all three engines (`TESTGRID_WORKER_ENGINES` on `make up`), and `make dashboard-e2e` does the same. The E2E asks `GET /workers` which engines an ACTIVE worker serves and uses only those; UI-001 and UI-003 need two and say so at once instead of hanging. Reproduced locally with a chromium-only worker and a leftover firefox target (UI-003 failed at once with the message; UI-001's one-engine run finished before the stream retry), then `make dashboard-e2e` from that state: the leftover ran, 18 passed.
+
 ## Known limitations and deferred improvements
+
+- A target for an engine no ACTIVE worker serves is dispatched and keeps a global-cap slot until the reaper's 5-minute dispatch timeout, so it can starve other work (head-of-line blocking; seen in CI above). Slot- and engine-aware dispatch is PRD-11.
 
 - The Overview's status tiles are not links: the run list has no time filter, so a link would show more runs than the tile counts. A `queuedAfter` filter would make them honest links.
 - "Last seen" and relative times use the browser's clock against server timestamps; exact on one machine, could drift across machines.
