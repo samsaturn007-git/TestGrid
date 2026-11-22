@@ -245,6 +245,12 @@ Clients must ignore event types they don't recognise.
 - Each event is sent as `id: <eventId>`, `event: <type>`, `data: <json>`.
 - A keep-alive comment `: ping` goes out every 15 s.
 - On reconnect the server replays everything after `Last-Event-ID`. If the gap is more than 1,000 events, it sends a single `RESYNC` and the client refetches the full snapshot.
+- **Stream rules (PRD-05 T5):**
+  - Without `Last-Event-ID` (a first connection, or a new `EventSource` after a fallback) the stream starts with one `RESYNC` whose `id:` is the run's newest event id and whose data is `{runId, eventId}`; history is not replayed, because the client loads the snapshot. Every later event streams live. `RESYNC` always carries an `id:`, so the next automatic reconnect resumes after it.
+  - `data:` is the envelope above; `event:` is its `type`. Rolled-back events never appear: an `AFTER INSERT` trigger on `run_events` (V7) calls `pg_notify('run_events', '<run_id>:<id>')`, which is delivered only when the inserting transaction commits.
+  - The notification is only a wake-up. A stream remembers the last id it sent and always reads `run_events WHERE run_id = ? AND id > last ORDER BY id`, so events are never dropped, repeated or reordered; each 15 s ping also re-reads, so a lost notification delays an event by at most one ping.
+  - `Last-Event-ID` that is not a non-negative integer is `400 validation-failed`. A run outside the caller's scope is `404 not-found` before any stream opens. More than `testgrid.sse.max-streams` (default 100) open streams is `429 rate-limited` with `Retry-After: 5`. A stream closes after 30 minutes and `EventSource` reconnects with `Last-Event-ID`.
+  - The response carries `X-Accel-Buffering: no` so the nginx proxy does not buffer it.
 
 ---
 

@@ -3,6 +3,7 @@ package dev.testgrid.api.run;
 import dev.testgrid.api.common.Page;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.Trigger;
+import dev.testgrid.api.events.RunEventStreams;
 import dev.testgrid.api.problem.ApiProblemException;
 import dev.testgrid.api.problem.FieldError;
 import dev.testgrid.api.problem.ProblemBody;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -26,9 +28,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping(path = "/api/v1", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -42,16 +46,19 @@ public class RunController {
   private final RunQueryService queries;
   private final RunCancelService cancels;
   private final RerunService reruns;
+  private final RunEventStreams streams;
 
   public RunController(
       RunCreationService creation,
       RunQueryService queries,
       RunCancelService cancels,
-      RerunService reruns) {
+      RerunService reruns,
+      RunEventStreams streams) {
     this.creation = creation;
     this.queries = queries;
     this.cancels = cancels;
     this.reruns = reruns;
+    this.streams = streams;
   }
 
   private static final Set<String> LIST_PARAMS =
@@ -280,5 +287,72 @@ public class RunController {
           .body(result.run());
     }
     return ResponseEntity.accepted().location(location).body(result.run());
+  }
+
+  /**
+   * PRD-05 FR-4, contracts §5: the run's events as server-sent events. Without {@code
+   * Last-Event-ID} the stream starts with one {@code RESYNC} carrying the newest event id; with it,
+   * everything after that id is replayed (or one {@code RESYNC} past the replay limit). A {@code :
+   * ping} comment goes out every 15 s.
+   */
+  @GetMapping(path = "/runs/{runId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  @Operation(
+      operationId = "streamRunEvents",
+      summary = "Server-sent events for one run",
+      description =
+          "Each event: id = eventId, event = type, data = the contracts §5 envelope. Send"
+              + " Last-Event-ID to resume; without it, the first event is RESYNC.")
+  @ApiResponse(responseCode = "200", description = "The event stream")
+  @ApiResponse(
+      responseCode = "400",
+      description = "validation-failed (Last-Event-ID is not a non-negative integer)",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "429",
+      description = "rate-limited: too many open streams; see Retry-After",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  public ResponseEntity<SseEmitter> events(
+      @PathVariable UUID runId,
+      @Parameter(description = "The last event id received; resume after it")
+          @RequestHeader(name = "Last-Event-ID", required = false)
+          String lastEventId,
+      HttpServletResponse response) {
+    Long after = parseLastEventId(lastEventId);
+    queries.get(runId); // 404 for a run outside the caller's scope, before any stream opens
+    try {
+      SseEmitter emitter = streams.open(runId, after);
+      return ResponseEntity.ok()
+          .header("Cache-Control", "no-cache")
+          // nginx (web/nginx.conf proxies /api/) must not buffer a stream.
+          .header("X-Accel-Buffering", "no")
+          .body(emitter);
+    } catch (ApiProblemException e) {
+      if (e.type() == ProblemType.RATE_LIMITED) {
+        response.setHeader("Retry-After", "5");
+      }
+      throw e;
+    }
+  }
+
+  private static Long parseLastEventId(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      long id = Long.parseLong(value.trim());
+      if (id >= 0) {
+        return id;
+      }
+    } catch (NumberFormatException e) {
+      // falls through to the 400 below
+    }
+    throw new ApiProblemException(
+        ProblemType.VALIDATION_FAILED,
+        "Last-Event-ID must be a non-negative integer",
+        List.of(new FieldError("Last-Event-ID", "must be a non-negative integer")));
   }
 }

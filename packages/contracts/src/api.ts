@@ -129,6 +129,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Server-sent events for one run
+         * @description Each event: id = eventId, event = type, data = the contracts Â§5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC.
+         */
+        get: operations["streamRunEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}/rerun": {
         parameters: {
             query?: never;
@@ -418,6 +438,10 @@ export interface components {
             branch?: string;
             ciRef?: string;
             commitSha?: string;
+        };
+        SseEmitter: {
+            /** Format: int64 */
+            timeout: number;
         };
         Suite: {
             allowedEngines: ("chromium" | "firefox" | "webkit")[];
@@ -757,6 +781,58 @@ export interface operations {
             };
             /** @description not-found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    streamRunEvents: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The last event id received; resume after it */
+                "Last-Event-ID"?: string;
+            };
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["SseEmitter"];
+                };
+            };
+            /** @description validation-failed (Last-Event-ID is not a non-negative integer) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description rate-limited: too many open streams; see Retry-After */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

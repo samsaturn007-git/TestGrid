@@ -278,6 +278,52 @@ paths:
       summary: Cancel a run
       tags:
       - runs
+  /api/v1/runs/{runId}/events:
+    get:
+      description: "Each event: id = eventId, event = type, data = the contracts Â§\
+        5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC."
+      operationId: streamRunEvents
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: The last event id received; resume after it
+        in: header
+        name: Last-Event-ID
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SseEmitter"
+          description: The event stream
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (Last-Event-ID is not a non-negative integer)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "rate-limited: too many open streams; see Retry-After"
+      summary: Server-sent events for one run
+      tags:
+      - runs
   /api/v1/runs/{runId}/rerun:
     post:
       description: "The new run has trigger RERUN and parentRunId set, and copies\
@@ -1073,6 +1119,14 @@ components:
         commitSha:
           type: string
           pattern: "^[0-9a-f]{7,64}$"
+    SseEmitter:
+      type: object
+      properties:
+        timeout:
+          type: integer
+          format: int64
+      required:
+      - timeout
     Suite:
       type: object
       properties:

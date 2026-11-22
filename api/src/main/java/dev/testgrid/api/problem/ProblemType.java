@@ -23,6 +23,7 @@ public enum ProblemType {
       "invalid-completion",
       HttpStatus.UNPROCESSABLE_CONTENT,
       "Completion does not match the claim"),
+  RATE_LIMITED("rate-limited", HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
   INVALID_RERUN("invalid-rerun", HttpStatus.UNPROCESSABLE_CONTENT, "Run cannot be rerun as asked"),
   UNSUPPORTED_MEDIA_TYPE(
       "unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");

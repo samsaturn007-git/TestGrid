@@ -62,7 +62,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
+			<!-- compile: the SSE listener uses PGConnection.getNotifications (PRD-05 FR-4) -->
 		</dependency>
 
 		<dependency>

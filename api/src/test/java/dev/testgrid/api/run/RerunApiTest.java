@@ -42,10 +42,11 @@ class RerunApiTest {
   }
 
   /**
-   * A three-engine run written straight to the tables, finished with the given target statuses. Not
-   * created through the API: the test JVM shares one database with other cached test contexts, some
-   * of which run dispatch loops and simulated workers, and those would pick up a QUEUED target.
-   * Runs here never have a QUEUED target, so nothing else touches them.
+   * A three-engine run written straight to the tables, finished with the given target statuses.
+   * Built in SQL rather than through the API so each test states exactly the target states it needs
+   * and nothing has to finish first. (Once, in a full `make test`, a run just created through the
+   * API was already terminal when it was rerun; that was not reproduced and its cause is unknown.
+   * This setup does not depend on it.)
    */
   private UUID finishedRun(String chromium, String firefox, String webkit) {
     return insertRun(
