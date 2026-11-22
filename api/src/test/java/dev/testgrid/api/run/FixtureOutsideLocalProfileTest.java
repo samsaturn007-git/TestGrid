@@ -62,4 +62,36 @@ class FixtureOutsideLocalProfileTest {
                 .content(body("checkout-smoke", engines("chromium"), "")))
         .andExpect(status().isAccepted());
   }
+
+  @Test
+  void aRerunOfAFixtureRunIsRefusedOutsideTheLocalProfile() throws Exception {
+    // Created directly, as if the profile had been local when it ran.
+    java.util.UUID parent =
+        jdbc.sql(
+                """
+                INSERT INTO runs (project_id, suite_id, status, trigger, fixture_mode, fixture_seed,
+                                  idempotency_key, request_hash, started_at, finished_at)
+                SELECT project_id, id, 'FAILED', 'MANUAL', 'PASS', 1, 'fixture-parent',
+                       decode(repeat('00', 32), 'hex'), now(), now()
+                FROM suites WHERE suite_key = 'checkout-smoke' AND is_current
+                RETURNING id
+                """)
+            .query(java.util.UUID.class)
+            .single();
+    jdbc.sql(
+            """
+            INSERT INTO run_targets (run_id, target_key, executor, engine, status, finished_at)
+            VALUES (:r, 'local:chromium:0', 'LOCAL', 'chromium', 'FAILED', now())
+            """)
+        .param("r", parent)
+        .update();
+
+    mvc.perform(
+            post("/api/v1/runs/" + parent + "/rerun")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scope\":\"FAILED_TARGETS\",\"idempotencyKey\":\"k-fixture\"}"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.type").value("https://testgrid.local/problems/fixture-not-allowed"));
+    assertThat(count(jdbc, "runs")).isEqualTo(1);
+  }
 }

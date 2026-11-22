@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-21T15:13:18+00:00",
+  "updated_at": "2026-11-22T18:18:05+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -216,7 +216,7 @@
     "PRD-05": {
       "title": "React run dashboard, browser matrix, live state and accessible UX",
       "filename": "prds/PRD-05-live-dashboard.md",
-      "status": "not_started",
+      "status": "in_progress",
       "deps": [
         "PRD-04"
       ],
@@ -227,31 +227,31 @@
       "tasks": {
         "T1": {
           "label": "Build accessible app shell, routing, design tokens and StatusBadge for every status.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Connect suites view and new-run dialog posting with an idempotency key.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Build run list with URL-synced filters and cursor pagination; add API filters.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Build run detail: browser matrix, attempts list, case table, cancel and rerun.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Implement SSE endpoint (replay, NOTIFY, ping) and client hook with reconnect, resync and polling fallback.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Build overview and workers pages from real API data.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Add Vitest/Testing Library unit tests, axe accessibility checks and Playwright E2E for the dashboard.",
-          "done": false
+          "done": true
         }
       },
       "evidence": null,

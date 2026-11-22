@@ -77,6 +77,14 @@ The mockups use the brief's real sample data (run `355f5da2`, `checkout-smoke` a
 
 Bracketed values such as `[n]`, `[p50]`, `[min]` and `[threshold]` mark data the API does not provide yet. Leave those widgets out until it does.
 
+## How the web app reads these files
+
+- `web/src/styles/app.css` imports `tokens.css` and maps every `--tg-*` variable into Tailwind's `@theme`. The default Tailwind palette, radii, shadows and type scale are cleared, so only token utilities exist (`bg-danger-tint`, `rounded-chip`, `text-mono-sm`, …).
+- `web/src/components/status.ts` imports `tokens.json` and uses `statusMap` and `icons` as they are. Each table is typed as a `Record` over the generated API enum, so the build fails if the API gains a status that has no badge here.
+- The web image copies only `tokens.css` and `tokens.json` from this folder (`.dockerignore` exceptions).
+- Fonts are self-hosted with `@fontsource-variable`, which registers `Inter Variable` and `JetBrains Mono Variable`. `tokens.css` lists those names first; the plain names remain as fallbacks.
+- `tokens.css` defines `.tg-pulse` (the RUNNING icon animation) and turns it off under `prefers-reduced-motion`.
+
 ## Keeping this in sync
 
 The canvas is where the design is edited. When a board changes, update this README and the token files in the same PRD branch, so the repo never describes a design the canvas no longer has.

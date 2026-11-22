@@ -14,6 +14,8 @@ import java.util.UUID;
 /**
  * A run as the public API shows it. Never a database row type (PRD-02 risk: no leaked entities).
  * {@code status} is computed from the targets with {@link dev.testgrid.api.domain.RunAggregate}.
+ * {@code parentRunId} is the run this one reruns (trigger RERUN); {@code rerunIds} are the runs
+ * that rerun this one, oldest first (PRD-05 FR-6).
  */
 public record RunResponse(
     UUID id,
@@ -31,6 +33,8 @@ public record RunResponse(
     @ApiNullable Instant startedAt,
     @ApiNullable Instant finishedAt,
     @ApiNullable Instant cancelRequestedAt,
+    @ApiNullable UUID parentRunId,
+    List<UUID> rerunIds,
     List<Target> targets,
     Links links) {
 

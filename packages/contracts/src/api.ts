@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What this deployment accepts */
+        get: operations["getCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -13,6 +30,26 @@ export interface paths {
         };
         /** Projects the caller can see */
         get: operations["listProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{projectId}/run-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Runs queued in the last N hours, by current status
+         * @description Every RunStatus is listed, zeros included, in the contract's order.
+         */
+        get: operations["countRuns"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64,7 +101,7 @@ export interface paths {
         };
         /**
          * List runs, newest first
-         * @description Keyset-paginated: pass nextCursor back as cursor. Null on the last page.
+         * @description Keyset-paginated: pass nextCursor back as cursor, with the same filters. Null on the last page. Repeat status or trigger to match any of several values; different filters must all match.
          */
         get: operations["listRuns"];
         put?: never;
@@ -106,6 +143,46 @@ export interface paths {
          * @description QUEUED targets end CANCELLED immediately; active attempts are told on their next heartbeat and finish CANCELLED unless their completion commits first. A run that is already terminal is returned unchanged with 200.
          */
         post: operations["cancelRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{runId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Server-sent events for one run
+         * @description Each event: id = eventId, event = type, data = the contracts Â§5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC.
+         */
+        get: operations["streamRunEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{runId}/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rerun a finished run's failed targets, or all of them
+         * @description The new run has trigger RERUN and parentRunId set, and copies the old run's suite revision, fixture and source. FAILED_TARGETS takes the targets that ended FAILED, TIMED_OUT or INFRA_ERROR.
+         */
+        post: operations["rerunRun"];
         delete?: never;
         options?: never;
         head?: never;
@@ -197,6 +274,9 @@ export interface components {
             status: "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED" | "ABANDONED";
             workerId: string;
         };
+        Capabilities: {
+            fixturesAllowed: boolean;
+        };
         CaseResult: {
             caseKey: string;
             /** Format: int32 */
@@ -265,8 +345,24 @@ export interface components {
             name: string;
             slug: string;
         };
+        RerunRequest: {
+            idempotencyKey: string;
+            /** @enum {string} */
+            scope: "FAILED_TARGETS" | "ALL";
+        };
         ResourceLinks: {
             self: string;
+        };
+        RunCounts: {
+            /** Format: date-time */
+            from: string;
+            /** Format: int32 */
+            hours: number;
+            items: components["schemas"]["StatusCount"][];
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            total: number;
         };
         RunLinks: {
             self: string;
@@ -283,9 +379,12 @@ export interface components {
             idempotencyKey: string;
             links: components["schemas"]["RunLinks"];
             /** Format: uuid */
+            parentRunId: string | null;
+            /** Format: uuid */
             projectId: string;
             /** Format: date-time */
             queuedAt: string;
+            rerunIds: string[];
             sharding: components["schemas"]["Sharding"];
             source: components["schemas"]["Source"] | null;
             /** Format: date-time */
@@ -371,6 +470,16 @@ export interface components {
             ciRef?: string;
             commitSha?: string;
         };
+        SseEmitter: {
+            /** Format: int64 */
+            timeout: number;
+        };
+        StatusCount: {
+            /** Format: int32 */
+            count: number;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+        };
         Suite: {
             allowedEngines: ("chromium" | "firefox" | "webkit")[];
             /** Format: int32 */
@@ -446,6 +555,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Capabilities */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Capabilities"];
+                };
+            };
+        };
+    };
     listProjects: {
         parameters: {
             query?: never;
@@ -462,6 +591,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageProject"];
+                };
+            };
+        };
+    };
+    countRuns: {
+        parameters: {
+            query?: {
+                /** @description 1-168, default 24 */
+                hours?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCounts"];
+                };
+            };
+            /** @description validation-failed (hours outside 1-168) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -581,6 +753,16 @@ export interface operations {
                 limit?: number;
                 /** @description Opaque; from a previous page's nextCursor */
                 cursor?: string;
+                /** @description Defaults to the caller's project */
+                projectId?: string;
+                /** @description Aggregate run status; repeat for several */
+                status?: ("QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED")[];
+                /** @description Exact suite key, any revision */
+                suiteKey?: string;
+                /** @description Exact branch name */
+                branch?: string;
+                /** @description Repeat for several */
+                trigger?: ("MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS")[];
             };
             header?: never;
             path?: never;
@@ -597,8 +779,17 @@ export interface operations {
                     "application/json": components["schemas"]["PageRunSummary"];
                 };
             };
-            /** @description validation-failed (limit or cursor) */
+            /** @description validation-failed (limit, cursor or a filter) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (projectId outside the caller's scope) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -670,6 +861,135 @@ export interface operations {
             };
             /** @description not-found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    streamRunEvents: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The last event id received; resume after it */
+                "Last-Event-ID"?: string;
+            };
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["SseEmitter"];
+                };
+            };
+            /** @description validation-failed (Last-Event-ID is not a non-negative integer) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description rate-limited: too many open streams; see Retry-After */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rerunRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerunRequest"];
+            };
+        };
+        responses: {
+            /** @description Replay: this key was already used with the same request */
+            200: {
+                headers: {
+                    /** @description Always "true" */
+                    "Idempotent-Replay"?: unknown;
+                    /** @description /api/v1/runs/{runId} */
+                    Location?: unknown;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description New linked run queued */
+            202: {
+                headers: {
+                    /** @description /api/v1/runs/{runId} */
+                    Location?: unknown;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description idempotency-conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description invalid-rerun (run not finished, or no failed targets), unknown-suite (revision no longer current) or fixture-not-allowed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -120,7 +120,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 
 **Required indexes** (the evidence must check them with `EXPLAIN`):
 - `runs(project_id, queued_at DESC, id DESC)`
-- `runs(project_id, status)`
+- `runs(project_id, status)` (served from PRD-05 by `runs(project_id, status, queued_at DESC, id DESC)`, whose leading columns are `project_id, status`; V5 replaced the narrower index)
 - `run_targets(run_id)` (served by the `UNIQUE(run_id, target_key)` index, whose leading column is `run_id`)
 - `run_targets(status, not_before) WHERE status = 'QUEUED'`
 - `attempts(target_id, attempt_no DESC)`
@@ -141,7 +141,9 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | Method and path | Purpose | Notes | PRD |
 |---|---|---|---|
 | `GET /projects` | List projects | | 02 |
+| `GET /capabilities` | What this deployment accepts: `{fixturesAllowed}` | `true` exactly when `TESTGRID_PROFILE=local`; the profile name itself is not returned | 05 |
 | `GET /projects/{projectId}/suites` | Suites with current revision | backed by the manifest | 02 |
+| `GET /projects/{projectId}/run-counts` | Runs queued in the last `hours` (1–168, default 24), by current status | every `RunStatus` listed, zeros included | 05 |
 | `GET /suites/{suiteId}` | Suite plus cases | | 02 |
 | `POST /projects/{projectId}/runs` | Create a run | `202` new run, `200` replay (header `Idempotent-Replay: true`), `409` key reused with a different payload, `422` unknown suite or engine | 02 |
 | `GET /runs` | List runs | filters `projectId, status, suiteKey, branch, trigger`; cursor pagination | 02 (filters 05) |
@@ -178,10 +180,16 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 
 **Read endpoints (PRD-02)**
 - **Caller scope:** every endpoint resolves the caller's project in one place (`CallerScope`; today always the local project). A project, suite or run outside that scope answers `404 not-found`, exactly like one that doesn't exist. `POST /projects/{projectId}/runs` applies the same rule.
-- **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`. The filters arrive in PRD-05.
+- **`GET /runs`:** newest first by `(queued_at, id)`. `limit` must be 1–100 (default 20) and anything else is `400 validation-failed`. The cursor is base64url of `v1|<queued_at in epoch microseconds>|<id>`; clients treat it as opaque, and one the API can't parse is `400`. Rows inserted while a client pages land before the first page, so they never cause duplicates or gaps. Items carry `targetCount` and `links.self`.
+- **`GET /runs` filters (PRD-05):** `status` (aggregate `RunStatus`) and `trigger` may repeat (or be comma-separated) and match any of their values; `suiteKey` (any revision) and `branch` are exact matches; different filters must all match. An empty value means no filter. `projectId` defaults to the caller's project, and one outside the caller's scope is `404 not-found`. Unknown enum values, a `suiteKey` or `branch` that breaks the create-run rules, and any unknown query parameter (a misspelt filter) are `400 validation-failed`, never ignored. The cursor keeps working under filters; clients send the same filters with it. V5 indexes `(project_id, status, queued_at DESC, id DESC)` and `(project_id, branch, queued_at DESC, id DESC) WHERE branch IS NOT NULL` keep filtered pages an index range scan.
 - **`GET /runs/{runId}`:** the run, its targets ordered by `targetKey`, `status` computed as in §2.3, and `links {self, suite}`. Each target carries `latestAttempt` (or `null`): `{id, attemptNo, workerId, status, claimedAt, startedAt, finishedAt, leasedUntil, leaseExpired, lastHeartbeatAt, errorClass}`. `leaseExpired` is `true` when the attempt is still `CLAIMED`/`RUNNING` but `leased_until < now()` (database clock), so a dead worker is visible rather than shown as running (PRD-03 AC-4).
 - **`GET /runs/{runId}/results` (PRD-03 FR-9):** `{runId, status, targets[{id, targetKey, engine, status, attempts[{attempt, errorDetail, caseResults[{caseKey, status, durationMs, retryCount, errorClass, errorMessage}]}]}]}`. Attempts are newest first; case results are ordered by `caseKey`. Lease tokens never appear.
+- **`GET /capabilities` (PRD-05):** `{"fixturesAllowed": boolean}`. The dashboard shows the fixture-mode controls only when it is `true`; the API still enforces `422 fixture-not-allowed` on its own, so a stale or forged answer changes nothing.
 - **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
+
+- **`POST /runs/{runId}/rerun` (PRD-05 FR-6):** body `{scope: FAILED_TARGETS | ALL, idempotencyKey}`, parsed as strictly as create-run (`FAILED_CASES` is `400` until PRD-11). The new run has `trigger: RERUN` and `parentRunId`, and copies the old run's suite revision (`suite_id`), fixture, source and sharding; `FAILED_TARGETS` takes the targets that ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (never `PASSED` or `CANCELLED`), `ALL` takes every target. `202` new run, `200` replay with `Idempotent-Replay: true`, `409` key reused with a different request (keys are shared with create-run; the request hash is the canonical `{"rerunOf": <runId>, "scope": <scope>}`). `422 invalid-rerun` when the run has not finished or nothing failed, `422 unknown-suite` when that revision is no longer the current, enabled one, `422 fixture-not-allowed` for a fixture run outside the local profile. A known key is answered before these checks. The new run's `RUN_CREATED` payload adds `parentRunId` and `rerunScope`.
+- **`GET /projects/{projectId}/run-counts` (PRD-05):** `{from, to, hours, total, items[{status, count}]}`. A run counts when its `queued_at` is inside the window (database clock), under its current `status`; `items` lists all seven `RunStatus` values in §2.1 order. `hours` outside 1–168 is `400 validation-failed`; a project outside the caller's scope is `404 not-found`.
+- **Rerun link (PRD-05):** `GET /runs/{runId}` carries `parentRunId` (or `null`) and `rerunIds`, the runs that rerun it, oldest first, so the link is visible in both directions. V6 indexes `runs(parent_run_id) WHERE parent_run_id IS NOT NULL`.
 
 **Create-run request**
 ```json
@@ -239,6 +247,12 @@ Clients must ignore event types they don't recognise.
 - Each event is sent as `id: <eventId>`, `event: <type>`, `data: <json>`.
 - A keep-alive comment `: ping` goes out every 15 s.
 - On reconnect the server replays everything after `Last-Event-ID`. If the gap is more than 1,000 events, it sends a single `RESYNC` and the client refetches the full snapshot.
+- **Stream rules (PRD-05 T5):**
+  - Without `Last-Event-ID` (a first connection, or a new `EventSource` after a fallback) the stream starts with one `RESYNC` whose `id:` is the run's newest event id and whose data is `{runId, eventId}`; history is not replayed, because the client loads the snapshot. Every later event streams live. `RESYNC` always carries an `id:`, so the next automatic reconnect resumes after it.
+  - `data:` is the envelope above; `event:` is its `type`. Rolled-back events never appear: an `AFTER INSERT` trigger on `run_events` (V7) calls `pg_notify('run_events', '<run_id>:<id>')`, which is delivered only when the inserting transaction commits.
+  - The notification is only a wake-up. A stream remembers the last id it sent and always reads `run_events WHERE run_id = ? AND id > last ORDER BY id`, so events are never dropped, repeated or reordered; each 15 s ping also re-reads, so a lost notification delays an event by at most one ping.
+  - `Last-Event-ID` that is not a non-negative integer is `400 validation-failed`. A run outside the caller's scope is `404 not-found` before any stream opens. More than `testgrid.sse.max-streams` (default 100) open streams is `429 rate-limited` with `Retry-After: 5`. A stream closes after 30 minutes and `EventSource` reconnects with `Last-Event-ID`.
+  - The response carries `X-Accel-Buffering: no` so the nginx proxy does not buffer it.
 
 ---
 
@@ -251,6 +265,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `validation-failed` | 400 | malformed JSON, too long, unknown field |
 | `unknown-suite` / `engine-not-allowed` / `fixture-not-allowed` | 422 | not in the manifest, or a fixture mode used outside the local profile |
 | `idempotency-conflict` | 409 | same key, different payload, or a different completion key after a terminal state |
+| `invalid-rerun` | 422 | `POST /runs/{runId}/rerun` on a run that has not finished, or `scope: FAILED_TARGETS` when no target ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (PRD-05) |
 | `invalid-completion` | 422 | a well-formed completion that doesn't fit its claim: unknown, missing or duplicate case key, duration or retry count out of range, a status without its required error (PRD-03) |
 | `not-found` | 404 | |
 | `attempt-not-active` | 409 | late or duplicate transition on a terminal attempt |

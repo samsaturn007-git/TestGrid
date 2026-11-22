@@ -8,4 +8,7 @@
 **/blob-report
 api/target
 docs
+# The web build reads the design tokens from their one source (PRD-05 FR-1).
+!docs/design/tokens.css
+!docs/design/tokens.json
 prds

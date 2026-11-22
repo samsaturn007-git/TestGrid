@@ -7,6 +7,19 @@ info:
 servers:
 - url: /
 paths:
+  /api/v1/capabilities:
+    get:
+      operationId: getCapabilities
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Capabilities"
+          description: Capabilities
+      summary: What this deployment accepts
+      tags:
+      - meta
   /api/v1/projects:
     get:
       operationId: listProjects
@@ -20,6 +33,46 @@ paths:
       summary: Projects the caller can see
       tags:
       - catalog
+  /api/v1/projects/{projectId}/run-counts:
+    get:
+      description: "Every RunStatus is listed, zeros included, in the contract's order."
+      operationId: countRuns
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: "1-168, default 24"
+        in: query
+        name: hours
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunCounts"
+          description: The counts
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (hours outside 1-168)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "Runs queued in the last N hours, by current status"
+      tags:
+      - runs
   /api/v1/projects/{projectId}/runs:
     post:
       operationId: createRun
@@ -115,8 +168,9 @@ paths:
       - catalog
   /api/v1/runs:
     get:
-      description: "Keyset-paginated: pass nextCursor back as cursor. Null on the\
-        \ last page."
+      description: "Keyset-paginated: pass nextCursor back as cursor, with the same\
+        \ filters. Null on the last page. Repeat status or trigger to match any of\
+        \ several values; different filters must all match."
       operationId: listRuns
       parameters:
       - description: "1-100, default 20"
@@ -132,6 +186,55 @@ paths:
         required: false
         schema:
           type: string
+      - description: Defaults to the caller's project
+        in: query
+        name: projectId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - description: Aggregate run status; repeat for several
+        in: query
+        name: status
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - QUEUED
+            - RUNNING
+            - PASSED
+            - FAILED
+            - TIMED_OUT
+            - INFRA_ERROR
+            - CANCELLED
+      - description: "Exact suite key, any revision"
+        in: query
+        name: suiteKey
+        required: false
+        schema:
+          type: string
+      - description: Exact branch name
+        in: query
+        name: branch
+        required: false
+        schema:
+          type: string
+      - description: Repeat for several
+        in: query
+        name: trigger
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - MANUAL
+            - CI
+            - RERUN
+            - BENCHMARK
+            - CHAOS
       responses:
         "200":
           content:
@@ -144,7 +247,13 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
-          description: validation-failed (limit or cursor)
+          description: "validation-failed (limit, cursor or a filter)"
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found (projectId outside the caller's scope)
       summary: "List runs, newest first"
       tags:
       - runs
@@ -207,6 +316,123 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: not-found
       summary: Cancel a run
+      tags:
+      - runs
+  /api/v1/runs/{runId}/events:
+    get:
+      description: "Each event: id = eventId, event = type, data = the contracts Â§\
+        5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC."
+      operationId: streamRunEvents
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: The last event id received; resume after it
+        in: header
+        name: Last-Event-ID
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SseEmitter"
+          description: The event stream
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (Last-Event-ID is not a non-negative integer)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "rate-limited: too many open streams; see Retry-After"
+      summary: Server-sent events for one run
+      tags:
+      - runs
+  /api/v1/runs/{runId}/rerun:
+    post:
+      description: "The new run has trigger RERUN and parentRunId set, and copies\
+        \ the old run's suite revision, fixture and source. FAILED_TARGETS takes the\
+        \ targets that ended FAILED, TIMED_OUT or INFRA_ERROR."
+      operationId: rerunRun
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RerunRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+          description: "Replay: this key was already used with the same request"
+          headers:
+            Idempotent-Replay:
+              description: Always "true"
+              style: simple
+            Location:
+              description: "/api/v1/runs/{runId}"
+              style: simple
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+          description: New linked run queued
+          headers:
+            Location:
+              description: "/api/v1/runs/{runId}"
+              style: simple
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: idempotency-conflict
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "invalid-rerun (run not finished, or no failed targets), unknown-suite\
+            \ (revision no longer current) or fixture-not-allowed"
+      summary: "Rerun a finished run's failed targets, or all of them"
       tags:
       - runs
   /api/v1/runs/{runId}/results:
@@ -368,6 +594,13 @@ components:
       - startedAt
       - status
       - workerId
+    Capabilities:
+      type: object
+      properties:
+        fixturesAllowed:
+          type: boolean
+      required:
+      - fixturesAllowed
     CaseResult:
       type: object
       properties:
@@ -571,6 +804,20 @@ components:
       - links
       - name
       - slug
+    RerunRequest:
+      type: object
+      properties:
+        idempotencyKey:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,200}$"
+        scope:
+          type: string
+          enum:
+          - FAILED_TARGETS
+          - ALL
+      required:
+      - idempotencyKey
+      - scope
     ResourceLinks:
       type: object
       properties:
@@ -578,6 +825,31 @@ components:
           type: string
       required:
       - self
+    RunCounts:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        hours:
+          type: integer
+          format: int32
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        to:
+          type: string
+          format: date-time
+        total:
+          type: integer
+          format: int32
+      required:
+      - from
+      - hours
+      - items
+      - to
+      - total
     RunLinks:
       type: object
       properties:
@@ -614,12 +886,22 @@ components:
           type: string
         links:
           $ref: "#/components/schemas/RunLinks"
+        parentRunId:
+          type:
+          - string
+          - "null"
+          format: uuid
         projectId:
           type: string
           format: uuid
         queuedAt:
           type: string
           format: date-time
+        rerunIds:
+          type: array
+          items:
+            type: string
+            format: uuid
         sharding:
           $ref: "#/components/schemas/Sharding"
         source:
@@ -667,8 +949,10 @@ components:
       - id
       - idempotencyKey
       - links
+      - parentRunId
       - projectId
       - queuedAt
+      - rerunIds
       - sharding
       - source
       - startedAt
@@ -900,6 +1184,33 @@ components:
         commitSha:
           type: string
           pattern: "^[0-9a-f]{7,64}$"
+    SseEmitter:
+      type: object
+      properties:
+        timeout:
+          type: integer
+          format: int64
+      required:
+      - timeout
+    StatusCount:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+      required:
+      - count
+      - status
     Suite:
       type: object
       properties:

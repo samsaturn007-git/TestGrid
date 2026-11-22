@@ -1,0 +1,24 @@
+$ playwright test
+
+Running 18 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/a11y.spec.ts:42:5 › axe, dark theme (PRD-05 AC-4) › overview (699ms)
+  ✓   2 [chromium] › e2e/a11y.spec.ts:51:5 › axe, dark theme (PRD-05 AC-4) › runs list with filters (533ms)
+  ✓   3 [chromium] › e2e/a11y.spec.ts:57:5 › axe, dark theme (PRD-05 AC-4) › run detail with case results open (509ms)
+  ✓   4 [chromium] › e2e/a11y.spec.ts:65:5 › axe, dark theme (PRD-05 AC-4) › suites with cases expanded (494ms)
+  ✓   5 [chromium] › e2e/a11y.spec.ts:72:5 › axe, dark theme (PRD-05 AC-4) › new-run dialog, with field errors showing (754ms)
+  ✓   6 [chromium] › e2e/a11y.spec.ts:84:5 › axe, dark theme (PRD-05 AC-4) › workers (375ms)
+  ✓   7 [chromium] › e2e/a11y.spec.ts:90:5 › axe, dark theme (PRD-05 AC-4) › not found (307ms)
+  ✓   8 [chromium] › e2e/a11y.spec.ts:42:5 › axe, light theme (PRD-05 AC-4) › overview (430ms)
+  ✓   9 [chromium] › e2e/a11y.spec.ts:51:5 › axe, light theme (PRD-05 AC-4) › runs list with filters (518ms)
+  ✓  10 [chromium] › e2e/a11y.spec.ts:57:5 › axe, light theme (PRD-05 AC-4) › run detail with case results open (510ms)
+  ✓  11 [chromium] › e2e/a11y.spec.ts:65:5 › axe, light theme (PRD-05 AC-4) › suites with cases expanded (497ms)
+  ✓  12 [chromium] › e2e/a11y.spec.ts:72:5 › axe, light theme (PRD-05 AC-4) › new-run dialog, with field errors showing (710ms)
+  ✓  13 [chromium] › e2e/a11y.spec.ts:84:5 › axe, light theme (PRD-05 AC-4) › workers (369ms)
+  ✓  14 [chromium] › e2e/a11y.spec.ts:90:5 › axe, light theme (PRD-05 AC-4) › not found (308ms)
+  ✓  15 [chromium] › e2e/dashboard.spec.ts:25:3 › dashboard end to end (PRD-05) › UI-002: a run from the dialog ends PASSED with PASS, FAILED with PRODUCT_DEFECT, naming engine, attempt and case (16.9s)
+  ✓  16 [chromium] › e2e/dashboard.spec.ts:72:3 › dashboard end to end (PRD-05) › AC-4: keyboard only, start a run, land on its page, and cancel it (9.2s)
+  ✓  17 [chromium] › e2e/dashboard.spec.ts:106:3 › dashboard end to end (PRD-05) › UI-001 / AC-3: the stream is blocked mid-run, the page polls and settles on the database state, then goes live again (56.0s)
+  ✓  18 [chromium] › e2e/dashboard.spec.ts:155:3 › dashboard end to end (PRD-05) › UI-003 / AC-5: rerunning failed targets makes a linked run with only those targets (33.8s)
+
+  18 passed (2.3m)
