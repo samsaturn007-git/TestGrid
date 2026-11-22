@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-22T17:20:56+00:00",
+  "updated_at": "2026-11-22T17:48:38+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -247,7 +247,7 @@
         },
         "T6": {
           "label": "Build overview and workers pages from real API data.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Add Vitest/Testing Library unit tests, axe accessibility checks and Playwright E2E for the dashboard.",
