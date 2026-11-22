@@ -65,6 +65,11 @@ jobs:
           corepack enable pnpm
       - run: pnpm install --frozen-lockfile
       - name: make up (all services healthy)
+        # The worker serves every engine here. A target for an engine no worker serves is
+        # dispatched but never claimed and holds a global-cap slot, which starved the dashboard
+        # E2E (restart-check leaves a firefox target behind).
+        env:
+          TESTGRID_WORKER_ENGINES: chromium,firefox,webkit
         run: make up
       - name: Run survives an API restart (PRD-02 AC-1)
         run: make restart-check

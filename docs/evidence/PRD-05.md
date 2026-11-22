@@ -1,10 +1,10 @@
 # Evidence — PRD-05
 
 **PRD:** `prds/PRD-05-live-dashboard.md`  
-**Branch / commits:** `prd-05/live-dashboard` (local, not pushed) — handoff `9e80644`, format `d445ac2`, start `7cb5a39`; T1 `72329cc`, `99de2e6`; T2 `ffce1d2`, `82c36ee`; T3 `9ac7953`, `26e51ca`, test fix `92d104a`; T4 `b66b726`, `2b69e6a`; T5 `cd824de`, `16baa2a`; T6 `d293e82`, `0c87635`; T7 `9a6eb47`; tracker ticks `31792f3`, `1eebf8b`, `19c5e07`, `c3be075`, `faec4b7`, `2c0768c`, `b512544`. No PR yet.  
-**Reviewer:** developer (repository owner), review pending. Claude wrote this file; it has not run `tools/progress.py done`.  
-**Date:** 2026-11-22 (UTC)  
-**Outcome:** pass (all five ACs verified locally against Testcontainers and the live Compose stack). GitHub Actions has **not** run on this branch yet, because it has not been pushed; CI now includes the dashboard E2E.
+**Branch / commits:** `prd-05/live-dashboard` — handoff `9e80644`, format `d445ac2`, start `7cb5a39`; T1 `72329cc`, `99de2e6`; T2 `ffce1d2`, `82c36ee`; T3 `9ac7953`, `26e51ca`, test fix `92d104a`; T4 `b66b726`, `2b69e6a`; T5 `cd824de`, `16baa2a`; T6 `d293e82`, `0c87635`; T7 `9a6eb47`; tracker ticks `31792f3`, `1eebf8b`, `19c5e07`, `c3be075`, `faec4b7`, `2c0768c`, `b512544`; evidence `7c80533`. Merged into `main` through https://github.com/samsaturn007-git/TestGrid/pull/6 (`dbc3b05`, the design handoff plus `d445ac2`) and https://github.com/samsaturn007-git/TestGrid/pull/7 (`c6e456e`).  
+**Reviewer:** developer (repository owner). On 2026-11-23, after asking Claude to merge PR #6 and then PR #7, the developer asked Claude to close PRD-05 on their behalf as well: write the explain-back and run `tools/progress.py done` (see the last section).  
+**Date:** 2026-11-22 (UTC), closed 2026-11-23  
+**Outcome:** pass (all five ACs verified locally against Testcontainers and the live Compose stack). GitHub Actions run 45054862295 on `7c80533` (PR #7 head) is green on both required jobs: the compose job, which now runs the dashboard E2E and axe, passed on the first attempt; "check + unit tests" failed once on a Maven Central download of `spring-boot-starter-parent:4.1.2` (the POM resolved normally minutes later) and passed on rerun. PR #6's branch got `d445ac2` (Prettier formatting of the token files) so its checks could pass; both checks then passed.
 
 Reference machine: Apple M4, 16 GiB, macOS 27.2, OrbStack, JDK 21.0.13.1, Node 26.13.1, pnpm 12.21.0, PostgreSQL 18.7, RabbitMQ 4.4.1, React 19.3.1, Vite 8.3.8, Vitest 5.1.1, `@playwright/test` 1.65.1 (Chromium 159), axe-core 4.14.1, `@axe-core/playwright` 4.14.0. API tests are **live** against Testcontainers PostgreSQL. Web component tests use a **fake API** (see "Skipped or mocked tests"). The Playwright E2E is **live** against the Compose stack with the real worker and demo shop. Only the fake values from `.env.example` were used.
 
@@ -112,14 +112,26 @@ Every new test set was checked by breaking the code on purpose and confirming a 
 - Component axe runs with colour contrast **off** (no layout in jsdom); the E2E axe run has it on.
 - The E2E runs on **Chromium only**. Firefox and WebKit were not run for the dashboard.
 - AC-3's "kill the connection" is done by restarting the web proxy, with Playwright blocking reconnects; Playwright cannot end a stream already flowing, and `context.setOffline(true)` did not cut it (tried first).
-- GitHub Actions has not run on this branch (not pushed).
+- GitHub Actions ran on the PR head `7c80533` (run 45054862295): both required jobs green, one transient Maven Central download failure rerun (see the outcome line).
 
 ## Screenshots / demo / raw data links
 
-- `docs/evidence/raw/prd-05-dashboard-e2e.txt`: full Playwright output, 18 passed.
+- `docs/evidence/raw/prd-05-dashboard-e2e.txt`: full Playwright output, 18 passed (before the CI fix; the run after it also passed 18, see "CI finding after the merge").
 - `docs/evidence/raw/prd-05-explain-runs-list.txt`: `EXPLAIN (ANALYZE, BUFFERS)` for the run list, unfiltered and filtered.
 
+## CI finding after the merge (PR #8)
+
+The first CI run of the close PR (run 45057363087, docs-only change) failed UI-003: no target of a fresh three-engine PRODUCT_DEFECT run reached FAILED within 3 minutes. Cause, from the CI service logs:
+
+- CI's worker served only `chromium` (`.env.example` default); locally it served all three, which is why it never failed here.
+- `make restart-check`, earlier in the same job, leaves a chromium + firefox run behind. Its firefox target was dispatched and never claimed, holding one of the three global-cap slots for the rest of the job.
+- UI-003's three targets share `queued_at` (one transaction), so the dispatcher's FIFO tie-break is by `id`, effectively random. With two free slots it dispatched firefox and webkit first about a third of the time; neither is ever claimed, so chromium was never dispatched.
+
+Fix (no product code change): the compose job's worker now serves all three engines (`TESTGRID_WORKER_ENGINES` on `make up`), and `make dashboard-e2e` does the same. The E2E asks `GET /workers` which engines an ACTIVE worker serves and uses only those; UI-001 and UI-003 need two and say so at once instead of hanging. Reproduced locally with a chromium-only worker and a leftover firefox target (UI-003 failed at once with the message; UI-001's one-engine run finished before the stream retry), then `make dashboard-e2e` from that state: the leftover ran, 18 passed.
+
 ## Known limitations and deferred improvements
+
+- A target for an engine no ACTIVE worker serves is dispatched and keeps a global-cap slot until the reaper's 5-minute dispatch timeout, so it can starve other work (head-of-line blocking; seen in CI above). Slot- and engine-aware dispatch is PRD-11.
 
 - The Overview's status tiles are not links: the run list has no time filter, so a link would show more runs than the tile counts. A `queuedAfter` filter would make them honest links.
 - "Last seen" and relative times use the browser's clock against server timestamps; exact on one machine, could drift across machines.
@@ -130,19 +142,41 @@ Every new test set was checked by breaking the code on purpose and confirming a 
 - During T4, one `make test` saw a run created through the API already terminal when it was rerun. A full-suite rerun of the old setup did not reproduce it and the cause is unknown; the test now builds its runs in SQL. Commit `b66b726` first blamed shared test databases; `cd824de` corrects that.
 - Leftover cached Spring contexts keep their background loops running for the rest of a Maven run; each has its own database, so no interference was observed, but it costs memory.
 
-## Explain-back review (developer's own words)
+## Explain-back review
 
-The PRD says the developer must be able to explain SSE replay and cache reconciliation without AI. Claude has not answered these; the developer fills them in before `tools/progress.py done`.
+> **Written by Claude at the developer's request, not in the developer's own words.** On 2026-11-23 the developer asked Claude to close PRD-05 on their behalf, as they did for PRD-03 and PRD-04. PRD-05's definition of done says "the developer can explain SSE replay and cache reconciliation without AI". These answers don't show that, so that item is **still owed**: the developer should answer the quiz below without notes and replace these answers.
 
-1. The three most important engineering decisions in this PRD, and why: [developer to answer]
-2. What happens if the main operation fails halfway through? (For example: the stream drops while a target finishes, or the rerun POST's answer is lost.) [developer to answer]
-3. What would you change for production? [developer to answer]
+### Quiz (answer without notes)
 
-Explain-back quiz:
+1. The three most important engineering decisions in this PRD, and why.
+2. What happens if the main operation fails halfway through? (For example: the stream drops while a target finishes, or the rerun POST's answer is lost.)
+3. What would you change for production?
+4. A client reconnects with `Last-Event-ID: 41`. Which rows does the server read, in what order, and when does it send `RESYNC` instead?
+5. Why does the page refetch `GET /runs/{id}` on every event instead of applying the event to the cache, and how are a repeated event and an older event handled?
+6. `pg_notify` is called inside the transaction that inserts the event. What does that guarantee, and what still makes delivery correct if a notification is lost?
+7. After two failed reconnects the page polls. What exactly counts as a failed reconnect, and when does polling stop?
+8. Why does the new-run dialog keep one idempotency key per distinct request body rather than one per click or one per dialog?
+9. Why do the run-list filters reject unknown query parameters, and why are the filter indexes `(project_id, status, queued_at DESC, id DESC)` rather than `(project_id, status)`?
 
-4. A client reconnects with `Last-Event-ID: 41`. Which rows does the server read, in what order, and when does it send `RESYNC` instead? [developer to answer]
-5. Why does the page refetch `GET /runs/{id}` on every event instead of applying the event to the cache, and how are a repeated event and an older event handled? [developer to answer]
-6. `pg_notify` is called inside the transaction that inserts the event. What does that guarantee, and what still makes delivery correct if a notification is lost? [developer to answer]
-7. After two failed reconnects the page polls. What exactly counts as a failed reconnect, and when does polling stop? [developer to answer]
-8. Why does the new-run dialog keep one idempotency key per distinct request body rather than one per click or one per dialog? [developer to answer]
-9. Why do the run-list filters reject unknown query parameters, and why are the filter indexes `(project_id, status, queued_at DESC, id DESC)` rather than `(project_id, status)`? [developer to answer]
+### Claude's answers (on the developer's behalf)
+
+1. **Three decisions.**
+   - **The server is the only source of truth for what the page shows.** An event only says "something changed"; the page refetches `GET /runs/{id}`, whose status is computed by `RunAggregate` from the targets. The stream itself reads `run_events` by id, with NOTIFY as a wake-up. So no status on screen can be one the database doesn't have, and a lost or repeated event can't corrupt the view.
+   - **Honest data everywhere.** Where the API had no source for a number, it got one (`GET /capabilities`, `GET /projects/{id}/run-counts`) instead of the UI guessing. A part that fails shows its Problem Details, never a zero; a failed refresh says when the data was loaded; RUNNING stops pulsing when updates aren't flowing.
+   - **Strict inputs and idempotent writes.** The dialog has no URL, script, regex or flag field (ADR-003); filters reuse the create-run rules and reject unknown parameters; create and rerun carry idempotency keys, so retries can't duplicate runs.
+2. **Failing halfway.**
+   - **Stream drops while a target finishes:** the completion is committed with its events in `run_events`. If the browser reconnects, it sends `Last-Event-ID` and the server replays everything after it; the page refetches and shows the finish. If two reconnects fail (or one hangs 10 s, or the server answers non-200), the page polls the snapshot every 5 s and shows it there. Either way the page converges on the database.
+   - **Rerun POST answer lost:** the page keeps one key per scope, so pressing the button again sends the same key and scope. The server finds the key with the same request hash and answers `200` with `Idempotent-Replay: true` and the same run; no second rerun. The new-run dialog works the same way per request body.
+   - **The server's own writes** (run, targets, `RUN_CREATED`) are one transaction, so a crash leaves all or nothing.
+3. **For production.**
+   - Authentication and per-user scope on every endpoint, including the stream (PRD-12).
+   - HTTP/2 to the browser: over HTTP/1.1 each open stream holds one of the browser's ~6 connections per host, so many tabs could starve ordinary requests.
+   - A global stream cap and metrics across API instances (open streams, NOTIFY lag, fallback rate); today the cap and registry are per instance.
+   - A time filter on the run list so Overview tiles can link honestly; live updates for Overview and Workers instead of timers; a server-provided clock for "last seen".
+   - The dashboard E2E on Firefox and WebKit too.
+4. **Replay after 41.** The server reads `run_events WHERE run_id = ? AND id > 41 ORDER BY id LIMIT 1001` (replay limit + 1). If it gets more than 1000 rows, it sends one `RESYNC` whose `id:` and data `eventId` are the run's newest event id, and the client refetches the snapshot. Otherwise it sends each row in id order as `id: <eventId>`, `event: <type>`, `data: <envelope>`, and remembers the last id sent. From then on every wake-up (a NOTIFY, a listener reconnect, or the 15 s ping sweep) reads `id > last sent` again. Without any `Last-Event-ID` the stream starts with one `RESYNC` carrying the newest id, because the client loads the snapshot.
+5. **Refetch, not apply.** The run's status is an aggregate the server computes from all targets and attempts (`RunAggregate`); applying single events in the browser would duplicate that logic and could paint a status the server doesn't have. Refetching makes the snapshot the only truth. Bursts are coalesced into one refetch after 100 ms, and `invalidateQueries` cancels an in-flight fetch, so an older response can't overwrite a newer one. The hook remembers the highest event id seen: an event with an id at or below it is ignored. `RESYNC` always refetches, and a frame whose data can't be parsed refetches at once.
+6. **NOTIFY in the transaction.** PostgreSQL delivers a notification only when the inserting transaction commits, so a listener never hears about an event that is rolled back, and when it hears, the row is already visible. The notification carries no data the stream relies on. If one is lost (the listener's connection dropped, or it was busy), nothing is lost: the stream reads by id from where it stopped, on the next NOTIFY, on the listener's reconnect (it wakes every stream), or at the latest on the 15 s ping sweep. `RunEventStreamSweepTest` proves delivery with LISTEN turned off.
+7. **Failed reconnects.** The first `error` event is the drop itself; EventSource then retries on its own, and each further `error` is a failed reconnect. More than two failures means fallback. Fallback also happens at once when the stream is closed by a non-200 answer (404, 429, 502, 504), and when a reconnect neither opens nor fails within 10 s of a drop (a proxy holding the request). In fallback the page closes the stream, polls `GET /runs/{id}` every 5 s with the banner, and tries a fresh stream every 30 s. Polling stops when a stream opens again (it goes `Live`) or when the run has finished.
+8. **One key per request body.** The key has to stay the same for a true retry and change for a different request. A retry after a timeout or lost answer sends the same body, so it reuses the key and the server replays the run it may already have created. One key per click would create a second run on every retry. One key per dialog would reuse the key after the user edits a field, and the server would answer `409 idempotency-conflict`. Keying on the body gives replay for retries and a fresh key for edits.
+9. **Unknown parameters and the indexes.** Spring ignores unknown query parameters by default, so `?suite=checkout-smoke` (the API name is `suiteKey`) would return the unfiltered list while looking filtered. Rejecting them makes a typo a `400`. The index puts the keyset order after the filter column: with `(project_id, status, queued_at DESC, id DESC)`, a page of `status = FAILED` (with or without a cursor condition) is an index range scan in the order the page needs, and Postgres stops after `limit + 1` rows. With `(project_id, status)` alone it would have to read every matching run and sort them, or walk the keyset index and filter. `RunListExplainTest` checks the plans (21 rows read, no sort).

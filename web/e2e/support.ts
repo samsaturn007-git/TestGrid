@@ -43,6 +43,21 @@ export async function createRun(
   return (await response.json()) as RunResponse;
 }
 
+/**
+ * The engines some ACTIVE worker serves, in contract order. A target for an engine no worker
+ * serves is dispatched but never claimed, and it keeps holding a slot under the global cap, so
+ * the tests only ask for engines that will actually run.
+ */
+export async function servedEngines(request: APIRequestContext): Promise<Engine[]> {
+  const response = await request.get('/api/v1/workers');
+  expect(response.ok()).toBe(true);
+  const body = (await response.json()) as components['schemas']['WorkersResponse'];
+  const served = new Set(body.items.filter((w) => w.state === 'ACTIVE').flatMap((w) => w.engines));
+  const engines = (['chromium', 'firefox', 'webkit'] as const).filter((e) => served.has(e));
+  expect(engines.length, 'an ACTIVE worker is registered').toBeGreaterThan(0);
+  return engines;
+}
+
 export async function getRun(request: APIRequestContext, runId: string): Promise<RunResponse> {
   const response = await request.get(`/api/v1/runs/${runId}`);
   expect(response.ok()).toBe(true);
