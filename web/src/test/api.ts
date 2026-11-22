@@ -7,6 +7,8 @@ import type {
   Suite,
   SuiteDetail,
   TestCase,
+  WorkersResponse,
+  WorkerView,
 } from '../api/types.ts';
 
 // A fake API for component tests (mocked, not live): routes by method and path, and records
@@ -206,4 +208,62 @@ export function runListApi(
     };
     return json(page);
   };
+}
+
+const RUN_STATUS_ORDER = [
+  'QUEUED',
+  'RUNNING',
+  'PASSED',
+  'FAILED',
+  'TIMED_OUT',
+  'INFRA_ERROR',
+  'CANCELLED',
+] as const;
+
+/** GET /projects/{id}/run-counts with the given counts (others 0), every status listed. */
+export function runCountsApi(
+  counts: Partial<Record<(typeof RUN_STATUS_ORDER)[number], number>>,
+  hours = 24,
+): StubHandler {
+  return ({ method, path }) => {
+    if (method !== 'GET' || !path.startsWith(`/projects/${PROJECT_ID}/run-counts`))
+      return undefined;
+    const items = RUN_STATUS_ORDER.map((status) => ({ status, count: counts[status] ?? 0 }));
+    return json({
+      from: '2026-11-21T12:00:00Z',
+      to: '2026-11-22T12:00:00Z',
+      hours,
+      total: items.reduce((n, i) => n + i.count, 0),
+      items,
+    });
+  };
+}
+
+export function worker(overrides: Partial<WorkerView> & Pick<WorkerView, 'name'>): WorkerView {
+  return {
+    id: `w-${overrides.name}`,
+    version: '0.5.0',
+    executor: 'LOCAL',
+    engines: ['chromium', 'firefox', 'webkit'],
+    slots: 1,
+    state: 'ACTIVE',
+    startedAt: '2026-11-22T07:41:02Z',
+    lastSeenAt: '2026-11-22T11:59:55Z',
+    activeAttempts: 0,
+    ...overrides,
+  };
+}
+
+/** GET /workers. */
+export function workersApi(response: Partial<WorkersResponse> = {}): StubHandler {
+  return ({ method, path }) =>
+    method === 'GET' && path === '/workers'
+      ? json({
+          items: [],
+          globalMaxSessions: 3,
+          activeSessions: 0,
+          dispatchedUnclaimed: 0,
+          ...response,
+        } satisfies WorkersResponse)
+      : undefined;
 }

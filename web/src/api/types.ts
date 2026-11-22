@@ -34,3 +34,5 @@ export type RunResultsTarget = Schemas['RunResultsTarget'];
 export type AttemptResults = Schemas['AttemptResults'];
 export type RerunRequest = Schemas['RerunRequest'];
 export type RerunScope = Schemas['RerunRequest']['scope'];
+export type WorkersResponse = Schemas['WorkersResponse'];
+export type RunCounts = Schemas['RunCounts'];

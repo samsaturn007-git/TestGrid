@@ -3,32 +3,6 @@ import { useCurrentProject } from '../api/queries.ts';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.tsx';
 import { Page } from './Page.tsx';
 
-// PRD-05 T1 ships the routes and the shell; each page's real content lands in its own task.
-// Until then a page says so plainly instead of showing invented data (FR-7).
-function NotBuiltYet({ task }: { task: string }) {
-  return (
-    <EmptyState title="Not built yet">
-      This page arrives in PRD-05 {task}. It will show live data from the API.
-    </EmptyState>
-  );
-}
-
-export function OverviewPage() {
-  return (
-    <Page title="Overview">
-      <NotBuiltYet task="T6" />
-    </Page>
-  );
-}
-
-export function WorkersPage() {
-  return (
-    <Page title="Workers">
-      <NotBuiltYet task="T6" />
-    </Page>
-  );
-}
-
 /** `/suites` (and the `G S` shortcut) go to the caller's project once it is known. */
 export function SuitesRedirect() {
   const { project, isPending, error } = useCurrentProject();

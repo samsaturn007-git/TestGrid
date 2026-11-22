@@ -1,6 +1,8 @@
 import type { RouteObject } from 'react-router';
-import { NotFoundPage, OverviewPage, SuitesRedirect, WorkersPage } from '../pages/placeholders.tsx';
+import { NotFoundPage, SuitesRedirect } from '../pages/placeholders.tsx';
+import { OverviewPage } from '../pages/OverviewPage.tsx';
 import { RunsPage } from '../pages/RunsPage.tsx';
+import { WorkersPage } from '../pages/WorkersPage.tsx';
 import { RunDetailRoute } from '../runs/detail/RunDetailPage.tsx';
 import { SuitesPage } from '../pages/SuitesPage.tsx';
 import { AppShell } from './AppShell.tsx';

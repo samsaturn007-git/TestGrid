@@ -15,8 +15,10 @@ import type {
   PageSuite,
   RerunRequest,
   RunResponse,
+  RunCounts,
   RunResults,
   SuiteDetail,
+  WorkersResponse,
 } from './types.ts';
 
 export function createQueryClient(): QueryClient {
@@ -43,6 +45,8 @@ export const queryKeys = {
   runLists: ['runs', 'list'] as const,
   run: (runId: string) => ['runs', 'detail', runId] as const,
   runResults: (runId: string) => ['runs', 'detail', runId, 'results'] as const,
+  runCounts: (projectId: string, hours: number) => ['run-counts', projectId, hours] as const,
+  workers: ['workers'] as const,
 };
 
 export function useProjects() {
@@ -168,5 +172,42 @@ export function useRerun(runId: string) {
       await client.invalidateQueries({ queryKey: queryKeys.run(runId), exact: true });
       await client.invalidateQueries({ queryKey: queryKeys.runLists });
     },
+  });
+}
+
+/**
+ * The Overview and Workers pages have no event stream of their own; they refresh on a timer and
+ * say when they were last updated.
+ */
+export const OVERVIEW_REFRESH_MS = 15_000;
+export const WORKERS_REFRESH_MS = 10_000;
+
+export function useRunCounts(projectId: string | undefined, hours = 24) {
+  return useQuery({
+    queryKey: queryKeys.runCounts(projectId ?? '', hours),
+    queryFn: ({ signal }) =>
+      apiGet<RunCounts>(
+        `/projects/${encodeURIComponent(projectId ?? '')}/run-counts?hours=${hours}`,
+        signal,
+      ),
+    enabled: projectId !== undefined,
+    refetchInterval: OVERVIEW_REFRESH_MS,
+  });
+}
+
+/** The newest runs, for the Overview. Shares the run-list prefix, so new runs invalidate it. */
+export function useRecentRuns(limit = 8) {
+  return useQuery({
+    queryKey: [...queryKeys.runLists, 'recent', limit] as const,
+    queryFn: ({ signal }) => apiGet<PageRunSummary>(`/runs?limit=${limit}`, signal),
+    refetchInterval: OVERVIEW_REFRESH_MS,
+  });
+}
+
+export function useWorkers(refreshMs = WORKERS_REFRESH_MS) {
+  return useQuery({
+    queryKey: queryKeys.workers,
+    queryFn: ({ signal }) => apiGet<WorkersResponse>('/workers', signal),
+    refetchInterval: refreshMs,
   });
 }
