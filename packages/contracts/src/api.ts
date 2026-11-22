@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/run-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Runs queued in the last N hours, by current status
+         * @description Every RunStatus is listed, zeros included, in the contract's order.
+         */
+        get: operations["countRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/runs": {
         parameters: {
             query?: never;
@@ -333,6 +353,17 @@ export interface components {
         ResourceLinks: {
             self: string;
         };
+        RunCounts: {
+            /** Format: date-time */
+            from: string;
+            /** Format: int32 */
+            hours: number;
+            items: components["schemas"]["StatusCount"][];
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            total: number;
+        };
         RunLinks: {
             self: string;
             suite: string | null;
@@ -442,6 +473,12 @@ export interface components {
         SseEmitter: {
             /** Format: int64 */
             timeout: number;
+        };
+        StatusCount: {
+            /** Format: int32 */
+            count: number;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
         };
         Suite: {
             allowedEngines: ("chromium" | "firefox" | "webkit")[];
@@ -554,6 +591,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageProject"];
+                };
+            };
+        };
+    };
+    countRuns: {
+        parameters: {
+            query?: {
+                /** @description 1-168, default 24 */
+                hours?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCounts"];
+                };
+            };
+            /** @description validation-failed (hours outside 1-168) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

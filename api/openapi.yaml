@@ -33,6 +33,46 @@ paths:
       summary: Projects the caller can see
       tags:
       - catalog
+  /api/v1/projects/{projectId}/run-counts:
+    get:
+      description: "Every RunStatus is listed, zeros included, in the contract's order."
+      operationId: countRuns
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: "1-168, default 24"
+        in: query
+        name: hours
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunCounts"
+          description: The counts
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (hours outside 1-168)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "Runs queued in the last N hours, by current status"
+      tags:
+      - runs
   /api/v1/projects/{projectId}/runs:
     post:
       operationId: createRun
@@ -785,6 +825,31 @@ components:
           type: string
       required:
       - self
+    RunCounts:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        hours:
+          type: integer
+          format: int32
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        to:
+          type: string
+          format: date-time
+        total:
+          type: integer
+          format: int32
+      required:
+      - from
+      - hours
+      - items
+      - to
+      - total
     RunLinks:
       type: object
       properties:
@@ -1127,6 +1192,25 @@ components:
           format: int64
       required:
       - timeout
+    StatusCount:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+      required:
+      - count
+      - status
     Suite:
       type: object
       properties:

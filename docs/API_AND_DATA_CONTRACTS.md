@@ -143,6 +143,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | `GET /projects` | List projects | | 02 |
 | `GET /capabilities` | What this deployment accepts: `{fixturesAllowed}` | `true` exactly when `TESTGRID_PROFILE=local`; the profile name itself is not returned | 05 |
 | `GET /projects/{projectId}/suites` | Suites with current revision | backed by the manifest | 02 |
+| `GET /projects/{projectId}/run-counts` | Runs queued in the last `hours` (1–168, default 24), by current status | every `RunStatus` listed, zeros included | 05 |
 | `GET /suites/{suiteId}` | Suite plus cases | | 02 |
 | `POST /projects/{projectId}/runs` | Create a run | `202` new run, `200` replay (header `Idempotent-Replay: true`), `409` key reused with a different payload, `422` unknown suite or engine | 02 |
 | `GET /runs` | List runs | filters `projectId, status, suiteKey, branch, trigger`; cursor pagination | 02 (filters 05) |
@@ -187,6 +188,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 - **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
 
 - **`POST /runs/{runId}/rerun` (PRD-05 FR-6):** body `{scope: FAILED_TARGETS | ALL, idempotencyKey}`, parsed as strictly as create-run (`FAILED_CASES` is `400` until PRD-11). The new run has `trigger: RERUN` and `parentRunId`, and copies the old run's suite revision (`suite_id`), fixture, source and sharding; `FAILED_TARGETS` takes the targets that ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (never `PASSED` or `CANCELLED`), `ALL` takes every target. `202` new run, `200` replay with `Idempotent-Replay: true`, `409` key reused with a different request (keys are shared with create-run; the request hash is the canonical `{"rerunOf": <runId>, "scope": <scope>}`). `422 invalid-rerun` when the run has not finished or nothing failed, `422 unknown-suite` when that revision is no longer the current, enabled one, `422 fixture-not-allowed` for a fixture run outside the local profile. A known key is answered before these checks. The new run's `RUN_CREATED` payload adds `parentRunId` and `rerunScope`.
+- **`GET /projects/{projectId}/run-counts` (PRD-05):** `{from, to, hours, total, items[{status, count}]}`. A run counts when its `queued_at` is inside the window (database clock), under its current `status`; `items` lists all seven `RunStatus` values in §2.1 order. `hours` outside 1–168 is `400 validation-failed`; a project outside the caller's scope is `404 not-found`.
 - **Rerun link (PRD-05):** `GET /runs/{runId}` carries `parentRunId` (or `null`) and `rerunIds`, the runs that rerun it, oldest first, so the link is visible in both directions. V6 indexes `runs(parent_run_id) WHERE parent_run_id IS NOT NULL`.
 
 **Create-run request**
