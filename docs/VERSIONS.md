@@ -106,6 +106,8 @@ Source: `https://registry.npmjs.org/<name>` (`dist-tags.latest`, `time.modified`
 | `jsdom` | **31.0.1** (2026-11-13) | Vitest environment. No layout, so colour contrast is left to the Playwright axe run (T7). |
 | `@testing-library/react` / `dom` / `user-event` / `jest-dom` | **16.3.3** / **10.4.2** / **14.6.13** / **8.0.0** | `jest-dom` 8 requires `vitest >=5 <6`. Under `NodeNext`, import `{ userEvent }` by name: the default import of this CJS package is its namespace. |
 | `axe-core` | **4.14.1** (2026-11-16) | Called directly from Vitest (`web/src/test/axe.ts`). `vitest-axe` was not used: its last release, 0.1.0, is from 2025-01-22. `@axe-core/playwright` 4.14.0 (2026-11-19) is the candidate for the T7 browser run; re-check then. |
+| `@axe-core/playwright` | **4.14.0** (2026-11-19) | PRD-05 T7 browser axe run (`web/e2e/a11y.spec.ts`). Re-checked 2026-11-22: npm `latest` is 4.14.0 (`next`/`rc` are prereleases). Depends on `axe-core ~4.14.0`, satisfied by the 4.14.1 above. |
+| `@playwright/test` (web) | **1.65.1** | Same pin as the worker (§1), so the web E2E uses the Chromium build the worker already installs (`playwright install chromium`). |
 
 **Rules**
 - Images are pinned by full version tag; adding `@sha256:` digests is done in PRD-12 (supply-chain hardening).

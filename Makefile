@@ -18,7 +18,7 @@ FIXTURE_SEED ?= 42
 export TG_FIXTURE_MODE := $(FIXTURE_MODE)
 export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e kill-check crash-check stuck-runs dlq dlq-replay sigterm-check doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e dashboard-e2e kill-check crash-check stuck-runs dlq dlq-replay sigterm-check doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -88,6 +88,9 @@ modes: ## Run every fixture mode 3 times after a reset and compare results (AC-2
 
 e2e: ## Submit runs through the API and check the worker's real results (PRD-03; ENGINES=chromium)
 	node scripts/e2e.mjs $(or $(ENGINES),chromium)
+
+dashboard-e2e: up ## Dashboard Playwright E2E and real-browser axe against the stack (PRD-05 T7)
+	pnpm --filter web e2e
 
 kill-check: ## kill -9 the worker mid-run; attempt 1 ABANDONED and kept, attempt 2 runs within the bound (PRD-04 AC-4)
 	@bash scripts/kill-check.sh
