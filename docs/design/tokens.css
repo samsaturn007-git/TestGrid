@@ -1,0 +1,193 @@
+/*
+ * TestGrid design tokens: direction A, "Signal".
+ * Source of truth for colour, type, spacing, radius, elevation, focus and motion.
+ * Canvas: https://claude.ai/artifact/JNMzxqEGt753do4U4FGMw8#artboard-Tokens
+ *
+ * Dark is the default. Light applies with [data-theme="light"], or when the OS
+ * prefers light and the user has not picked a theme ([data-theme] absent).
+ * Contrast ratios (WCAG 2.2) are against --tg-surface unless noted.
+ * Status triples: fg (text + icon) / tint (chip background) / rim (chip border).
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --tg-canvas: #0b0d10;
+  --tg-surface: #12151a;
+  --tg-raised: #181c22;
+  --tg-overlay: #1c2027;
+  --tg-hairline-soft: #1c2027;
+  --tg-hairline: #262b33;
+  --tg-hairline-strong: #353b45;
+
+  /* Text */
+  --tg-text: #e7e9ec; /* 15.0:1 */
+  --tg-text-secondary: #c9ced5; /* 11.6:1 */
+  --tg-text-muted: #a0a8b3; /*  7.6:1 */
+
+  /* Primary action: ink, never a status hue */
+  --tg-primary-bg: #e7e9ec;
+  --tg-primary-fg: #0b0d10; /* 16.0:1 */
+
+  /* Focus ring: 2px solid, offset 2px, :focus-visible only */
+  --tg-focus: #6cb6ff; /*  8.5:1 */
+
+  /* Status roles: fg on surface / fg on tint */
+  --tg-info: #6cb6ff;
+  --tg-info-tint: #1e2a38;
+  --tg-info-rim: #345271; /* 8.5 / 6.8 */
+  --tg-success: #4ed69a;
+  --tg-success-tint: #1a2e2b;
+  --tg-success-rim: #295e4b; /* 9.9 / 7.8 */
+  --tg-danger: #ff7a7a;
+  --tg-danger-tint: #312226;
+  --tg-danger-rim: #6c3b3e; /* 7.2 / 6.0 */
+  --tg-warning: #f0b54a;
+  --tg-warning-tint: #2f2a20;
+  --tg-warning-rim: #66522c; /* 9.9 / 7.7 */
+  --tg-infra: #bfa2ff;
+  --tg-infra-tint: #282738;
+  --tg-infra-rim: #544b71; /* 8.6 / 6.8 */
+  --tg-abandoned: #d2a585;
+  --tg-abandoned-tint: #2b2828;
+  --tg-abandoned-rim: #5b4c43; /* 8.2 / 6.6 */
+  --tg-flaky: #e8d44d;
+  --tg-flaky-tint: #2e2e21;
+  --tg-flaky-rim: #635e2d; /* 12.2 / 9.1 */
+  --tg-neutral: #a0a8b3;
+  --tg-neutral-tint: #24282e;
+  --tg-neutral-rim: #484d54; /* 7.6 / 6.2 */
+
+  /* Elevation: hairlines first, shadows only for things that float */
+  --tg-shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --tg-shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --tg-scrim: rgba(7, 8, 10, 0.55);
+
+  /* Type */
+  --tg-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tg-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Radius */
+  --tg-radius-tag: 4px;
+  --tg-radius-chip: 6px;
+  --tg-radius-card: 8px;
+  --tg-radius-panel: 10px;
+  --tg-radius-dialog: 12px;
+  --tg-radius-full: 999px;
+
+  /* Motion */
+  --tg-dur-status: 160ms;
+  --tg-dur-arrival: 1200ms;
+  --tg-dur-pulse: 1600ms;
+  --tg-ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --tg-canvas: #f6f7f9;
+  --tg-surface: #ffffff;
+  --tg-raised: #f3f4f6;
+  --tg-overlay: #ffffff;
+  --tg-hairline-soft: #edeef0;
+  --tg-hairline: #e3e5e8;
+  --tg-hairline-strong: #d5d8dd;
+  --tg-text: #12151a; /* 18.3:1 */
+  --tg-text-secondary: #3a414b; /* 10.3:1 */
+  --tg-text-muted: #4e5661; /*  7.4:1 */
+  --tg-primary-bg: #12151a;
+  --tg-primary-fg: #ffffff; /* 18.3:1 */
+  --tg-focus: #0b63c7; /*  5.8:1 */
+  --tg-info: #0b63c7;
+  --tg-info-tint: #e9f1fa;
+  --tg-info-rim: #aac8eb; /* 5.8 / 5.1 */
+  --tg-success: #0f7a4a;
+  --tg-success-tint: #e9f3ef;
+  --tg-success-rim: #abd0c0; /* 5.4 / 4.7 */
+  --tg-danger: #c42b2b;
+  --tg-danger-tint: #faecec;
+  --tg-danger-rim: #eab5b5; /* 5.6 / 4.9 */
+  --tg-warning: #965800;
+  --tg-warning-tint: #f6f0e8;
+  --tg-warning-rim: #dac5a6; /* 5.7 / 5.0 */
+  --tg-infra: #6b3fc8;
+  --tg-infra-tint: #f2eefa;
+  --tg-infra-rim: #cbbcec; /* 6.6 / 5.8 */
+  --tg-abandoned: #8a5634;
+  --tg-abandoned-tint: #f4f0ed;
+  --tg-abandoned-rim: #d6c4b8; /* 6.1 / 5.4 */
+  --tg-flaky: #716300;
+  --tg-flaky-tint: #f2f1e8;
+  --tg-flaky-rim: #cdc8a6; /* 6.0 / 5.3 */
+  --tg-neutral: #545c67;
+  --tg-neutral-tint: #f0f0f1;
+  --tg-neutral-rim: #c3c6ca; /* 6.8 / 5.9 */
+  --tg-shadow-popover: 0 4px 16px rgba(18, 21, 26, 0.08);
+  --tg-shadow-dialog: 0 16px 48px rgba(18, 21, 26, 0.16);
+  --tg-scrim: rgba(18, 21, 26, 0.35);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --tg-canvas: #f6f7f9;
+    --tg-surface: #ffffff;
+    --tg-raised: #f3f4f6;
+    --tg-overlay: #ffffff;
+    --tg-hairline-soft: #edeef0;
+    --tg-hairline: #e3e5e8;
+    --tg-hairline-strong: #d5d8dd;
+    --tg-text: #12151a;
+    --tg-text-secondary: #3a414b;
+    --tg-text-muted: #4e5661;
+    --tg-primary-bg: #12151a;
+    --tg-primary-fg: #ffffff;
+    --tg-focus: #0b63c7;
+    --tg-info: #0b63c7;
+    --tg-info-tint: #e9f1fa;
+    --tg-info-rim: #aac8eb;
+    --tg-success: #0f7a4a;
+    --tg-success-tint: #e9f3ef;
+    --tg-success-rim: #abd0c0;
+    --tg-danger: #c42b2b;
+    --tg-danger-tint: #faecec;
+    --tg-danger-rim: #eab5b5;
+    --tg-warning: #965800;
+    --tg-warning-tint: #f6f0e8;
+    --tg-warning-rim: #dac5a6;
+    --tg-infra: #6b3fc8;
+    --tg-infra-tint: #f2eefa;
+    --tg-infra-rim: #cbbcec;
+    --tg-abandoned: #8a5634;
+    --tg-abandoned-tint: #f4f0ed;
+    --tg-abandoned-rim: #d6c4b8;
+    --tg-flaky: #716300;
+    --tg-flaky-tint: #f2f1e8;
+    --tg-flaky-rim: #cdc8a6;
+    --tg-neutral: #545c67;
+    --tg-neutral-tint: #f0f0f1;
+    --tg-neutral-rim: #c3c6ca;
+    --tg-shadow-popover: 0 4px 16px rgba(18, 21, 26, 0.08);
+    --tg-shadow-dialog: 0 16px 48px rgba(18, 21, 26, 0.16);
+    --tg-scrim: rgba(18, 21, 26, 0.35);
+  }
+}
+
+/* Running pulse: opacity only, never on anything but the RUNNING icon. */
+@keyframes tg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tg-dur-status: 0ms;
+    --tg-dur-arrival: 0ms;
+    --tg-dur-pulse: 0ms;
+  }
+}
