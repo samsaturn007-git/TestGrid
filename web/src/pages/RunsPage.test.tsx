@@ -111,7 +111,8 @@ describe('runs page (PRD-05 FR-2, T3)', () => {
 
     await router.navigate(-1);
     await waitFor(() => expect(router.state.location.search).toBe('?status=TIMED_OUT'));
-    expect(screen.getByLabelText('Suite')).toHaveValue('');
+    // The URL changes first; the controls follow on the next render.
+    await waitFor(() => expect(screen.getByLabelText('Suite')).toHaveValue(''));
   });
 
   it('removes one chip, or clears every filter', async () => {
