@@ -47,3 +47,8 @@ export function useNow(intervalMs = 30_000): number {
   }, [intervalMs]);
   return now;
 }
+
+/** "11:52:26.124" in UTC, for event-level times where the date is already on screen. */
+export function formatClock(iso: string): string {
+  return new Date(iso).toISOString().slice(11, 23);
+}

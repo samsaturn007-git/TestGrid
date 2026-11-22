@@ -66,8 +66,11 @@ export interface PostResult<T> {
 export async function apiPost<T>(path: string, payload: unknown): Promise<PostResult<T>> {
   const { response, body } = await send(path, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: {
+      Accept: 'application/json',
+      ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
   });
   return {
     status: response.status,

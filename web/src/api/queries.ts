@@ -13,7 +13,9 @@ import type {
   PageProject,
   PageRunSummary,
   PageSuite,
+  RerunRequest,
   RunResponse,
+  RunResults,
   SuiteDetail,
 } from './types.ts';
 
@@ -40,6 +42,7 @@ export const queryKeys = {
   // Every run list (any filters) starts with runLists, so one prefix invalidates them all.
   runLists: ['runs', 'list'] as const,
   run: (runId: string) => ['runs', 'detail', runId] as const,
+  runResults: (runId: string) => ['runs', 'detail', runId, 'results'] as const,
 };
 
 export function useProjects() {
@@ -109,5 +112,59 @@ export function useRunList(filters: RunFilters) {
       apiGet<PageRunSummary>(`/runs?${apiSearch(filters, pageParam)}`, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
+  });
+}
+
+const TERMINAL = new Set(['PASSED', 'FAILED', 'TIMED_OUT', 'INFRA_ERROR', 'CANCELLED']);
+export const isTerminal = (status: string) => TERMINAL.has(status);
+
+/**
+ * Until live updates arrive (PRD-05 T5), an unfinished run is refetched every 5 s so the page
+ * never sits on a stale RUNNING. A finished run doesn't change, so it isn't polled.
+ */
+export const UNFINISHED_REFRESH_MS = 5_000;
+
+export function useRun(runId: string) {
+  return useQuery({
+    queryKey: queryKeys.run(runId),
+    queryFn: ({ signal }) => apiGet<RunResponse>(`/runs/${encodeURIComponent(runId)}`, signal),
+    refetchInterval: (query) =>
+      query.state.data && isTerminal(query.state.data.status) ? false : UNFINISHED_REFRESH_MS,
+  });
+}
+
+/** Every attempt with its case results. Refetched whenever the run itself changes. */
+export function useRunResults(runId: string, runVersion: string | undefined) {
+  return useQuery({
+    queryKey: [...queryKeys.runResults(runId), runVersion] as const,
+    queryFn: ({ signal }) =>
+      apiGet<RunResults>(`/runs/${encodeURIComponent(runId)}/results`, signal),
+    enabled: runVersion !== undefined,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useCancelRun(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<RunResponse>(`/runs/${encodeURIComponent(runId)}/cancel`, undefined),
+    onSuccess: async (result) => {
+      client.setQueryData(queryKeys.run(runId), result.data);
+      await client.invalidateQueries({ queryKey: queryKeys.runLists });
+    },
+  });
+}
+
+export function useRerun(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: RerunRequest) =>
+      apiPost<RunResponse>(`/runs/${encodeURIComponent(runId)}/rerun`, request),
+    onSuccess: async (result) => {
+      client.setQueryData(queryKeys.run(result.data.id), result.data);
+      // The old run now lists the rerun in rerunIds.
+      await client.invalidateQueries({ queryKey: queryKeys.run(runId), exact: true });
+      await client.invalidateQueries({ queryKey: queryKeys.runLists });
+    },
   });
 }

@@ -1,4 +1,4 @@
-import { Link, Navigate, useParams } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { useCurrentProject } from '../api/queries.ts';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.tsx';
 import { Page } from './Page.tsx';
@@ -17,15 +17,6 @@ export function OverviewPage() {
   return (
     <Page title="Overview">
       <NotBuiltYet task="T6" />
-    </Page>
-  );
-}
-
-export function RunDetailPage() {
-  const { runId } = useParams();
-  return (
-    <Page title="Run" description={<span className="font-mono">{runId}</span>}>
-      <NotBuiltYet task="T4" />
     </Page>
   );
 }
