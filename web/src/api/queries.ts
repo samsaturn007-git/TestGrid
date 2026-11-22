@@ -118,18 +118,20 @@ export function useRunList(filters: RunFilters) {
 const TERMINAL = new Set(['PASSED', 'FAILED', 'TIMED_OUT', 'INFRA_ERROR', 'CANCELLED']);
 export const isTerminal = (status: string) => TERMINAL.has(status);
 
-/**
- * Until live updates arrive (PRD-05 T5), an unfinished run is refetched every 5 s so the page
- * never sits on a stale RUNNING. A finished run doesn't change, so it isn't polled.
- */
-export const UNFINISHED_REFRESH_MS = 5_000;
+/** Fallback refresh while the event stream is down (PRD-05 FR-3). */
+export const POLL_MS = 5_000;
 
-export function useRun(runId: string) {
+/**
+ * One run's snapshot. Live updates (useRunEvents) refetch it on each event; `poll` is the
+ * fallback after the stream has failed, so the page is never left on a stale RUNNING. A
+ * finished run doesn't change and is never polled.
+ */
+export function useRun(runId: string, poll = false) {
   return useQuery({
     queryKey: queryKeys.run(runId),
     queryFn: ({ signal }) => apiGet<RunResponse>(`/runs/${encodeURIComponent(runId)}`, signal),
     refetchInterval: (query) =>
-      query.state.data && isTerminal(query.state.data.status) ? false : UNFINISHED_REFRESH_MS,
+      poll && !(query.state.data && isTerminal(query.state.data.status)) ? POLL_MS : false,
   });
 }
 

@@ -1,8 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RerunRequest, RunResponse, RunResults } from '../../api/types.ts';
 import { catalogApi, json, problem, stubApi, type StubHandler } from '../../test/api.ts';
 import { expectNoSeriousA11yViolations } from '../../test/axe.ts';
+import { FakeEventSource } from '../../test/eventSource.ts';
 import { renderApp } from '../../test/render.tsx';
 import { attempt, attemptResults, result, results, run, target } from '../../test/runFixtures.ts';
 
@@ -307,10 +308,12 @@ describe('run detail page (PRD-05 FR-2, T4)', () => {
       expect(posts).toEqual([`/runs/${running.id}/cancel`]);
     });
 
-    it('shows RUNNING and QUEUED in the matrix, pulsing, and says it refreshes', async () => {
+    it('shows RUNNING and QUEUED in the matrix, pulsing once the live stream is open', async () => {
       stubApi(runApi([{ run: running, results: runningResults }]), catalogApi());
       renderApp(`/runs/${running.id}`);
-      expect(await screen.findByText('Refreshing every 5 s until the run finishes.')).toBeVisible();
+      await screen.findByText('Connecting to live updates…');
+      act(() => FakeEventSource.latest().open());
+      expect(await screen.findByText('Live')).toBeVisible();
       // The matrix waits for the suite's case list instead of flashing an empty table.
       const row = (await screen.findByRole('rowheader', { name: /cart-total/ })).closest('tr');
       const badges = within(row as HTMLElement).getAllByRole('img');
@@ -332,12 +335,13 @@ describe('run detail page (PRD-05 FR-2, T4)', () => {
         catalogApi(),
       );
       const { client } = renderApp(`/runs/${running.id}`);
-      await screen.findByText('Refreshing every 5 s until the run finishes.');
+      await screen.findByText('Connecting to live updates…');
+      act(() => FakeEventSource.latest().open());
+      await screen.findByText('Live');
       fail = true;
       await client.refetchQueries({ queryKey: ['runs', 'detail', running.id], exact: true });
       const alert = await screen.findByRole('alert', {}, { timeout: 8000 });
       expect(alert).toHaveTextContent('Could not refresh this run.');
-      expect(screen.getByText('Not refreshing: the last refresh failed.')).toBeVisible();
       const header = screen.getByRole('region', { name: 'Checkout smoke' });
       expect(
         within(header).getByRole('img', { name: 'Run status: RUNNING' }).querySelector('svg'),

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ApiError } from '../../api/client.ts';
 import { isTerminal, useCancelRun, useRerun } from '../../api/queries.ts';
@@ -18,11 +18,15 @@ export function RunHeader({
   title,
   tally,
   live,
+  liveNote,
 }: {
   run: RunResponse;
   title: string;
   tally: RunTally;
+  /** The page is being kept current: RUNNING may pulse. */
   live: boolean;
+  /** How the page is kept current, for an unfinished run; null once it has finished. */
+  liveNote: ReactNode;
 }) {
   const terminal = isTerminal(run.status);
   return (
@@ -39,13 +43,7 @@ export function RunHeader({
             </span>
           </div>
           <p className="text-body text-text-secondary">{summarySentence(tally)}</p>
-          {!terminal ? (
-            <p className="text-body-sm text-text-muted">
-              {live
-                ? 'Refreshing every 5 s until the run finishes.'
-                : 'Not refreshing: the last refresh failed.'}
-            </p>
-          ) : null}
+          {!terminal ? liveNote : null}
         </div>
         {terminal ? <RerunActions run={run} /> : <CancelAction run={run} />}
       </div>

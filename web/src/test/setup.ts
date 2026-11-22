@@ -1,6 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
+import { FakeEventSource } from './eventSource.ts';
+
+// Every test gets a fresh fake EventSource (jsdom has none); see test/eventSource.ts.
+beforeEach(() => {
+  FakeEventSource.reset();
+  vi.stubGlobal('EventSource', FakeEventSource);
+});
 
 afterEach(() => {
   cleanup();

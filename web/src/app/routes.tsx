@@ -1,7 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { NotFoundPage, OverviewPage, SuitesRedirect, WorkersPage } from '../pages/placeholders.tsx';
 import { RunsPage } from '../pages/RunsPage.tsx';
-import { RunDetailPage } from '../runs/detail/RunDetailPage.tsx';
+import { RunDetailRoute } from '../runs/detail/RunDetailPage.tsx';
 import { SuitesPage } from '../pages/SuitesPage.tsx';
 import { AppShell } from './AppShell.tsx';
 
@@ -12,7 +12,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <OverviewPage /> },
       { path: 'runs', element: <RunsPage /> },
-      { path: 'runs/:runId', element: <RunDetailPage /> },
+      { path: 'runs/:runId', element: <RunDetailRoute /> },
       { path: 'suites', element: <SuitesRedirect /> },
       { path: 'projects/:projectId/suites', element: <SuitesPage /> },
       { path: 'workers', element: <WorkersPage /> },

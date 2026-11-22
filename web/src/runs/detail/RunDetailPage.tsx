@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { isTerminal, useRun, useRunResults, useSuite } from '../../api/queries.ts';
 import type { RunResponse } from '../../api/types.ts';
@@ -9,6 +10,8 @@ import { BrowserMatrix } from './BrowserMatrix.tsx';
 import { CaseTable } from './CaseTable.tsx';
 import { buildMatrix, tally } from './model.ts';
 import { RunHeader } from './RunHeader.tsx';
+import { useRunEvents, type LiveMode } from '../useRunEvents.ts';
+import { LiveNote } from './LiveNote.tsx';
 
 /**
  * Changes whenever anything the results depend on changes, so results are refetched exactly
@@ -23,11 +26,18 @@ function resultsVersion(run: RunResponse): string {
   ].join('|');
 }
 
-/** `/runs/:runId` (PRD-05 FR-2): header and actions, browser matrix, attempts, cases. */
-export function RunDetailPage() {
+/** Keyed by run, so moving to another run starts from fresh live state and page state. */
+export function RunDetailRoute() {
   const { runId = '' } = useParams();
-  const run = useRun(runId);
+  return <RunDetailPage key={runId} runId={runId} />;
+}
+
+/** `/runs/:runId` (PRD-05 FR-2, FR-3): header and actions, matrix, attempts, cases, live. */
+export function RunDetailPage({ runId }: { runId: string }) {
+  const [mode, setMode] = useState<LiveMode>('connecting');
+  const run = useRun(runId, mode === 'polling');
   const data = run.data;
+  useRunEvents(runId, data !== undefined && !isTerminal(data.status), setMode);
   const results = useRunResults(runId, data ? resultsVersion(data) : undefined);
   const suite = useSuite(data?.suiteId ?? '', data !== undefined);
   const shortId = runId.slice(0, 8);
@@ -56,7 +66,7 @@ export function RunDetailPage() {
   // A failed refresh of an unfinished run means what is shown may be out of date: say so, and
   // stop animating RUNNING so it doesn't look live.
   const refreshFailed = run.isRefetchError;
-  const live = !terminal && !refreshFailed;
+  const live = !terminal && !refreshFailed && mode !== 'connecting';
   const { columns, rows } = buildMatrix(data, results.data, suite.data?.cases);
 
   return (
@@ -84,6 +94,7 @@ export function RunDetailPage() {
         title={suite.data?.suite.displayName ?? data.suiteKey}
         tally={tally(data, results.data)}
         live={live}
+        liveNote={<LiveNote mode={mode} />}
       />
       {results.error && !results.data ? <ErrorState error={results.error} /> : null}
       <BrowserMatrix columns={columns} rows={rows} live={live} casesLoading={suite.isPending} />
