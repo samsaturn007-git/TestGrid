@@ -38,6 +38,8 @@ function runResponse(request: CreateRunRequest, id = RUN_ID): RunResponse {
     startedAt: null,
     finishedAt: null,
     cancelRequestedAt: null,
+    parentRunId: null,
+    rerunIds: [],
     targets: [],
     links: { self: `/api/v1/runs/${id}`, suite: `/api/v1/suites/${CHECKOUT.id}` },
   };
@@ -158,7 +160,8 @@ describe('new-run dialog (PRD-05 FR-2, T2)', () => {
       source: { branch: 'main' },
       idempotencyKey: expect.stringMatching(/^[A-Za-z0-9._:-]{1,200}$/) as string,
     });
-    expect(screen.getByRole('main')).toHaveFocus();
+    // The shell moves focus to <main> after the new page commits, a moment after the URL.
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
   });
 
   it('checks fields before posting: inline errors, an alert, focus on the first problem', async () => {

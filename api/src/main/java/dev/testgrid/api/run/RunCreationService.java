@@ -93,7 +93,8 @@ public class RunCreationService {
                 request.source(),
                 request.idempotencyKey(),
                 requestHash,
-                request.shardingOrDefault()));
+                request.shardingOrDefault(),
+                null));
     if (inserted.isEmpty()) {
       // A concurrent request with the same key committed first; our INSERT waited for it.
       RunRepository.ExistingRun winner =

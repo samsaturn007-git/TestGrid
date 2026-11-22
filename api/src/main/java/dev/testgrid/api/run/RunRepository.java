@@ -52,7 +52,8 @@ public class RunRepository {
       CreateRunRequest.Source source,
       String idempotencyKey,
       byte[] requestHash,
-      CreateRunRequest.Sharding sharding) {}
+      CreateRunRequest.Sharding sharding,
+      UUID parentRunId) {}
 
   public boolean projectExists(UUID projectId) {
     return jdbc.sql("SELECT EXISTS (SELECT 1 FROM projects WHERE id = :p)")
@@ -109,9 +110,9 @@ public class RunRepository {
             """
             INSERT INTO runs (project_id, suite_id, status, trigger, fixture_mode, fixture_seed,
                               commit_sha, branch, ci_ref, idempotency_key, request_hash,
-                              sharding_mode, shard_count)
+                              sharding_mode, shard_count, parent_run_id)
             VALUES (:p, :suite, 'QUEUED', :trigger, :mode, :seed, :sha, :branch, :ciRef,
-                    :key, :hash, :sharding, :shards)
+                    :key, :hash, :sharding, :shards, :parent)
             ON CONFLICT (project_id, idempotency_key) DO NOTHING
             RETURNING id
             """)
@@ -127,6 +128,7 @@ public class RunRepository {
         .param("hash", run.requestHash())
         .param("sharding", run.sharding().mode().name())
         .param("shards", run.sharding().shards())
+        .param("parent", run.parentRunId())
         .query(UUID.class)
         .optional();
   }
@@ -157,6 +159,18 @@ public class RunRepository {
   }
 
   public Optional<RunResponse> findRun(UUID projectId, UUID runId) {
+    // Reruns of this run, oldest first (PRD-05 FR-6: the link is shown in both directions).
+    List<UUID> rerunIds =
+        jdbc.sql(
+                """
+                SELECT id FROM runs
+                WHERE project_id = :p AND parent_run_id = :id
+                ORDER BY queued_at, id
+                """)
+            .param("p", projectId)
+            .param("id", runId)
+            .query(UUID.class)
+            .list();
     List<RunResponse.Target> targets =
         jdbc.sql(
                 """
@@ -183,7 +197,7 @@ public class RunRepository {
             """)
         .param("p", projectId)
         .param("id", runId)
-        .query((rs, i) -> mapRun(rs, targets))
+        .query((rs, i) -> mapRun(rs, targets, rerunIds))
         .optional();
   }
 
@@ -268,8 +282,8 @@ public class RunRepository {
         new RunResponse.Links(RunResponse.selfLink(id), null));
   }
 
-  private static RunResponse mapRun(ResultSet rs, List<RunResponse.Target> targets)
-      throws SQLException {
+  private static RunResponse mapRun(
+      ResultSet rs, List<RunResponse.Target> targets, List<UUID> rerunIds) throws SQLException {
     UUID id = rs.getObject("id", UUID.class);
     UUID suiteId = rs.getObject("suite_id", UUID.class);
     RunStatus status =
@@ -296,6 +310,8 @@ public class RunRepository {
         instant(rs, "started_at"),
         instant(rs, "finished_at"),
         instant(rs, "cancel_requested_at"),
+        rs.getObject("parent_run_id", UUID.class),
+        rerunIds,
         targets,
         new RunResponse.Links(RunResponse.selfLink(id), RunResponse.suiteLink(suiteId)));
   }

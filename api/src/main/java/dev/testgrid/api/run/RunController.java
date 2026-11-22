@@ -41,12 +41,17 @@ public class RunController {
   private final RunCreationService creation;
   private final RunQueryService queries;
   private final RunCancelService cancels;
+  private final RerunService reruns;
 
   public RunController(
-      RunCreationService creation, RunQueryService queries, RunCancelService cancels) {
+      RunCreationService creation,
+      RunQueryService queries,
+      RunCancelService cancels,
+      RerunService reruns) {
     this.creation = creation;
     this.queries = queries;
     this.cancels = cancels;
+    this.reruns = reruns;
   }
 
   private static final Set<String> LIST_PARAMS =
@@ -213,5 +218,67 @@ public class RunController {
     return result.accepted()
         ? ResponseEntity.accepted().body(result.run())
         : ResponseEntity.ok(result.run());
+  }
+
+  /**
+   * PRD-05 FR-6. 202 for a new linked run (trigger RERUN), 200 with {@code Idempotent-Replay: true}
+   * for a repeated key and request, 409 for a key used with a different request.
+   */
+  @PostMapping(path = "/runs/{runId}/rerun", consumes = MediaType.APPLICATION_JSON_VALUE)
+  @Operation(
+      operationId = "rerunRun",
+      summary = "Rerun a finished run's failed targets, or all of them",
+      description =
+          "The new run has trigger RERUN and parentRunId set, and copies the old run's suite"
+              + " revision, fixture and source. FAILED_TARGETS takes the targets that ended"
+              + " FAILED, TIMED_OUT or INFRA_ERROR.")
+  @ApiResponse(
+      responseCode = "202",
+      description = "New linked run queued",
+      headers = @Header(name = "Location", description = "/api/v1/runs/{runId}"),
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = RunResponse.class)))
+  @ApiResponse(
+      responseCode = "200",
+      description = "Replay: this key was already used with the same request",
+      headers = {
+        @Header(name = "Location", description = "/api/v1/runs/{runId}"),
+        @Header(name = REPLAY_HEADER, description = "Always \"true\"")
+      },
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = RunResponse.class)))
+  @ApiResponse(
+      responseCode = "400",
+      description = "validation-failed",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "409",
+      description = "idempotency-conflict",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "422",
+      description =
+          "invalid-rerun (run not finished, or no failed targets), unknown-suite (revision no"
+              + " longer current) or fixture-not-allowed",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  public ResponseEntity<RunResponse> rerun(
+      @PathVariable UUID runId, @Valid @RequestBody RerunRequest request) {
+    RunCreationService.Result result = reruns.rerun(runId, request);
+    URI location = URI.create(result.run().links().self());
+    if (result.replay()) {
+      return ResponseEntity.ok()
+          .header(REPLAY_HEADER, "true")
+          .location(location)
+          .body(result.run());
+    }
+    return ResponseEntity.accepted().location(location).body(result.run());
   }
 }

@@ -129,6 +129,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rerun a finished run's failed targets, or all of them
+         * @description The new run has trigger RERUN and parentRunId set, and copies the old run's suite revision, fixture and source. FAILED_TARGETS takes the targets that ended FAILED, TIMED_OUT or INFRA_ERROR.
+         */
+        post: operations["rerunRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}/results": {
         parameters: {
             query?: never;
@@ -285,6 +305,11 @@ export interface components {
             name: string;
             slug: string;
         };
+        RerunRequest: {
+            idempotencyKey: string;
+            /** @enum {string} */
+            scope: "FAILED_TARGETS" | "ALL";
+        };
         ResourceLinks: {
             self: string;
         };
@@ -303,9 +328,12 @@ export interface components {
             idempotencyKey: string;
             links: components["schemas"]["RunLinks"];
             /** Format: uuid */
+            parentRunId: string | null;
+            /** Format: uuid */
             projectId: string;
             /** Format: date-time */
             queuedAt: string;
+            rerunIds: string[];
             sharding: components["schemas"]["Sharding"];
             source: components["schemas"]["Source"] | null;
             /** Format: date-time */
@@ -729,6 +757,83 @@ export interface operations {
             };
             /** @description not-found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rerunRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerunRequest"];
+            };
+        };
+        responses: {
+            /** @description Replay: this key was already used with the same request */
+            200: {
+                headers: {
+                    /** @description Always "true" */
+                    "Idempotent-Replay"?: unknown;
+                    /** @description /api/v1/runs/{runId} */
+                    Location?: unknown;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description New linked run queued */
+            202: {
+                headers: {
+                    /** @description /api/v1/runs/{runId} */
+                    Location?: unknown;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description idempotency-conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description invalid-rerun (run not finished, or no failed targets), unknown-suite (revision no longer current) or fixture-not-allowed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -186,6 +186,9 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 - **`GET /capabilities` (PRD-05):** `{"fixturesAllowed": boolean}`. The dashboard shows the fixture-mode controls only when it is `true`; the API still enforces `422 fixture-not-allowed` on its own, so a stale or forged answer changes nothing.
 - **`GET /projects`, `GET /projects/{projectId}/suites`, `GET /suites/{suiteId}`:** project, current suites (with `caseCount`), and one suite revision with its cases ordered by `caseKey`. Old revisions stay readable by ID. These lists are bounded by the manifest, so they return one page with `nextCursor: null`.
 
+- **`POST /runs/{runId}/rerun` (PRD-05 FR-6):** body `{scope: FAILED_TARGETS | ALL, idempotencyKey}`, parsed as strictly as create-run (`FAILED_CASES` is `400` until PRD-11). The new run has `trigger: RERUN` and `parentRunId`, and copies the old run's suite revision (`suite_id`), fixture, source and sharding; `FAILED_TARGETS` takes the targets that ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (never `PASSED` or `CANCELLED`), `ALL` takes every target. `202` new run, `200` replay with `Idempotent-Replay: true`, `409` key reused with a different request (keys are shared with create-run; the request hash is the canonical `{"rerunOf": <runId>, "scope": <scope>}`). `422 invalid-rerun` when the run has not finished or nothing failed, `422 unknown-suite` when that revision is no longer the current, enabled one, `422 fixture-not-allowed` for a fixture run outside the local profile. A known key is answered before these checks. The new run's `RUN_CREATED` payload adds `parentRunId` and `rerunScope`.
+- **Rerun link (PRD-05):** `GET /runs/{runId}` carries `parentRunId` (or `null`) and `rerunIds`, the runs that rerun it, oldest first, so the link is visible in both directions. V6 indexes `runs(parent_run_id) WHERE parent_run_id IS NOT NULL`.
+
 **Create-run request**
 ```json
 {
@@ -254,6 +257,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `validation-failed` | 400 | malformed JSON, too long, unknown field |
 | `unknown-suite` / `engine-not-allowed` / `fixture-not-allowed` | 422 | not in the manifest, or a fixture mode used outside the local profile |
 | `idempotency-conflict` | 409 | same key, different payload, or a different completion key after a terminal state |
+| `invalid-rerun` | 422 | `POST /runs/{runId}/rerun` on a run that has not finished, or `scope: FAILED_TARGETS` when no target ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (PRD-05) |
 | `invalid-completion` | 422 | a well-formed completion that doesn't fit its claim: unknown, missing or duplicate case key, duration or retry count out of range, a status without its required error (PRD-03) |
 | `not-found` | 404 | |
 | `attempt-not-active` | 409 | late or duplicate transition on a terminal attempt |

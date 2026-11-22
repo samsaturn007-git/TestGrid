@@ -112,7 +112,8 @@ class IdempotencyRaceTest {
                               null,
                               first.idempotencyKey(),
                               RunRequestHash.of(first, mapper),
-                              first.shardingOrDefault()))
+                              first.shardingOrDefault(),
+                              null))
                       .orElseThrow();
               inserted.countDown();
               await(commit);
