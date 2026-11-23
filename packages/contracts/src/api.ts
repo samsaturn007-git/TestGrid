@@ -266,6 +266,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The run's events grouped by target and attempt, with heartbeat gaps
+         * @description Attempts are oldest first. A gap is a silence longer than gapThresholdMs (2 Ã the heartbeat interval) between the claim, the start, heartbeats and the end; an unfinished attempt ends at serverNow, so a dead worker's silence keeps growing until the reaper abandons the attempt.
+         */
+        get: operations["getRunTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/suites/{suiteId}": {
         parameters: {
             query?: never;
@@ -327,6 +347,7 @@ export interface components {
             state: "AVAILABLE" | "EXPIRED" | "MISSING" | "PURGED";
         };
         AttemptResults: {
+            artifacts: components["schemas"]["ArtifactView"][];
             attempt: components["schemas"]["AttemptSummary"];
             caseResults: components["schemas"]["CaseResult"][];
             errorDetail: string | null;
@@ -365,6 +386,8 @@ export interface components {
             errorMessage: string | null;
             /** Format: int32 */
             retryCount: number;
+            /** Format: int32 */
+            startOffsetMs: number | null;
             /** @enum {string} */
             status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
         };
@@ -387,6 +410,14 @@ export interface components {
             mode: "PASS" | "PRODUCT_DEFECT" | "AUTOMATION_FLAKE" | "SELECTOR_DRIFT" | "TIMEOUT";
             /** Format: int32 */
             seed: number;
+        };
+        HeartbeatGap: {
+            /** Format: int64 */
+            durationMs: number;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
         };
         Link: {
             /** Format: date-time */
@@ -543,6 +574,31 @@ export interface components {
             status: "QUEUED" | "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
             targetKey: string;
         };
+        RunTimeline: {
+            /** Format: date-time */
+            finishedAt: string | null;
+            /**
+             * Format: int64
+             * @description 2 Ã the heartbeat interval: a longer silence is a gap
+             */
+            gapThresholdMs: number;
+            /** Format: int32 */
+            heartbeatIntervalSeconds: number;
+            /** Format: date-time */
+            queuedAt: string;
+            /** @description Events of the run itself (no target) */
+            runEvents: components["schemas"]["TimelineEvent"][];
+            /** Format: uuid */
+            runId: string;
+            /**
+             * Format: date-time
+             * @description The database clock when this was read; the end of unfinished spans
+             */
+            serverNow: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            targets: components["schemas"]["TimelineTarget"][];
+        };
         Sharding: {
             /** @enum {string} */
             mode: "NONE" | "PLAYWRIGHT_NATIVE" | "DURATION_BALANCED";
@@ -601,6 +657,37 @@ export interface components {
             expectedDurationMs: number | null;
             tag: string;
             title: string;
+        };
+        TimelineAttempt: {
+            artifacts: components["schemas"]["ArtifactView"][];
+            attempt: components["schemas"]["AttemptSummary"];
+            caseResults: components["schemas"]["CaseResult"][];
+            events: components["schemas"]["TimelineEvent"][];
+            gaps: components["schemas"]["HeartbeatGap"][];
+            /** @description Every accepted heartbeat, oldest first */
+            heartbeats: string[];
+        };
+        TimelineEvent: {
+            data: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            eventId: number;
+            /** Format: date-time */
+            occurredAt: string;
+            type: string;
+        };
+        TimelineTarget: {
+            attempts: components["schemas"]["TimelineAttempt"][];
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            /** @description Target events outside any attempt (dispatch, retry scheduling) */
+            events: components["schemas"]["TimelineEvent"][];
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "QUEUED" | "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            targetKey: string;
         };
         WorkerView: {
             /** Format: int32 */
@@ -1237,6 +1324,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunResults"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getRunTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The timeline */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunTimeline"];
                 };
             };
             /** @description not-found */

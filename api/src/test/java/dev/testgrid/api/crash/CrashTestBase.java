@@ -68,7 +68,7 @@ abstract class CrashTestBase {
   @BeforeEach
   void cleanState() {
     jdbc.sql(
-            "TRUNCATE workers, outbox_events, artifacts, case_results, attempts, run_events, run_targets,"
+            "TRUNCATE workers, outbox_events, artifacts, attempt_heartbeats, case_results, attempts, run_events, run_targets,"
                 + " runs")
         .update();
     jdbc.sql(

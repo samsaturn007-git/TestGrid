@@ -1,5 +1,6 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.artifact.ArtifactView;
 import dev.testgrid.api.domain.AttemptStatus;
 import dev.testgrid.api.domain.CaseStatus;
 import dev.testgrid.api.domain.Engine;
@@ -375,7 +376,8 @@ public class RunRepository {
   }
 
   /** Every attempt of the run's targets, newest attempt first within each target. */
-  public List<RunResults.Target> findResults(UUID runId, List<RunResponse.Target> targets) {
+  public List<RunResults.Target> findResults(
+      UUID runId, List<RunResponse.Target> targets, Map<UUID, List<ArtifactView>> artifacts) {
     record Row(UUID targetId, RunResults.Attempt attempt) {}
     List<Row> attempts =
         jdbc.sql(
@@ -391,7 +393,7 @@ public class RunRepository {
                 new Row(
                     rs.getObject("target_id", UUID.class),
                     new RunResults.Attempt(
-                        mapAttempt(rs), rs.getString("a_error_detail"), new ArrayList<>())))
+                        mapAttempt(rs), rs.getString("a_error_detail"), List.of(), List.of())))
             .list();
     Map<UUID, List<RunResults.CaseResult>> cases = new HashMap<>();
     jdbc.sql(
@@ -413,7 +415,8 @@ public class RunRepository {
                       rs.getInt("duration_ms"),
                       rs.getInt("retry_count"),
                       errorClass == null ? null : ErrorClass.valueOf(errorClass),
-                      rs.getString("error_message_redacted")));
+                      rs.getString("error_message_redacted"),
+                      rs.getObject("start_offset_ms", Integer.class)));
         });
     return targets.stream()
         .map(t ->
@@ -428,7 +431,8 @@ public class RunRepository {
                         new RunResults.Attempt(
                             r.attempt().attempt(),
                             r.attempt().errorDetail(),
-                            List.copyOf(cases.getOrDefault(r.attempt().attempt().id(), List.of()))))
+                            List.copyOf(cases.getOrDefault(r.attempt().attempt().id(), List.of())),
+                            artifacts.getOrDefault(r.attempt().attempt().id(), List.of())))
                     .toList()))
         .toList();
   }

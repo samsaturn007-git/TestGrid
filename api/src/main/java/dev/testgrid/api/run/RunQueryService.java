@@ -1,5 +1,6 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.artifact.ArtifactRepository;
 import dev.testgrid.api.common.Page;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.Trigger;
@@ -25,8 +26,10 @@ public class RunQueryService {
 
   private final RunRepository runs;
   private final CallerScope scope;
+  private final ArtifactRepository artifacts;
 
-  public RunQueryService(RunRepository runs, CallerScope scope) {
+  public RunQueryService(RunRepository runs, CallerScope scope, ArtifactRepository artifacts) {
+    this.artifacts = artifacts;
     this.runs = runs;
     this.scope = scope;
   }
@@ -104,7 +107,10 @@ public class RunQueryService {
   @Transactional(readOnly = true)
   public RunResults results(UUID runId) {
     RunResponse run = get(runId);
-    return new RunResults(run.id(), run.status(), runs.findResults(run.id(), run.targets()));
+    return new RunResults(
+        run.id(),
+        run.status(),
+        runs.findResults(run.id(), run.targets(), artifacts.byAttemptForRun(run.id())));
   }
 
   @Transactional(readOnly = true)

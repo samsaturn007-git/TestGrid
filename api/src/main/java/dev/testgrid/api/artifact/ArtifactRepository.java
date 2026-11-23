@@ -5,6 +5,10 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -89,6 +93,28 @@ public class ArtifactRepository {
                 rs.getObject("db_now", OffsetDateTime.class).toInstant(),
                 rs.getBoolean("past_expiry")))
         .optional();
+  }
+
+  /**
+   * Every artifact of a run's attempts, oldest first, with the effective state a reader sees (past
+   * {@code expires_at} reads EXPIRED). Served by {@code artifacts(attempt_id)}.
+   */
+  public Map<UUID, List<ArtifactView>> byAttemptForRun(UUID runId) {
+    Map<UUID, List<ArtifactView>> out = new HashMap<>();
+    jdbc.sql(
+            "SELECT a.id, a.attempt_id, a.case_key, a.kind, a.mime, a.storage_key, a.byte_size,"
+                + " a.sha256, a.state, a.expires_at, a.created_at, a.expires_at <= now() AS past"
+                + " FROM artifacts a"
+                + " JOIN attempts t ON t.id = a.attempt_id"
+                + " JOIN run_targets g ON g.id = t.target_id"
+                + " WHERE g.run_id = :r"
+                + " ORDER BY a.attempt_id, a.created_at, a.id")
+        .param("r", runId)
+        .query(rs -> {
+          ArtifactView view = map(rs, 0).view().effective(rs.getBoolean("past"));
+          out.computeIfAbsent(view.attemptId(), k -> new ArrayList<>()).add(view);
+        });
+    return out;
   }
 
   /**

@@ -592,6 +592,36 @@ paths:
       summary: "Every attempt per target with its case results, newest attempt first"
       tags:
       - runs
+  /api/v1/runs/{runId}/timeline:
+    get:
+      description: "Attempts are oldest first. A gap is a silence longer than gapThresholdMs\
+        \ (2 Ã the heartbeat interval) between the claim, the start, heartbeats and\
+        \ the end; an unfinished attempt ends at serverNow, so a dead worker's silence\
+        \ keeps growing until the reaper abandons the attempt."
+      operationId: getRunTimeline
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunTimeline"
+          description: The timeline
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "The run's events grouped by target and attempt, with heartbeat gaps"
+      tags:
+      - runs
   /api/v1/suites/{suiteId}:
     get:
       operationId: getSuite
@@ -687,6 +717,10 @@ components:
     AttemptResults:
       type: object
       properties:
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactView"
         attempt:
           $ref: "#/components/schemas/AttemptSummary"
         caseResults:
@@ -698,6 +732,7 @@ components:
           - string
           - "null"
       required:
+      - artifacts
       - attempt
       - caseResults
       - errorDetail
@@ -814,6 +849,11 @@ components:
         retryCount:
           type: integer
           format: int32
+        startOffsetMs:
+          type:
+          - integer
+          - "null"
+          format: int32
         status:
           type: string
           enum:
@@ -828,6 +868,7 @@ components:
       - errorClass
       - errorMessage
       - retryCount
+      - startOffsetMs
       - status
     CreateRunRequest:
       type: object
@@ -894,6 +935,22 @@ components:
       required:
       - mode
       - seed
+    HeartbeatGap:
+      type: object
+      properties:
+        durationMs:
+          type: integer
+          format: int64
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+      required:
+      - durationMs
+      - from
+      - to
     Link:
       type: object
       properties:
@@ -1343,6 +1400,61 @@ components:
       - queuedAt
       - status
       - targetKey
+    RunTimeline:
+      type: object
+      properties:
+        finishedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        gapThresholdMs:
+          type: integer
+          format: int64
+          description: "2 Ã the heartbeat interval: a longer silence is a gap"
+        heartbeatIntervalSeconds:
+          type: integer
+          format: int32
+        queuedAt:
+          type: string
+          format: date-time
+        runEvents:
+          type: array
+          description: Events of the run itself (no target)
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+        runId:
+          type: string
+          format: uuid
+        serverNow:
+          type: string
+          format: date-time
+          description: The database clock when this was read; the end of unfinished
+            spans
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineTarget"
+      required:
+      - finishedAt
+      - gapThresholdMs
+      - heartbeatIntervalSeconds
+      - queuedAt
+      - runEvents
+      - runId
+      - serverNow
+      - status
+      - targets
     Sharding:
       type: object
       properties:
@@ -1516,6 +1628,100 @@ components:
       - expectedDurationMs
       - tag
       - title
+    TimelineAttempt:
+      type: object
+      properties:
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactView"
+        attempt:
+          $ref: "#/components/schemas/AttemptSummary"
+        caseResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseResult"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeartbeatGap"
+        heartbeats:
+          type: array
+          description: "Every accepted heartbeat, oldest first"
+          items:
+            type: string
+            format: date-time
+      required:
+      - artifacts
+      - attempt
+      - caseResults
+      - events
+      - gaps
+      - heartbeats
+    TimelineEvent:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: {}
+        eventId:
+          type: integer
+          format: int64
+        occurredAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+      required:
+      - data
+      - eventId
+      - occurredAt
+      - type
+    TimelineTarget:
+      type: object
+      properties:
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineAttempt"
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        events:
+          type: array
+          description: "Target events outside any attempt (dispatch, retry scheduling)"
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - CLAIMED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        targetKey:
+          type: string
+      required:
+      - attempts
+      - engine
+      - events
+      - id
+      - status
+      - targetKey
     WorkerView:
       type: object
       properties:

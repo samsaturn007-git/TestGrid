@@ -230,6 +230,7 @@ public class AttemptService {
     LockedAttempt attempt = lockForLeaseHolder(attemptId, leaseToken, "heartbeat");
     Instant leasedUntil =
         attempts.extendLease(attemptId, settings.current().leaseTtlSeconds()).orElseThrow();
+    attempts.recordHeartbeat(attemptId);
     return new WorkerApi.HeartbeatResponse(leasedUntil, attempt.cancelRequested());
   }
 
@@ -390,6 +391,9 @@ public class AttemptService {
         }
         if (c.durationMs() < 0 || c.durationMs() > maxDuration) {
           errors.add(new FieldError(at + ".durationMs", "must be between 0 and " + maxDuration));
+        }
+        if (c.startOffsetMs() != null && c.startOffsetMs() > maxDuration) {
+          errors.add(new FieldError(at + ".startOffsetMs", "must be between 0 and " + maxDuration));
         }
         if (c.retryCount() < 0 || c.retryCount() > attempt.playwrightRetries()) {
           errors.add(

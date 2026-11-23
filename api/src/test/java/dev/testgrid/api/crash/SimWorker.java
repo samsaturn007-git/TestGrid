@@ -237,8 +237,8 @@ final class SimWorker implements AutoCloseable {
                 "attempt-" + claim.attemptId() + "-final",
                 WorkerApi.CompletionStatus.COMPLETED_WITH_RESULTS,
                 claim.caseKeys().stream()
-                    .map(
-                        key -> new WorkerApi.CaseResult(key, CaseStatus.PASSED, 100, 0, null, null))
+                    .map(key ->
+                        new WorkerApi.CaseResult(key, CaseStatus.PASSED, 100, 0, null, null, 0))
                     .toList(),
                 null);
     try {

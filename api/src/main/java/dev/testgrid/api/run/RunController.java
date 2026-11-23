@@ -47,13 +47,16 @@ public class RunController {
   private final RunCancelService cancels;
   private final RerunService reruns;
   private final RunEventStreams streams;
+  private final RunTimelineService timelines;
 
   public RunController(
       RunCreationService creation,
       RunQueryService queries,
       RunCancelService cancels,
       RerunService reruns,
-      RunEventStreams streams) {
+      RunEventStreams streams,
+      RunTimelineService timelines) {
+    this.timelines = timelines;
     this.creation = creation;
     this.queries = queries;
     this.cancels = cancels;
@@ -134,6 +137,24 @@ public class RunController {
       content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
   public RunResults results(@PathVariable UUID runId) {
     return queries.results(runId);
+  }
+
+  @GetMapping("/runs/{runId}/timeline")
+  @Operation(
+      operationId = "getRunTimeline",
+      summary = "The run's events grouped by target and attempt, with heartbeat gaps",
+      description =
+          "Attempts are oldest first. A gap is a silence longer than gapThresholdMs (2 × the"
+              + " heartbeat interval) between the claim, the start, heartbeats and the end; an"
+              + " unfinished attempt ends at serverNow, so a dead worker's silence keeps growing"
+              + " until the reaper abandons the attempt.")
+  @ApiResponse(responseCode = "200", description = "The timeline")
+  @ApiResponse(
+      responseCode = "404",
+      description = "not-found",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  public RunTimeline timeline(@PathVariable UUID runId) {
+    return timelines.timeline(runId);
   }
 
   /**
