@@ -275,7 +275,7 @@
         },
         "T2": {
           "label": "Add artifact migrations and bounded streaming upload with MIME sniffing and sha256.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Capture screenshot/trace/log bundle in the worker with redaction and canary secret.",
