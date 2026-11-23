@@ -3,6 +3,9 @@ package dev.testgrid.api.artifact;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -62,6 +65,33 @@ public class ArtifactRepository {
   }
 
   /**
+   * One artifact with what retrieval decides on, all from one statement: the owning project (for
+   * the caller scope), the database clock, and whether {@code expires_at} has passed even if the
+   * purge job hasn't marked the row yet.
+   */
+  public record Found(Stored artifact, UUID projectId, Instant dbNow, boolean pastExpiry) {}
+
+  public Optional<Found> find(UUID artifactId) {
+    return jdbc.sql(
+            "SELECT a.id, a.attempt_id, a.case_key, a.kind, a.mime, a.storage_key, a.byte_size,"
+                + " a.sha256, a.state, a.expires_at, a.created_at, r.project_id, now() AS db_now,"
+                + " a.expires_at <= now() AS past_expiry"
+                + " FROM artifacts a"
+                + " JOIN attempts t ON t.id = a.attempt_id"
+                + " JOIN run_targets g ON g.id = t.target_id"
+                + " JOIN runs r ON r.id = g.run_id"
+                + " WHERE a.id = :id")
+        .param("id", artifactId)
+        .query((rs, i) ->
+            new Found(
+                map(rs, i),
+                rs.getObject("project_id", UUID.class),
+                rs.getObject("db_now", OffsetDateTime.class).toInstant(),
+                rs.getBoolean("past_expiry")))
+        .optional();
+  }
+
+  /**
    * Called in the completion transaction (CONFLICT_REGISTER N20): each artifact uploaded for a case
    * points at the case result just written for it.
    */
@@ -88,8 +118,8 @@ public class ArtifactRepository {
             rs.getLong("byte_size"),
             rs.getString("sha256"),
             ArtifactState.valueOf(rs.getString("state")),
-            rs.getObject("expires_at", java.time.OffsetDateTime.class).toInstant(),
-            rs.getObject("created_at", java.time.OffsetDateTime.class).toInstant()),
+            rs.getObject("expires_at", OffsetDateTime.class).toInstant(),
+            rs.getObject("created_at", OffsetDateTime.class).toInstant()),
         rs.getString("storage_key"));
   }
 }

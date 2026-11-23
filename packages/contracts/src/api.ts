@@ -4,6 +4,66 @@
  */
 
 export interface paths {
+    "/api/v1/artifacts/{artifactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Artifact metadata
+         * @description state is EXPIRED once expires_at has passed, even before the hourly purge marks the row. The storage key is never returned.
+         */
+        get: operations["getArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artifacts/{artifactId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream the bytes through a signed link
+         * @description Content-Disposition: attachment, X-Content-Type-Options: nosniff, a CSP that allows nothing to run, Cache-Control: private, no-store. An <img> still shows a screenshot; navigating to the URL downloads it.
+         */
+        get: operations["getArtifactContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artifacts/{artifactId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A signed content link, valid for at most 5 minutes
+         * @description url is relative to the API origin and carries expires (epoch seconds) and sig (HMAC-SHA256 of the artifact ID and expiry). It is the only way to read the content. Not access control: until PRD-12 anyone who reaches the API can ask.
+         */
+        post: operations["createArtifactLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/capabilities": {
         parameters: {
             query?: never;
@@ -247,6 +307,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ArtifactView: {
+            /** Format: uuid */
+            attemptId: string;
+            /** Format: int64 */
+            byteSize: number;
+            caseKey: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "SCREENSHOT" | "TRACE" | "LOG";
+            mime: string;
+            sha256: string;
+            /** @enum {string} */
+            state: "AVAILABLE" | "EXPIRED" | "MISSING" | "PURGED";
+        };
         AttemptResults: {
             attempt: components["schemas"]["AttemptSummary"];
             caseResults: components["schemas"]["CaseResult"][];
@@ -308,6 +387,11 @@ export interface components {
             mode: "PASS" | "PRODUCT_DEFECT" | "AUTOMATION_FLAKE" | "SELECTOR_DRIFT" | "TIMEOUT";
             /** Format: int32 */
             seed: number;
+        };
+        Link: {
+            /** Format: date-time */
+            expiresAt: string;
+            url: string;
         };
         PageProject: {
             items: components["schemas"]["Project"][];
@@ -555,6 +639,142 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The artifact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactView"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getArtifactContent: {
+        parameters: {
+            query?: {
+                /** @description Epoch seconds, from the link */
+                expires?: string;
+                /** @description Signature, from the link */
+                sig?: string;
+            };
+            header?: never;
+            path: {
+                artifactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bytes, with the artifact's stored type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                    "image/png": string;
+                    "text/plain": string;
+                };
+            };
+            /** @description validation-failed (unknown query parameter) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description forbidden (missing, forged or expired link) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description artifact-expired */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createArtifactLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Link"];
+                };
+            };
+            /** @description not-found (unknown, or the bytes are MISSING) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description artifact-expired */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getCapabilities: {
         parameters: {
             query?: never;

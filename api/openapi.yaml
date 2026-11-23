@@ -7,6 +7,137 @@ info:
 servers:
 - url: /
 paths:
+  /api/v1/artifacts/{artifactId}:
+    get:
+      description: "state is EXPIRED once expires_at has passed, even before the hourly\
+        \ purge marks the row. The storage key is never returned."
+      operationId: getArtifact
+      parameters:
+      - in: path
+        name: artifactId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactView"
+          description: The artifact
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: Artifact metadata
+      tags:
+      - artifacts
+  /api/v1/artifacts/{artifactId}/content:
+    get:
+      description: "Content-Disposition: attachment, X-Content-Type-Options: nosniff,\
+        \ a CSP that allows nothing to run, Cache-Control: private, no-store. An <img>\
+        \ still shows a screenshot; navigating to the URL downloads it."
+      operationId: getArtifactContent
+      parameters:
+      - in: path
+        name: artifactId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: "Epoch seconds, from the link"
+        in: query
+        name: expires
+        required: false
+        schema:
+          type: string
+      - description: "Signature, from the link"
+        in: query
+        name: sig
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+          description: "The bytes, with the artifact's stored type"
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed (unknown query parameter)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "forbidden (missing, forged or expired link)"
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: artifact-expired
+      summary: Stream the bytes through a signed link
+      tags:
+      - artifacts
+  /api/v1/artifacts/{artifactId}/links:
+    post:
+      description: "url is relative to the API origin and carries expires (epoch seconds)\
+        \ and sig (HMAC-SHA256 of the artifact ID and expiry). It is the only way\
+        \ to read the content. Not access control: until PRD-12 anyone who reaches\
+        \ the API can ask."
+      operationId: createArtifactLink
+      parameters:
+      - in: path
+        name: artifactId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+          description: The link
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "not-found (unknown, or the bytes are MISSING)"
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: artifact-expired
+      summary: "A signed content link, valid for at most 5 minutes"
+      tags:
+      - artifacts
   /api/v1/capabilities:
     get:
       operationId: getCapabilities
@@ -503,6 +634,56 @@ paths:
       - workers
 components:
   schemas:
+    ArtifactView:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        byteSize:
+          type: integer
+          format: int64
+        caseKey:
+          type:
+          - string
+          - "null"
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - SCREENSHOT
+          - TRACE
+          - LOG
+        mime:
+          type: string
+        sha256:
+          type: string
+        state:
+          type: string
+          enum:
+          - AVAILABLE
+          - EXPIRED
+          - MISSING
+          - PURGED
+      required:
+      - attemptId
+      - byteSize
+      - caseKey
+      - createdAt
+      - expiresAt
+      - id
+      - kind
+      - mime
+      - sha256
+      - state
     AttemptResults:
       type: object
       properties:
@@ -713,6 +894,17 @@ components:
       required:
       - mode
       - seed
+    Link:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+      required:
+      - expiresAt
+      - url
     PageProject:
       type: object
       properties:
