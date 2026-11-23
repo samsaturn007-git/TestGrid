@@ -1,0 +1,16 @@
+# PRD-06 T3 / AC-4 (SEC-002 seed): make scan-canary (bash scripts/scan-canary.sh), 2026-11-23, exit 0
+# Live: real worker, API, Postgres, RabbitMQ in Compose on the reference Mac (OrbStack). The canary value is never printed.
+
+--- starting api and worker with a fresh canary (value not printed)
+created run c1df2aa7-f0cd-47f0-9df4-9861772cb72e (PRODUCT_DEFECT on chromium)
+run finished: FAILED
+--- collecting what the run stored and served
+--- positive controls
+  ok   a log tail was stored for the failed attempt
+  ok   the log tail shows the masked canary line
+  ok   the failed case's screenshot was stored
+  ok   the failed case's trace was withheld because it held the canary
+--- scanning 58 files for the canary
+  ok   canary absent from API responses, events, database rows, stored artifacts and logs
+scan-canary: PASS
+--- recreating api and worker without the canary

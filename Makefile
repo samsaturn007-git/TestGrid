@@ -18,7 +18,7 @@ FIXTURE_SEED ?= 42
 export TG_FIXTURE_MODE := $(FIXTURE_MODE)
 export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e dashboard-e2e kill-check crash-check stuck-runs dlq dlq-replay sigterm-check doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e dashboard-e2e kill-check crash-check stuck-runs dlq dlq-replay sigterm-check scan-canary doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -110,6 +110,9 @@ dlq-replay: ## Put every dead letter back on its engine queue; the claim fences 
 
 sigterm-check: ## SIGTERM the worker mid-run; grace period, then INFRA_ERROR/WORKER_SHUTDOWN (PRD-03 FR-6)
 	@bash scripts/sigterm-check.sh
+
+scan-canary: env ## Canary secret in worker, API and page; scan everything stored or served for it (PRD-06 AC-4)
+	@bash scripts/scan-canary.sh
 
 doctor: ## Check the local toolchain against docs/VERSIONS.md
 	@bash scripts/doctor.sh

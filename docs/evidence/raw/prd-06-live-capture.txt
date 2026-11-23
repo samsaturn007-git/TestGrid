@@ -1,0 +1,37 @@
+# PRD-06 T3: live PRODUCT_DEFECT run without the canary (real worker -> internal API -> local store), 2026-11-23
+
+$ bash defect-run.sh   # POST a run, wait, query artifacts and events
+run 85786f1e-35c4-4cac-a65d-af92d8e0ed0a
+status FAILED
+--- artifacts (kind | case_key | byte_size | state | linked to case_result | storage_key)
+LOG | - | 6367 | AVAILABLE | f | 2026/11/23/a3e62583-1d5c-4b6c-9fe3-290ebf5b4b83.log
+SCREENSHOT | cart-total | 38919 | AVAILABLE | t | 2026/11/23/91306822-2dad-4901-bbe6-97c20c24a2ed.png
+TRACE | cart-total | 173095 | AVAILABLE | t | 2026/11/23/5164617f-7ec0-4d92-89cf-74ed1ca57fec.zip
+--- events
+RUN_CREATED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > CASE_FINISHED x6 > TARGET_FINISHED > RUN_FINISHED
+
+$ file <screenshot>; unzip -l <trace> | tail -1
+PNG image data, 1280 x 720, 8-bit/color RGB, non-interlaced   (shows Total $82.99 for $74.99 + $6.00 tax)
+   314909                     38 files
+
+$ make e2e   # exit 0
+node scripts/e2e.mjs chromium
+e2e: engines chromium against http://127.0.0.1:8080
+  local:chromium:0 attempt 1 PASSED cases=6 (all PASSED)
+ok   checkout-smoke PASS → PASSED in 4.2s run=4d0f1eee-f07b-48af-b786-2e24aabd84c8
+  local:chromium:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 13.2s run=58a07c59-11ed-4305-bd2e-2c876e457690
+  local:chromium:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 14.2s run=874f897b-162d-4c98-83a8-a79c624b7c94
+  local:chromium:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 43.5s run=2c4a889c-ecc7-4258-936e-f3b64e63ee67
+  local:chromium:0 attempt 1 PASSED cases=12 (all PASSED)
+ok   catalog-regression PASS → PASSED in 4.1s run=a887e365-a0f2-43de-93ae-8ae225911ff1
+e2e OK
+
+--- artifacts per e2e run (run | fixture | status | logs | screenshots | traces)
+4d0f1eee | PASS | PASSED | 0 | 0 | 0
+58a07c59 | PRODUCT_DEFECT | FAILED | 1 | 1 | 1
+874f897b | SELECTOR_DRIFT | FAILED | 1 | 2 | 2
+2c4a889c | TIMEOUT | TIMED_OUT | 1 | 2 | 2
+a887e365 | PASS | PASSED | 0 | 0 | 0
