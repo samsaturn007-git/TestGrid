@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T14:11:21+00:00",
+  "updated_at": "2026-11-23T14:32:01+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -279,7 +279,7 @@
         },
         "T3": {
           "label": "Capture screenshot/trace/log bundle in the worker with redaction and canary secret.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Expose content and signed-link endpoints with 404/410 semantics.",
