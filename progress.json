@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T14:51:28+00:00",
+  "updated_at": "2026-11-23T15:29:55+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -287,7 +287,7 @@
         },
         "T5": {
           "label": "Build timeline API and UI plus failure detail drawer with artifact states.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Implement purge and orphan-sweeper jobs; write redaction, expiry and failure-handling tests.",
