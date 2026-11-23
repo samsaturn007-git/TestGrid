@@ -78,6 +78,10 @@ services:
       TESTGRID_RETRY_BACKOFF_BASE_MS: ${TESTGRID_RETRY_BACKOFF_BASE_MS:-2000}
       TESTGRID_RETRY_BACKOFF_MAX_MS: ${TESTGRID_RETRY_BACKOFF_MAX_MS:-60000}
       TESTGRID_DISPATCH_TIMEOUT_MS: ${TESTGRID_DISPATCH_TIMEOUT_MS:-300000}
+      # PRD-06 artifact store (ADR-005); the volume keeps artifacts across `make down`.
+      TESTGRID_ARTIFACT_ROOT: /var/lib/testgrid/artifacts
+    volumes:
+      - artifacts:/var/lib/testgrid/artifacts
     ports:
       - '127.0.0.1:${API_PORT:-8080}:8080'
     depends_on:
@@ -201,3 +205,4 @@ networks:
 volumes:
   pgdata: {}
   mqdata: {}
+  artifacts: {}

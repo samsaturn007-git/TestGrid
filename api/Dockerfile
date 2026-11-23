@@ -25,6 +25,10 @@ COPY --from=build /src/api/target/api.jar app.jar
 COPY worker/manifest /app/worker/manifest
 COPY worker/suites /app/worker/suites
 ENV TESTGRID_MANIFEST_ROOT=/app/worker
+# PRD-06 artifact store (ADR-005): owned by the app user, so the named volume mounted here
+# starts with that owner and the API can write artifacts without running as root.
+RUN mkdir -p /var/lib/testgrid/artifacts && chown 1000:1000 /var/lib/testgrid/artifacts && chmod 0700 /var/lib/testgrid/artifacts
+ENV TESTGRID_ARTIFACT_ROOT=/var/lib/testgrid/artifacts
 # Non-root: the base image's existing unprivileged "ubuntu" user (uid 1000).
 USER 1000:1000
 EXPOSE 8080
