@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T16:15:16+00:00",
+  "updated_at": "2026-11-23T17:53:54+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -260,7 +260,7 @@
     "PRD-06": {
       "title": "Screenshots, Playwright traces, logs, timeline and secure artifact retrieval",
       "filename": "prds/PRD-06-artifacts-and-timeline.md",
-      "status": "in_progress",
+      "status": "done",
       "deps": [
         "PRD-05"
       ],
@@ -294,7 +294,7 @@
           "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-06.md",
       "blocker": null
     },
     "PRD-07": {

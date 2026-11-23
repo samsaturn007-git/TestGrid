@@ -1,10 +1,10 @@
 # Evidence — PRD-06
 
 **PRD:** `prds/PRD-06-artifacts-and-timeline.md`  
-**Branch / commits:** `prd-06/artifacts`, not pushed yet. ADR and rulings `a3dbfdd`; T1 `dd1a2d6`; T2 `0cdb969`, `28c2374`, `63027d3`, docs `5271dd4`; T3 `57394d9`, `d0aedce`, `ea41bb8`, drill `d08e3ef`, docs `4e0606c`; test fix `1ad2a47`; T4 `497c1c3`, docs `b23bdde`; T5 `29b64df`, `cdca634`, `35b9cf9`, docs `87863cf`; T6 `99a6a7c`, docs `f2bd96c`; tracker `3523914` (start), `3cd4b3a`, `7823ced`, `67fc201`, `0e2e529`, `e13a2e9`, `7b73d6e` (T1–T6 checked).  
-**Reviewer:** [developer: review this file, answer the explain-back quiz in your own words, and rule on N20–N23 and ADR-005]  
+**Branch / commits:** `prd-06/artifacts`, opened as https://github.com/samsaturn007-git/TestGrid/pull/9 and merged into `main` from it. ADR and rulings `a3dbfdd`; T1 `dd1a2d6`; T2 `0cdb969`, `28c2374`, `63027d3`, docs `5271dd4`; T3 `57394d9`, `d0aedce`, `ea41bb8`, drill `d08e3ef`, docs `4e0606c`; test fix `1ad2a47`; T4 `497c1c3`, docs `b23bdde`; T5 `29b64df`, `cdca634`, `35b9cf9`, docs `87863cf`; T6 `99a6a7c`, docs `f2bd96c`; tracker `3523914` (start), `3cd4b3a`, `7823ced`, `67fc201`, `0e2e529`, `e13a2e9`, `7b73d6e` (T1–T6 checked).  
+**Reviewer:** developer (repository owner). On 2026-11-23, after Claude pushed the branch and opened PR #9, the developer asked Claude to do the remaining review steps and close PRD-06 on their behalf, as they did for PRD-03, PRD-04 and PRD-05: accept ADR-005 and rulings N20–N23, write the explain-back, run `tools/progress.py done` and merge PR #9 (see the last section).  
 **Date:** 2026-11-23 (UTC)  
-**Outcome:** [pass, once the developer has reviewed it. Every AC was verified locally against Testcontainers and the live Compose stack. GitHub Actions has not run on this branch yet: it isn't pushed.]
+**Outcome:** pass. Every AC was verified locally against Testcontainers and the live Compose stack (below). GitHub Actions run 45230121570 on the PR #9 head `10c47c4` passed both required jobs ("check + unit tests" and the compose job with the E2E, the dashboard E2E and axe) on the first attempt, in 8 min 12 s.
 
 Reference machine: Apple M4, 16 GiB, macOS 27.2, OrbStack (Docker 29.8.2, Compose 5.5.0), JDK 21.0.13.1, Node 26.13.1, pnpm 12.21.0, PostgreSQL 18.7, RabbitMQ 4.4.1, `@playwright/test` 1.65.1 (Chromium 159), axe-core 4.14.1, `@axe-core/playwright` 4.14.0. **No new dependency:** the HMAC is the JDK's `javax.crypto`, the ZIP scan uses Node's `zlib`, and the multipart reader is our own (`commons-fileupload2` was only at `2.0.0-M5`). `docs/VERSIONS.md` is unchanged. API tests are **live** against Testcontainers PostgreSQL and a real local store. Worker and web unit tests use fakes (see "Skipped or mocked tests"). Drills and E2E are **live** against the Compose stack with the real worker and demo shop. Only the fake values from `.env.example` were used. Host port 3000 was held by an unrelated Next.js dev server, so the live web checks ran with `WEB_PORT=3001`.
 
@@ -142,7 +142,7 @@ Artifact counts per live scenario (`raw/prd-06-live-capture.txt`): PASS 0/0/0, P
 - **Web component tests** (Vitest, 245) use the fake API; their axe runs with colour contrast off (jsdom). The real-browser axe E2E has contrast on.
 - **Browsers:** dashboard E2E and live runs used Chromium only; Firefox and WebKit artifacts were not run.
 - **Trace viewer:** the in-app browser pane would not register the viewer's service worker, so AC-1's screenshot was taken with the pinned Playwright Chromium (headless).
-- **CI:** GitHub Actions has not run: the branch is not pushed.
+- **CI:** run 45230121570 on PR #9 (head `10c47c4`) passed both jobs on the first attempt. The close commit re-runs it before the merge.
 
 ## Screenshots / demo / raw data links
 
@@ -169,23 +169,59 @@ Artifact counts per live scenario (`raw/prd-06-live-capture.txt`): PASS 0/0/0, P
 - **Duplicate headers:** nginx repeats `X-Content-Type-Options` and `Referrer-Policy` on content responses (same values, harmless).
 - **Watch item:** in one run a PRD-05 run-list test ("load older runs") failed alongside unrelated failures and then passed on every later run. Not changed.
 
-## Rulings awaiting the developer
+## Rulings (accepted 2026-11-23 at the developer's request)
 
-- **ADR-005 (Proposed):** server-keyed store behind an interface, uploads under the lease, content only through signed links.
+- **ADR-005:** server-keyed store behind an interface, uploads under the lease, content only through signed links. Status changed from Proposed to **Accepted**.
 - **N20:** upload before `complete`; the completion links artifacts to case results.
 - **N21:** only the upload path skips the 64 KB body cap.
 - **N22:** a trace holding a secret is withheld, not redacted; screenshots are not scanned.
 - **N23:** `attempt_heartbeats`, `case_results.start_offset_ms`, and a Timeline section instead of tabs.
 
-## Explain-back review (developer's own words)
+All four are marked Closed in `docs/CONFLICT_REGISTER.md`. They were accepted as proposed; the developer did not change any of them.
 
-PRD-06's definition of done says "the developer can explain the traversal and redaction defences without AI". Answer these without notes and replace the brackets.
+## Explain-back review
 
-1. **The three most important engineering decisions in this PRD, and why:** [developer]
-2. **What happens if the main operation fails halfway through?** For example, the API dies after the file is moved into place but before the row is inserted, or the worker loses its lease while a trace is uploading. [developer]
-3. **What would you change for production?** [developer]
-4. **Traversal:** name every check between `GET /artifacts/{id}/content?…` and the bytes on disk, and say which one stops `../../etc/passwd`, which stops a symlink planted inside the store, and why the key regex alone isn't enough. [developer]
-5. **Redaction:** the canary is 34 characters. Which rule masks it in the log tail, why is it deliberately shorter than 40, and why is the trace withheld rather than redacted? [developer]
-6. **Signed links:** what exactly is signed, why is the signature checked before the database lookup, and what does the link *not* protect against until PRD-12? [developer]
-7. **Retention:** why are the bytes deleted before the row is marked `PURGED`, and why does the orphan sweeper ignore files younger than an hour? [developer]
-8. **The UUID bug:** why did a keyset scan starting at `new UUID(Long.MIN_VALUE, Long.MIN_VALUE)` skip about half the rows in PostgreSQL? [developer]
+> **Written by Claude at the developer's request, not in the developer's own words.** On 2026-11-23 the developer asked Claude to close PRD-06 on their behalf, as they did for PRD-03, PRD-04 and PRD-05. PRD-06's definition of done says "the developer can explain the traversal and redaction defences without AI". These answers don't show that, so that item is **still owed**: the developer should answer the quiz below without notes and replace these answers.
+
+### Quiz (answer without notes)
+
+1. The three most important engineering decisions in this PRD, and why.
+2. What happens if the main operation fails halfway through? For example, the API dies after the file is moved into place but before the row is inserted, or the worker loses its lease while a trace is uploading.
+3. What would you change for production?
+4. **Traversal:** name every check between `GET /artifacts/{id}/content?…` and the bytes on disk. Which one stops `../../etc/passwd`, which stops a symlink planted inside the store, and why isn't the key regex alone enough?
+5. **Redaction:** the canary is 34 characters. Which rule masks it in the log tail, why is it deliberately shorter than 40, and why is the trace withheld rather than redacted?
+6. **Signed links:** what exactly is signed, why is the signature checked before the database lookup, and what does the link *not* protect against until PRD-12?
+7. **Retention:** why are the bytes deleted before the row is marked `PURGED`, and why does the orphan sweeper ignore files younger than an hour?
+8. **The UUID bug:** why did a keyset scan starting at `new UUID(Long.MIN_VALUE, Long.MIN_VALUE)` skip about half the rows in PostgreSQL?
+
+### Claude's answers (on the developer's behalf)
+
+1. **Three decisions.**
+   - **No client or worker value ever becomes a path.** The server generates every storage key from the kind and the date, stores it in the row, and the public API takes only the artifact's UUID. Everything else (extension, MIME type, size limit) follows from the kind. This removes traversal as a class rather than filtering for it, and the store still checks every key and path as a second line (ADR-005).
+   - **Uploads ride on the lease, before `complete` (N20).** The worker already holds a token that proves it owns the attempt, so the upload uses the same check as start and heartbeat; a zombie worker gets `410`. Uploading before completion means the completion transaction can link each artifact to its case result atomically, and a target never looks finished while its evidence is still arriving.
+   - **Fail safe on secrets and storage.** Redaction runs twice (worker, then API). A trace is scanned for every known secret and withheld if it holds one or can't be read completely (N22). A failed upload never changes a test result; it is only an `ARTIFACT_STORE` warning. Retention deletes bytes before saying so, and never deletes rows.
+2. **Failing halfway.**
+   - **API dies after the file is moved into place, before the row is inserted:** the file is under the root with no row, so nothing can read it (every read goes through a row). The worker's upload call fails; it logs `ARTIFACT_STORE` and still completes the attempt. An hour later the orphan sweeper sees a file with no row, older than the grace, and deletes it.
+   - **API dies mid-stream:** the bytes are in `.incoming/<uuid>.part`, never visible under a key. The sweeper removes partial files older than the grace.
+   - **Lease lost while a trace uploads:** no database lock is held while bytes stream. The second transaction locks the attempt again, sees the lease expired, answers `410 lease-expired`, and the service deletes the bytes it just stored. The worker stops uploading the rest and doesn't complete; the reaper owns recovery.
+   - **Purge dies between deleting bytes and marking the row:** the row stays `EXPIRED` (readers already get `410`), and the next pass deletes again (a no-op) and marks it `PURGED`.
+3. **For production.**
+   - Real access control on `POST …/links` and the metadata endpoints: user tokens and scopes (PRD-12). Today the signature only limits how long a leaked URL works.
+   - Object storage (the S3 adapter) with server-side encryption, a lifecycle rule as a backstop to the purge job, and the store's listing replaced by a paginated, prefix-based sweep, not a full walk every hour.
+   - The link key in a secret manager, with rotation (accept the previous key for 5 minutes).
+   - Screenshot policy: block or mask sensitive regions in Playwright (`mask:`), since pixels can't be scanned for text.
+   - A warnings field on the completion (or a run event) so an `ARTIFACT_STORE` warning is visible in the UI, not only in the worker log.
+   - Metrics for upload failures, withheld traces, purge failures and store size, with alerts.
+4. **Traversal.** In order:
+   1. The path variable must parse as a UUID (Spring, `400` otherwise), so `..%2F..%2Fetc%2Fpasswd` never reaches our code.
+   2. The query may only hold `expires` and `sig` (`400`), and the HMAC must verify (`403`) before anything else runs.
+   3. The row is looked up by that UUID in the caller's project (`404`), and its state must be readable (`404`/`410`).
+   4. The storage key comes from the row, not the request, and must match `ArtifactKeys.PATTERN` (`yyyy/mm/dd/<uuid>.(png|zip|log)`). The database has the same CHECK.
+   5. `root.resolve(key).normalize()` must still start with the real root.
+   6. Every existing component from the root to the file must not be a symlink, the file must be a regular file, and it is opened with `NOFOLLOW_LINKS`.
+
+   `../../etc/passwd` is stopped first by the UUID path variable, and in the store by the key pattern and the "stays under the root" check. A symlink planted inside the store, for example `2026/11/23` pointing at `/etc`, has a perfectly valid key, so the regex can't see it: the per-component link check and `NOFOLLOW_LINKS` stop it. That is why the regex alone isn't enough: it validates the string, not what the filesystem does with it. Writes get the same checks, and directories are created one level at a time, refusing any existing link or non-directory.
+5. **Redaction.** The canary's value is in the worker's environment as `TESTGRID_CANARY_SECRET`. That name ends in `_SECRET`, so `secretsFromEnv` collects its value and the exact-value rule replaces every occurrence with `[REDACTED]` before any pattern runs. It is 34 characters on purpose: the "long opaque string" rule masks 40+ characters of `[A-Za-z0-9_-]`, so a 40-character canary would be masked even if the secret-value rule were broken, and the drill would prove nothing. The trace is withheld because it is a ZIP of JSON and resources (DOM snapshots, the network log with the `Cookie` header). Rewriting text inside it means changing Playwright's internal format, and a missed encoding (base64, escaped JSON) would leak silently. Scanning for the secret's bytes and withholding is simple and safe. The scan fails closed: an unreadable ZIP is withheld too.
+6. **Signed links.** `sig = base64url(HMAC-SHA256(TESTGRID_ARTIFACT_LINK_KEY, "v1:<artifactId>:<expires>"))`. Binding the artifact ID means a signature can't be moved to another artifact; binding `expires` means it can't be extended; `v1` allows a future format change. The API also refuses an `expires` more than 300 s ahead and compares in constant time. It is checked before the lookup so that a caller without a valid link gets the same `403` for every ID: they can't learn which artifacts exist, or which have expired, by probing. Until PRD-12 it does *not* stop anyone who can reach the public port from asking for a link: `POST …/links` has no authentication. It limits how long a leaked URL works; it is not access control.
+7. **Retention.** Bytes first, then `PURGED`, so the row never claims something that isn't true. If the order were reversed and the delete failed or the API died, a row would say `PURGED` while the file stayed on disk forever (nothing ever re-checks `PURGED` rows). In this order, a failure leaves an `EXPIRED` row that the next pass retries, and readers get `410` meanwhile. The sweeper ignores young files because an upload moves its file into place and only then inserts the row, in a separate transaction. For that moment a perfectly good upload looks like an orphan; deleting it would lose evidence and leave a row pointing at nothing. One hour is far longer than any upload (60 s worker timeout), and the setting refuses less than 5 minutes.
+8. **The UUID bug.** Java compares UUIDs as two signed 64-bit numbers, so `new UUID(Long.MIN_VALUE, Long.MIN_VALUE)` (`80000000-0000-0000-8000-000000000000`) is the smallest UUID in Java's order. PostgreSQL compares `uuid` values as 16 unsigned bytes, where `8…` is in the middle. A scan for `id > '80000000-…'` therefore skipped every id starting with `0`–`7`, about half of random UUIDs. The fix starts at the all-zero UUID, which is first in PostgreSQL's order. The tests caught it intermittently, and a fixed-id regression test now catches it deterministically (mutation check recorded).

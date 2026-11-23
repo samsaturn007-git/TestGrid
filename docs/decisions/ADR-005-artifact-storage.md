@@ -1,6 +1,6 @@
 # ADR-005: Artifact storage and retrieval: a server-keyed store behind an interface, uploads under the lease, signed links to read
 
-**Date:** 2026-11-23 | **Status:** Proposed (PRD-06; accepted at the developer's PRD-06 review)
+**Date:** 2026-11-23 | **Status:** Accepted (2026-11-23: the developer asked Claude to close PRD-06 on their behalf, which included accepting this ADR; recorded in `docs/evidence/PRD-06.md`)
 
 ## Context
 - PRD-06 adds screenshots, Playwright traces and log tails per attempt. ARCHITECTURE §12 requires an ADR when the artifact store changes, and this is the first one.
@@ -43,4 +43,4 @@
 - Rows and bytes can disagree after a crash between the move and the insert, or after manual deletion. The hourly orphan sweeper reconciles both directions (FR-6).
 
 ## Verification
-- ART-001, ART-002, ART-003 in `docs/SYSTEM_TEST_MATRIX.md`; the evidence links the test classes in `docs/evidence/PRD-06.md`.
+- ART-001, ART-002, ART-003 and the SEC-002 seed, with the test classes and live drills listed in `docs/evidence/PRD-06.md` (`make scan-canary`, the live purge, AC-1's trace viewer screenshot).
