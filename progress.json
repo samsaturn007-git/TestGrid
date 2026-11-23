@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T15:29:55+00:00",
+  "updated_at": "2026-11-23T16:15:16+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -291,7 +291,7 @@
         },
         "T6": {
           "label": "Implement purge and orphan-sweeper jobs; write redaction, expiry and failure-handling tests.",
-          "done": false
+          "done": true
         }
       },
       "evidence": null,
