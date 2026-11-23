@@ -1,5 +1,6 @@
 package dev.testgrid.api.internal;
 
+import dev.testgrid.api.artifact.ArtifactRepository;
 import dev.testgrid.api.common.Hashing;
 import dev.testgrid.api.common.LogContext;
 import dev.testgrid.api.common.Redactor;
@@ -33,6 +34,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -54,6 +56,7 @@ public class AttemptService {
   private final JsonMapper mapper;
   private final DispatchSignal signal;
   private final DispatchRepository dispatch;
+  private final ArtifactRepository artifactRows;
 
   public AttemptService(
       AttemptRepository attempts,
@@ -61,13 +64,15 @@ public class AttemptService {
       SchedulerSettingsRepository settings,
       JsonMapper mapper,
       DispatchSignal signal,
-      DispatchRepository dispatch) {
+      DispatchRepository dispatch,
+      ArtifactRepository artifactRows) {
     this.attempts = attempts;
     this.properties = properties;
     this.settings = settings;
     this.mapper = mapper;
     this.signal = signal;
     this.dispatch = dispatch;
+    this.artifactRows = artifactRows;
   }
 
   /**
@@ -280,6 +285,8 @@ public class AttemptService {
         attempts.insertEvent(
             attempt.runId(), attempt.targetId(), attemptId, EventType.CASE_FINISHED, json(payload));
       }
+      // CONFLICT_REGISTER N20: artifacts were uploaded under the lease, before these rows existed.
+      artifactRows.linkToCaseResults(attemptId);
       if (attempts.finishAttempt(
               attemptId,
               AttemptStatus.valueOf(result.status().name()),
@@ -425,6 +432,20 @@ public class AttemptService {
           "the completion does not match attempt " + attempt.id() + "'s claim",
           errors);
     }
+  }
+
+  /**
+   * PRD-06 artifact uploads: the same checks as start and heartbeat (404, 410, 409), inside the
+   * caller's transaction, which then holds the attempt and target locks.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public LockedAttempt requireLeaseHolder(UUID attemptId, String leaseToken, String operation) {
+    return lockForLeaseHolder(attemptId, leaseToken, operation);
+  }
+
+  /** The claimed case keys of an attempt's suite revision. */
+  public List<String> claimedCaseKeys(LockedAttempt attempt) {
+    return attempts.caseKeys(attempt.suiteId());
   }
 
   /** Start and heartbeat: the token must match and the attempt must hold a live lease. */

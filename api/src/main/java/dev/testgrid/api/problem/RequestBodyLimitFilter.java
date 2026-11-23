@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
@@ -28,10 +29,22 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
 
   public static final long MAX_BODY_BYTES = 64 * 1024;
 
+  // PRD-06 (CONFLICT_REGISTER N21): the artifact upload streams with its own per-kind limits. The
+  // internal access filter runs first, so this path is only reached on the internal port with a
+  // valid service token; every other request keeps the 64 KB cap.
+  private static final Pattern ARTIFACT_UPLOAD =
+      Pattern.compile("^/internal/v1/attempts/[^/]+/artifacts$");
+
   private final JsonMapper mapper;
 
   public RequestBodyLimitFilter(JsonMapper mapper) {
     this.mapper = mapper;
+  }
+
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    return "POST".equals(request.getMethod())
+        && ARTIFACT_UPLOAD.matcher(request.getRequestURI()).matches();
   }
 
   @Override
