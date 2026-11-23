@@ -117,4 +117,21 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
     // The error-context.md attachment (an ARIA snapshot of the page) is never collected.
     assert.ok(!JSON.stringify(evidence).includes('error-context'));
   });
+
+  it("PRD-06: reports each case start as an offset from the first case, from Playwright's clock", () => {
+    const cases = mapped('product-defect').cases;
+    const offsets = cases.map((c) => c.startOffsetMs);
+    assert.ok(
+      offsets.every((o) => o !== null && o >= 0),
+      JSON.stringify(offsets),
+    );
+    assert.equal(Math.min(...(offsets as number[])), 0);
+    // Claimed cases the report never mentions have no start.
+    const extra = mapReport(
+      parseReport(sample('checkout-smoke-chromium-product-defect.json')),
+      'chromium',
+      [...CHECKOUT, 'not-in-report'],
+    ).cases.find((c) => c.caseKey === 'not-in-report');
+    assert.equal(extra?.startOffsetMs, null);
+  });
 });

@@ -46,6 +46,7 @@ const failed: Completion = {
       retryCount: 1,
       errorClass: 'ASSERTION',
       errorMessage: 'x',
+      startOffsetMs: 0,
     },
     {
       caseKey: 'add-to-cart',
@@ -54,6 +55,7 @@ const failed: Completion = {
       retryCount: 0,
       errorClass: null,
       errorMessage: null,
+      startOffsetMs: 5,
     },
   ],
   workerError: null,

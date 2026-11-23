@@ -15,6 +15,8 @@ export interface CaseResult {
   retryCount: number;
   errorClass: ErrorClass | null;
   errorMessage: string | null;
+  /** PRD-06 FR-7: ms after the attempt's first case started, from Playwright's own clock. */
+  startOffsetMs: number | null;
 }
 
 export class ReportError extends Error {
@@ -39,6 +41,7 @@ const TestResult = z.looseObject({
   error: ErrorBody.optional(),
   errors: z.array(ErrorBody).default([]),
   attachments: z.array(Attachment).default([]),
+  startTime: z.string().optional(),
 });
 
 const ReportTest = z.looseObject({
@@ -103,7 +106,10 @@ function shortMessage(raw: string | undefined): string | null {
   return text.length <= MAX_MESSAGE ? text : `${text.slice(0, MAX_MESSAGE - 1)}…`;
 }
 
-function caseResult(caseKey: string, test: z.infer<typeof ReportTest>): CaseResult {
+function caseResult(
+  caseKey: string,
+  test: z.infer<typeof ReportTest>,
+): Omit<CaseResult, 'startOffsetMs'> {
   const results = test.results;
   const durationMs = Math.round(results.reduce((sum, r) => sum + r.duration, 0));
   const retryCount = Math.max(0, results.length - 1);
@@ -192,7 +198,8 @@ export function mapReport(
   caseKeys: readonly string[],
 ): MappedResults {
   const claimed = new Set(caseKeys);
-  const found = new Map<string, CaseResult>();
+  const found = new Map<string, Omit<CaseResult, 'startOffsetMs'>>();
+  const started = new Map<string, number>();
   const files = new Map<string, CaseEvidence>();
   const visit = (node: SuiteNode): void => {
     for (const spec of node.specs ?? []) {
@@ -202,6 +209,8 @@ export function mapReport(
         for (const key of keys) {
           if (found.has(key)) throw new ReportError(`case ${key} appears twice in the report`);
           found.set(key, caseResult(key, test));
+          const first = Date.parse(test.results[0]?.startTime ?? '');
+          if (Number.isFinite(first)) started.set(key, first);
           const evidence = evidenceOf(key, test);
           if (evidence) files.set(key, evidence);
         }
@@ -212,17 +221,24 @@ export function mapReport(
   for (const suite of report.suites) visit(suite);
 
   const missing = caseKeys.filter((k) => !found.has(k));
-  const cases = caseKeys.map(
-    (k) =>
-      found.get(k) ?? {
-        caseKey: k,
-        status: 'SKIPPED' as const,
-        durationMs: 0,
-        retryCount: 0,
-        errorClass: null,
-        errorMessage: null,
-      },
-  );
+  // Offsets, not timestamps: they come from one clock (the Playwright process), so they line up
+  // with each other even if the worker's clock is off; the API anchors them to the attempt.
+  const origin = Math.min(...started.values());
+  const offset = (k: string) => {
+    const at = started.get(k);
+    return at === undefined ? null : Math.round(at - origin);
+  };
+  const cases = caseKeys.map((k): CaseResult => ({
+    ...(found.get(k) ?? {
+      caseKey: k,
+      status: 'SKIPPED' as const,
+      durationMs: 0,
+      retryCount: 0,
+      errorClass: null,
+      errorMessage: null,
+    }),
+    startOffsetMs: offset(k),
+  }));
   const globalErrors = report.errors
     .map((e) => shortMessage(e.message))
     .filter((m): m is string => m !== null);
