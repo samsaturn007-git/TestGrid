@@ -13,12 +13,15 @@ export function BrowserMatrix({
   rows,
   live,
   casesLoading,
+  onOpenCase,
 }: {
   columns: MatrixColumn[];
   rows: MatrixRow[];
   live: boolean;
   /** The suite's case list is still loading: rows would be missing, not absent. */
   casesLoading: boolean;
+  /** PRD-06 FR-8: a case cell opens its details; the button is the drawer's return target. */
+  onOpenCase?: (targetId: string, caseKey: string, opener: HTMLElement) => void;
 }) {
   return (
     <section aria-labelledby="matrix-h" className="flex flex-col gap-3">
@@ -26,7 +29,9 @@ export function BrowserMatrix({
         <h2 id="matrix-h" className="text-heading">
           Browser matrix
         </h2>
-        <span className="text-body-sm text-text-muted">Latest attempt per target</span>
+        <span className="text-body-sm text-text-muted">
+          Latest attempt per target · open a case for its screenshot, trace and log
+        </span>
       </div>
       {casesLoading && rows.length === 0 ? <LoadingState label="Loading cases…" /> : null}
       <div
@@ -80,13 +85,28 @@ export function BrowserMatrix({
                 {row.cells.map((cell, i) => (
                   <td key={columns[i]?.target.id ?? i} className="py-2 pr-4">
                     {cell.kind === 'case' ? (
-                      <span className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        className="-m-1 flex flex-col items-start gap-0.5 rounded-chip p-1 text-left hover:bg-raised"
+                        onClick={(event) =>
+                          onOpenCase?.(
+                            columns[i]?.target.id ?? '',
+                            row.caseKey,
+                            event.currentTarget,
+                          )
+                        }
+                      >
+                        {/* The name is the visible text plus context (WCAG 2.5.3, label in name). */}
+                        <span className="sr-only">
+                          {row.caseKey} on {columns[i]?.target.engine}:{' '}
+                        </span>
                         <StatusBadge kind="case" status={cell.result.status} size="dense" />
                         <span className="font-mono text-mono-sm text-text-muted">
                           {cell.result.errorClass ? `${cell.result.errorClass} · ` : ''}
                           {formatDuration(cell.result.durationMs)}
                         </span>
-                      </span>
+                        <span className="sr-only">. Open details</span>
+                      </button>
                     ) : (
                       <span className="flex flex-col gap-0.5">
                         <StatusBadge

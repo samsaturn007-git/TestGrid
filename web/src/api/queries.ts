@@ -17,6 +17,8 @@ import type {
   RunResponse,
   RunCounts,
   RunResults,
+  RunTimeline,
+  ArtifactLink,
   SuiteDetail,
   WorkersResponse,
 } from './types.ts';
@@ -45,6 +47,9 @@ export const queryKeys = {
   runLists: ['runs', 'list'] as const,
   run: (runId: string) => ['runs', 'detail', runId] as const,
   runResults: (runId: string) => ['runs', 'detail', runId, 'results'] as const,
+  runTimeline: (runId: string) => ['runs', 'detail', runId, 'timeline'] as const,
+  artifactLink: (artifactId: string) => ['artifacts', artifactId, 'link'] as const,
+  artifactText: (artifactId: string) => ['artifacts', artifactId, 'text'] as const,
   runCounts: (projectId: string, hours: number) => ['run-counts', projectId, hours] as const,
   workers: ['workers'] as const,
 };
@@ -148,6 +153,69 @@ export function useRunResults(runId: string, runVersion: string | undefined) {
     enabled: runVersion !== undefined,
     placeholderData: (previous) => previous,
   });
+}
+
+/** Heartbeats arrive without events, so an unfinished run's timeline also refreshes on a timer. */
+export const TIMELINE_REFRESH_MS = 10_000;
+
+/** PRD-06 FR-7: events by target and attempt, heartbeats and gaps. */
+export function useRunTimeline(runId: string, runVersion: string | undefined, live: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.runTimeline(runId), runVersion] as const,
+    queryFn: ({ signal }) =>
+      apiGet<RunTimeline>(`/runs/${encodeURIComponent(runId)}/timeline`, signal),
+    enabled: runVersion !== undefined,
+    placeholderData: (previous) => previous,
+    refetchInterval: live ? TIMELINE_REFRESH_MS : false,
+  });
+}
+
+/** A link lasts 5 minutes; refresh it a minute early so an image never points at a dead one. */
+const LINK_STALE_MS = 4 * 60_000;
+
+/** PRD-06 FR-4: a short-lived signed URL for one artifact's bytes. */
+export function useArtifactLink(artifactId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.artifactLink(artifactId ?? ''),
+    queryFn: async () =>
+      (
+        await apiPost<ArtifactLink>(
+          `/artifacts/${encodeURIComponent(artifactId ?? '')}/links`,
+          undefined,
+        )
+      ).data,
+    enabled: artifactId !== null,
+    staleTime: LINK_STALE_MS,
+    gcTime: LINK_STALE_MS,
+    refetchInterval: LINK_STALE_MS,
+  });
+}
+
+/** The log tail as text, read through a fresh signed link (at most 256 KB). */
+export function useArtifactText(artifactId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.artifactText(artifactId ?? ''),
+    queryFn: async ({ signal }) => {
+      const link = (
+        await apiPost<ArtifactLink>(
+          `/artifacts/${encodeURIComponent(artifactId ?? '')}/links`,
+          undefined,
+        )
+      ).data;
+      const response = await fetch(link.url, { signal });
+      if (!response.ok) throw new ApiError(response.status, null);
+      return response.text();
+    },
+    enabled: artifactId !== null,
+    staleTime: Infinity,
+  });
+}
+
+/** For a download button: a fresh link at the moment of the click. */
+export async function freshArtifactLink(artifactId: string): Promise<ArtifactLink> {
+  return (
+    await apiPost<ArtifactLink>(`/artifacts/${encodeURIComponent(artifactId)}/links`, undefined)
+  ).data;
 }
 
 export function useCancelRun(runId: string) {

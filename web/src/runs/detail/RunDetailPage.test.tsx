@@ -5,7 +5,15 @@ import { catalogApi, json, problem, stubApi, type StubHandler } from '../../test
 import { expectNoSeriousA11yViolations } from '../../test/axe.ts';
 import { FakeEventSource } from '../../test/eventSource.ts';
 import { renderApp } from '../../test/render.tsx';
-import { attempt, attemptResults, result, results, run, target } from '../../test/runFixtures.ts';
+import {
+  attempt,
+  attemptResults,
+  result,
+  results,
+  run,
+  target,
+  timelineFor,
+} from '../../test/runFixtures.ts';
 
 // Component tests against a fake API (mocked, not live).
 
@@ -23,6 +31,7 @@ function runApi(
     for (const { run: r, results: res } of runs) {
       if (request.path === `/runs/${r.id}`) return json(r);
       if (request.path === `/runs/${r.id}/results`) return json(res);
+      if (request.path === `/runs/${r.id}/timeline`) return json(timelineFor(r, res));
     }
     return undefined;
   };

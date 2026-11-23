@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { isTerminal, useRun, useRunResults, useSuite } from '../../api/queries.ts';
+import { isTerminal, useRun, useRunResults, useRunTimeline, useSuite } from '../../api/queries.ts';
 import type { RunResponse } from '../../api/types.ts';
 import { secondaryButton } from '../../components/buttons.ts';
 import { ErrorState, LoadingState } from '../../components/States.tsx';
 import { formatAbsolute } from '../../lib/time.ts';
 import { AttemptsList } from './AttemptsList.tsx';
+import { CaseDrawer } from './CaseDrawer.tsx';
+import { Timeline } from './Timeline.tsx';
 import { BrowserMatrix } from './BrowserMatrix.tsx';
 import { CaseTable } from './CaseTable.tsx';
-import { buildMatrix, tally } from './model.ts';
+import { buildMatrix, latestAttempt, tally } from './model.ts';
 import { RunHeader } from './RunHeader.tsx';
 import { useRunEvents, type LiveMode } from '../useRunEvents.ts';
 import { LiveNote } from './LiveNote.tsx';
@@ -32,7 +34,10 @@ export function RunDetailRoute() {
   return <RunDetailPage key={runId} runId={runId} />;
 }
 
-/** `/runs/:runId` (PRD-05 FR-2, FR-3): header and actions, matrix, attempts, cases, live. */
+/**
+ * `/runs/:runId` (PRD-05 FR-2, FR-3; PRD-06 FR-7, FR-8): header and actions, matrix (a case opens
+ * its drawer), attempts, timeline, cases, live.
+ */
 export function RunDetailPage({ runId }: { runId: string }) {
   const [mode, setMode] = useState<LiveMode>('connecting');
   const run = useRun(runId, mode === 'polling');
@@ -40,6 +45,13 @@ export function RunDetailPage({ runId }: { runId: string }) {
   useRunEvents(runId, data !== undefined && !isTerminal(data.status), setMode);
   const results = useRunResults(runId, data ? resultsVersion(data) : undefined);
   const suite = useSuite(data?.suiteId ?? '', data !== undefined);
+  const timeline = useRunTimeline(
+    runId,
+    data ? resultsVersion(data) : undefined,
+    data !== undefined && !isTerminal(data.status),
+  );
+  const [open, setOpen] = useState<{ targetId: string; caseKey: string } | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const shortId = runId.slice(0, 8);
 
   if (!data) {
@@ -68,6 +80,13 @@ export function RunDetailPage({ runId }: { runId: string }) {
   const refreshFailed = run.isRefetchError;
   const live = !terminal && !refreshFailed && mode !== 'connecting';
   const { columns, rows } = buildMatrix(data, results.data, suite.data?.cases);
+  const openTarget = open ? data.targets.find((t) => t.id === open.targetId) : undefined;
+  const openAttempt = open ? latestAttempt(results.data, open.targetId) : null;
+  const openResult = openAttempt?.caseResults.find((r) => r.caseKey === open?.caseKey);
+  const closeDrawer = () => {
+    setOpen(null);
+    opener.current?.focus();
+  };
 
   return (
     <>
@@ -97,9 +116,25 @@ export function RunDetailPage({ runId }: { runId: string }) {
         liveNote={<LiveNote mode={mode} />}
       />
       {results.error && !results.data ? <ErrorState error={results.error} /> : null}
-      <BrowserMatrix columns={columns} rows={rows} live={live} casesLoading={suite.isPending} />
+      <BrowserMatrix
+        columns={columns}
+        rows={rows}
+        live={live}
+        casesLoading={suite.isPending}
+        onOpenCase={(targetId, caseKey, button) => {
+          opener.current = button;
+          setOpen({ targetId, caseKey });
+        }}
+      />
       <AttemptsList targets={data.targets} results={results.data} live={live} />
+      <Timeline timeline={timeline.data} loading={timeline.isPending} error={timeline.error} />
       <CaseTable targets={data.targets} results={results.data} cases={suite.data?.cases} />
+      {openTarget && openAttempt && openResult ? (
+        <CaseDrawer
+          value={{ target: openTarget, attempt: openAttempt, result: openResult }}
+          onClose={closeDrawer}
+        />
+      ) : null}
     </>
   );
 }
