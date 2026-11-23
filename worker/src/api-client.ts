@@ -47,6 +47,11 @@ export interface Registration {
 }
 
 const REQUEST_TIMEOUT_MS = 10_000;
+// A 50 MB trace over the internal network; heartbeats keep the lease alive meanwhile.
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+export type ArtifactKind = 'SCREENSHOT' | 'TRACE' | 'LOG';
+const Uploaded = z.looseObject({ id: z.uuid(), byteSize: z.number().int().positive() });
 
 export function newTraceId(): string {
   return randomBytes(16).toString('hex');
@@ -63,16 +68,32 @@ export class WorkerApiClient {
     this.#fetch = fetchImpl;
   }
 
-  private async post(path: string, body: unknown, traceId: string): Promise<Response> {
+  private post(path: string, body: unknown, traceId: string): Promise<Response> {
+    return this.send(
+      path,
+      { 'content-type': 'application/json' },
+      JSON.stringify(body),
+      traceId,
+      REQUEST_TIMEOUT_MS,
+    );
+  }
+
+  private async send(
+    path: string,
+    headers: Record<string, string>,
+    body: string | FormData,
+    traceId: string,
+    timeoutMs: number,
+  ): Promise<Response> {
     const response = await this.#fetch(this.#baseUrl + path, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${this.#token}`,
-        'content-type': 'application/json',
         traceparent: `00-${traceId}-${randomBytes(8).toString('hex')}-01`,
+        ...headers,
       },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      body,
+      signal: AbortSignal.timeout(timeoutMs),
       redirect: 'error',
     });
     if (response.status >= 400) {
@@ -138,6 +159,31 @@ export class WorkerApiClient {
       traceId,
     );
     return Heartbeat.parse(await r.json());
+  }
+
+  /**
+   * PRD-06 FR-1/FR-3: one artifact, uploaded under the lease before `complete`. fetch builds the
+   * multipart body (one `file` part) and its boundary; the lease token goes in a header, never in
+   * the URL. kind and caseKey are an enum and a manifest key, so they need no escaping beyond this.
+   */
+  async uploadArtifact(
+    attemptId: string,
+    leaseToken: string,
+    upload: { kind: ArtifactKind; caseKey: string | null; file: Blob },
+    traceId: string,
+  ): Promise<{ id: string; byteSize: number }> {
+    const form = new FormData();
+    form.append('file', upload.file, 'artifact');
+    const query = new URLSearchParams({ kind: upload.kind });
+    if (upload.caseKey !== null) query.set('caseKey', upload.caseKey);
+    const r = await this.send(
+      `/internal/v1/attempts/${encodeURIComponent(attemptId)}/artifacts?${query.toString()}`,
+      { 'x-testgrid-lease-token': leaseToken },
+      form,
+      traceId,
+      UPLOAD_TIMEOUT_MS,
+    );
+    return Uploaded.parse(await r.json());
   }
 
   async complete(

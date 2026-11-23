@@ -6,13 +6,14 @@ import { executeAttempt } from './attempt.ts';
 import type { AttemptDeps, Completion } from './attempt.ts';
 import type { Claim } from './claim.ts';
 import { parseDispatchMessage, traceIdOf } from './dispatch-message.ts';
+import { uploadEvidence } from './evidence.ts';
 
 // PRD-04 FR-5: one dispatch message in, one decision out. The database decides every state;
 // the worker only asks, runs what it was given and reports. What happens to the message
 // (ack, retry queue, dead letter) is decided here and carried out by the consumer.
 
 export interface DeliveryDeps {
-  api: Pick<WorkerApiClient, 'claim' | 'start' | 'heartbeat' | 'complete'>;
+  api: Pick<WorkerApiClient, 'claim' | 'start' | 'heartbeat' | 'complete' | 'uploadArtifact'>;
   log: Logger;
   workerId: string;
   attemptDeps: AttemptDeps;
@@ -159,7 +160,28 @@ async function runAttempt(deps: DeliveryDeps, claim: Claim, traceId: string): Pr
 
   let completion: Completion;
   try {
-    completion = await (deps.execute ?? executeAttempt)(claim, deps.attemptDeps, abort.signal);
+    // PRD-06 FR-1: evidence goes up while heartbeats still hold the lease, before `complete`.
+    completion = await (deps.execute ?? executeAttempt)(
+      claim,
+      deps.attemptDeps,
+      abort.signal,
+      async (bundle, result) => {
+        if (abort.signal.reason === 'lease-lost') return;
+        const summary = await uploadEvidence(
+          {
+            api: deps.api,
+            attemptId: claim.attemptId,
+            leaseToken: claim.leaseToken,
+            traceId,
+            secrets: deps.attemptDeps.secrets,
+            log,
+          },
+          bundle,
+          result,
+        );
+        if (summary.uploaded + summary.skipped + summary.failed > 0) log.info(summary, 'evidence');
+      },
+    );
   } finally {
     clearInterval(heartbeat);
     clearTimeout(graceTimer);

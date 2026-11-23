@@ -25,12 +25,20 @@ const MAX_MESSAGE = 1000;
 
 const ErrorBody = z.looseObject({ message: z.string().optional() });
 
+// PRD-06 FR-1: screenshot: 'only-on-failure' and trace: 'retain-on-failure' attach files here.
+const Attachment = z.looseObject({
+  name: z.string(),
+  contentType: z.string(),
+  path: z.string().optional(),
+});
+
 const TestResult = z.looseObject({
   status: z.enum(['passed', 'failed', 'timedOut', 'skipped', 'interrupted']),
   duration: z.number().nonnegative(),
   retry: z.number().int().nonnegative(),
   error: ErrorBody.optional(),
   errors: z.array(ErrorBody).default([]),
+  attachments: z.array(Attachment).default([]),
 });
 
 const ReportTest = z.looseObject({
@@ -137,7 +145,35 @@ function caseResult(caseKey: string, test: z.infer<typeof ReportTest>): CaseResu
   return { caseKey, status, durationMs, retryCount, ...failureOf(last) };
 }
 
+/** PRD-06: the files Playwright kept for one non-passing case. Paths are not trusted yet. */
+export interface CaseEvidence {
+  caseKey: string;
+  screenshot: string | null;
+  trace: string | null;
+}
+
+/**
+ * The try whose files explain the case: the last try of a failure, the first failed try of a
+ * flake (the same try its error message comes from). Passing and skipped cases have none.
+ */
+function evidenceOf(caseKey: string, test: z.infer<typeof ReportTest>): CaseEvidence | null {
+  if (test.status === 'expected' || test.status === 'skipped') return null;
+  const failedTries = test.results.filter((r) => r.status !== 'passed' && r.status !== 'skipped');
+  const chosen = test.status === 'flaky' ? failedTries[0] : test.results.at(-1);
+  const file = (name: string, type: string) =>
+    chosen?.attachments.find((a) => a.name === name && a.contentType === type && a.path)?.path ??
+    null;
+  const evidence = {
+    caseKey,
+    screenshot: file('screenshot', 'image/png'),
+    trace: file('trace', 'application/zip'),
+  };
+  return evidence.screenshot || evidence.trace ? evidence : null;
+}
+
 export interface MappedResults {
+  /** Non-passing cases with at least one kept file, in claim order. */
+  evidence: CaseEvidence[];
   cases: CaseResult[];
   /** Claimed keys the report never mentioned (reported as SKIPPED). */
   missing: string[];
@@ -157,6 +193,7 @@ export function mapReport(
 ): MappedResults {
   const claimed = new Set(caseKeys);
   const found = new Map<string, CaseResult>();
+  const files = new Map<string, CaseEvidence>();
   const visit = (node: SuiteNode): void => {
     for (const spec of node.specs ?? []) {
       const keys = spec.tags.map((t) => t.replace(/^@/, '')).filter((k) => claimed.has(k));
@@ -165,6 +202,8 @@ export function mapReport(
         for (const key of keys) {
           if (found.has(key)) throw new ReportError(`case ${key} appears twice in the report`);
           found.set(key, caseResult(key, test));
+          const evidence = evidenceOf(key, test);
+          if (evidence) files.set(key, evidence);
         }
       }
     }
@@ -187,5 +226,6 @@ export function mapReport(
   const globalErrors = report.errors
     .map((e) => shortMessage(e.message))
     .filter((m): m is string => m !== null);
-  return { cases, missing, globalErrors };
+  const evidence = caseKeys.flatMap((k) => files.get(k) ?? []);
+  return { cases, missing, globalErrors, evidence };
 }

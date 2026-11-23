@@ -80,6 +80,8 @@ services:
       TESTGRID_DISPATCH_TIMEOUT_MS: ${TESTGRID_DISPATCH_TIMEOUT_MS:-300000}
       # PRD-06 artifact store (ADR-005); the volume keeps artifacts across `make down`.
       TESTGRID_ARTIFACT_ROOT: /var/lib/testgrid/artifacts
+      # PRD-06 AC-4 drill (scripts/scan-canary.sh): the API masks this value in stored error text.
+      TESTGRID_CANARY_SECRET: ${TESTGRID_CANARY_SECRET:-}
     volumes:
       - artifacts:/var/lib/testgrid/artifacts
     ports:
@@ -170,6 +172,8 @@ services:
       # worker never arms the API; refused unless TESTGRID_PROFILE=local.
       TG_FAULT: ${TG_FAULT_WORKER:-}
       TESTGRID_PROFILE: ${TESTGRID_PROFILE:-}
+      # PRD-06 AC-4 drill: put into every test page; refused unless TESTGRID_PROFILE=local.
+      TESTGRID_CANARY_SECRET: ${TESTGRID_CANARY_SECRET:-}
       # The allowlisted origin behind the manifest's baseUrlRef DEMO_SHOP_INTERNAL.
       DEMO_SHOP_INTERNAL: http://demo-shop:4173
     depends_on:

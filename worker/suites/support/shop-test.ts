@@ -4,6 +4,11 @@ import { parseFixtureEnv } from './fixture-env.ts';
 
 export const fixtureEnv = parseFixtureEnv(process.env);
 
+// PRD-06 AC-4 drill only: the worker passes TG_CANARY (local profile, scripts/scan-canary.sh).
+const CANARY = /^[A-Za-z0-9._-]{16,128}$/.test(process.env.TG_CANARY ?? '')
+  ? process.env.TG_CANARY
+  : undefined;
+
 /**
  * Every test gets its own browser context, so it also gets its own shop session:
  * the fixture call sets the session cookie on this context only.
@@ -21,6 +26,17 @@ export const test = base.extend<{ fixtureSession: void }>({
       expect(res.status(), 'fixture session must be created (is DEMO_SHOP_FIXTURES=enabled?)').toBe(
         201,
       );
+      if (CANARY) {
+        // Everywhere a real secret could leak from: a cookie (request headers in the trace), the
+        // DOM (trace snapshots) and the test's own output (the worker's log tail).
+        await context.addCookies([{ name: 'tg_canary', value: CANARY, url: fixtureEnv.baseUrl }]);
+        await context.addInitScript((value) => {
+          window.addEventListener('DOMContentLoaded', () => {
+            document.documentElement.setAttribute('data-canary', value);
+          });
+        }, CANARY);
+        console.log(`[canary] ${CANARY}`);
+      }
       await use();
     },
     { auto: true },

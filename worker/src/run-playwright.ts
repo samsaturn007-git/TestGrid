@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { StringDecoder } from 'node:string_decoder';
 
 // FR-5/FR-6: runs the Playwright CLI as a child process. shell: false and a typed argv mean
 // no string is ever interpreted by a shell. detached: true puts the child in its own process
@@ -8,6 +9,9 @@ import { createRequire } from 'node:module';
 export const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve('@playwright/test/cli');
 export const KILL_GRACE_MS = 10_000;
 const TAIL_BYTES = 16 * 1024;
+// PRD-06 FR-1: the log artifact keeps 256 KB. Twice that is captured, so redaction runs on more
+// than is kept and a secret split at the capture edge falls outside the kept tail.
+export const LOG_CAPTURE_CHARS = 512 * 1024;
 
 // Only these variables reach Playwright. The worker's own secrets (the service token)
 // are not in the list, so a test or a browser can never read them.
@@ -45,6 +49,8 @@ export interface RunOutcome {
   /** True if the process group had to be killed with SIGKILL after the grace period. */
   killed: boolean;
   stderrTail: string;
+  /** stdout and stderr interleaved as they arrived, the last LOG_CAPTURE_CHARS characters. */
+  logTail: string;
   durationMs: number;
 }
 
@@ -86,11 +92,20 @@ export function runPlaywright(spec: SpawnSpec): Promise<RunOutcome> {
   const pid = child.pid;
 
   let stderrTail = '';
+  let logTail = '';
+  // A decoder per stream, so a multi-byte character split across chunks stays intact.
+  const outText = new StringDecoder('utf8');
+  const errText = new StringDecoder('utf8');
+  const keep = (text: string) => {
+    logTail = (logTail + text).slice(-LOG_CAPTURE_CHARS);
+  };
   child.stderr.on('data', (chunk: Buffer) => {
-    stderrTail = (stderrTail + chunk.toString('utf8')).slice(-TAIL_BYTES);
+    const text = errText.write(chunk);
+    stderrTail = (stderrTail + text).slice(-TAIL_BYTES);
+    keep(text);
   });
-  // The JSON report goes to a file; stdout is drained only so the pipe never fills up.
-  child.stdout.resume();
+  // The JSON report goes to a file; stdout (the list reporter) only feeds the log tail.
+  child.stdout.on('data', (chunk: Buffer) => keep(outText.write(chunk)));
 
   return new Promise((resolve) => {
     let stoppedBy: StopReason | null = null;
@@ -135,6 +150,7 @@ export function runPlaywright(spec: SpawnSpec): Promise<RunOutcome> {
         stoppedBy,
         killed,
         stderrTail,
+        logTail: logTail + outText.end() + errText.end(),
         durationMs: Date.now() - started,
       });
     };

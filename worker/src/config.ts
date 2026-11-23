@@ -35,6 +35,10 @@ const Env = z.object({
   TG_FAULT: z
     .enum(['', 'after_claim', 'after_complete_before_ack', 'after_publish_before_mark'])
     .default(''),
+  // PRD-06 AC-4 canary drill (scripts/scan-canary.sh); refused outside the local profile.
+  TESTGRID_CANARY_SECRET: z
+    .union([z.literal(''), z.string().regex(/^[A-Za-z0-9._-]{16,128}$/)])
+    .default(''),
   TESTGRID_RECONNECT_MAX_MS: z.coerce.number().int().min(100).default(30_000),
   TESTGRID_SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(20_000),
 });
@@ -52,6 +56,8 @@ export interface WorkerConfig {
   shutdownGraceMs: number;
   /** A worker-side fault point to fire, or null. */
   fault: FaultPoint | null;
+  /** The AC-4 canary, put into the page by the spec support; null outside a drill. */
+  canary: string | null;
 }
 
 export interface AmqpConfig {
@@ -71,6 +77,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
   const e = parsed.data;
   if (e.TG_FAULT !== '' && e.TESTGRID_PROFILE !== 'local') {
     throw new Error('TG_FAULT is only honoured with TESTGRID_PROFILE=local');
+  }
+  if (e.TESTGRID_CANARY_SECRET !== '' && e.TESTGRID_PROFILE !== 'local') {
+    throw new Error('TESTGRID_CANARY_SECRET is only honoured with TESTGRID_PROFILE=local');
   }
   // after_publish_before_mark is the API's point; nothing to do in the worker.
   const fault: FaultPoint | null =
@@ -106,5 +115,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     reconnectMaxMs: e.TESTGRID_RECONNECT_MAX_MS,
     fault,
     shutdownGraceMs: e.TESTGRID_SHUTDOWN_GRACE_MS,
+    canary: e.TESTGRID_CANARY_SECRET === '' ? null : e.TESTGRID_CANARY_SECRET,
   };
 }

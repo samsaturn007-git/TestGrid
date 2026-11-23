@@ -105,4 +105,16 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
     report.suites.push(...report.suites);
     assert.throws(() => mapReport(report, 'chromium', CHECKOUT), /appears twice/);
   });
+
+  it('PRD-06: keeps the screenshot and trace of the failing try, and nothing for passing cases', () => {
+    const { evidence } = mapped('product-defect');
+    assert.deepEqual(
+      evidence.map((e) => e.caseKey),
+      ['cart-total'],
+    );
+    assert.match(evidence[0]?.screenshot ?? '', /test-failed-1\.png$/);
+    assert.match(evidence[0]?.trace ?? '', /trace\.zip$/);
+    // The error-context.md attachment (an ARIA snapshot of the page) is never collected.
+    assert.ok(!JSON.stringify(evidence).includes('error-context'));
+  });
 });
