@@ -31,7 +31,9 @@ describe('runPlaywright process-group handling (FR-6)', () => {
       args: ['ignore-term', pidFile, envFile],
       env: childEnv(process.env, {}),
       cwd: dir,
-      timeoutMs: 300,
+      // Long enough for the fake CLI to start and ignore SIGTERM even on a loaded machine; at
+      // 300 ms a slow start let SIGTERM arrive first (seen once in a full `make test`).
+      timeoutMs: 2000,
       killGraceMs: 300,
       cliPath: FAKE,
     });
@@ -45,7 +47,8 @@ describe('runPlaywright process-group handling (FR-6)', () => {
   it('an abort reports its reason and leaves no process behind', async () => {
     const { dir, pidFile, envFile } = setup();
     const controller = new AbortController();
-    setTimeout(() => controller.abort('shutdown'), 200);
+    // As above: the fake must have written its pid file before the abort.
+    setTimeout(() => controller.abort('shutdown'), 1500);
     const outcome = await runPlaywright({
       args: ['plain', pidFile, envFile],
       env: childEnv(process.env, {}),
