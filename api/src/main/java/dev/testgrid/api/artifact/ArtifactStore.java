@@ -35,8 +35,23 @@ public interface ArtifactStore {
 
   boolean exists(String key) throws IOException;
 
+  /** A stored object as the orphan sweeper sees it. */
+  record Entry(String key, Instant lastModified) {}
+
   /**
-   * Every stored key, for the orphan sweeper (FR-6). Entries that aren't valid keys are skipped.
+   * Every stored object, for the orphan sweeper (FR-6). Entries that aren't valid keys are skipped.
    */
-  List<String> keys() throws IOException;
+  List<Entry> entries() throws IOException;
+
+  default List<String> keys() throws IOException {
+    return entries().stream().map(Entry::key).toList();
+  }
+
+  /**
+   * Removes partial uploads (a crash mid-{@link #put}) last written before {@code before}; returns
+   * how many. A store without partial files has nothing to do.
+   */
+  default int deleteStaleParts(Instant before) throws IOException {
+    return 0;
+  }
 }

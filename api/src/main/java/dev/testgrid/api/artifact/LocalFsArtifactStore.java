@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -14,6 +15,9 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -121,16 +125,40 @@ public final class LocalFsArtifactStore implements ArtifactStore {
   }
 
   @Override
-  public List<String> keys() throws IOException {
+  public List<Entry> entries() throws IOException {
+    List<Entry> out = new ArrayList<>();
     // Files.walk does not follow links, and a link entry is not a regular file under NOFOLLOW.
     try (Stream<Path> walk = Files.walk(root)) {
-      return walk.filter(p -> !p.startsWith(incoming))
-          .filter(p -> Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS))
-          .map(p -> root.relativize(p).toString().replace(p.getFileSystem().getSeparator(), "/"))
-          .filter(ArtifactKeys::isValid)
-          .sorted()
-          .toList();
+      for (Path p : (Iterable<Path>) walk::iterator) {
+        if (p.startsWith(incoming)) {
+          continue;
+        }
+        BasicFileAttributes a =
+            Files.readAttributes(p, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        String key = root.relativize(p).toString().replace(p.getFileSystem().getSeparator(), "/");
+        if (a.isRegularFile() && ArtifactKeys.isValid(key)) {
+          out.add(new Entry(key, a.lastModifiedTime().toInstant()));
+        }
+      }
     }
+    out.sort(Comparator.comparing(Entry::key));
+    return out;
+  }
+
+  @Override
+  public int deleteStaleParts(Instant before) throws IOException {
+    int deleted = 0;
+    try (DirectoryStream<Path> parts = Files.newDirectoryStream(incoming, "*.part")) {
+      for (Path part : parts) {
+        BasicFileAttributes a =
+            Files.readAttributes(part, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        if (a.isRegularFile() && a.lastModifiedTime().toInstant().isBefore(before)) {
+          Files.deleteIfExists(part);
+          deleted++;
+        }
+      }
+    }
+    return deleted;
   }
 
   private Path resolve(String key) throws UnsafeArtifactPathException {

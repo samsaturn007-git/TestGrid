@@ -80,6 +80,9 @@ services:
       TESTGRID_DISPATCH_TIMEOUT_MS: ${TESTGRID_DISPATCH_TIMEOUT_MS:-300000}
       # PRD-06 artifact store (ADR-005); the volume keeps artifacts across `make down`.
       TESTGRID_ARTIFACT_ROOT: /var/lib/testgrid/artifacts
+      # PRD-06 FR-6 retention (ARCHITECTURE §6: 7 days, hourly purge); drills may shorten them.
+      TESTGRID_ARTIFACT_RETENTION: ${TESTGRID_ARTIFACT_RETENTION:-7d}
+      TESTGRID_ARTIFACT_PURGE_INTERVAL: ${TESTGRID_ARTIFACT_PURGE_INTERVAL:-1h}
       # PRD-06 FR-4: HMAC key for signed artifact links (>= 32 characters).
       TESTGRID_ARTIFACT_LINK_KEY: ${TESTGRID_ARTIFACT_LINK_KEY:?set TESTGRID_ARTIFACT_LINK_KEY in .env (copy .env.example)}
       # PRD-06 AC-4 drill (scripts/scan-canary.sh): the API masks this value in stored error text.

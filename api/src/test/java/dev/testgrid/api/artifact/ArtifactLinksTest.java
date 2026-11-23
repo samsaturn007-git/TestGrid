@@ -16,7 +16,14 @@ class ArtifactLinksTest {
   final UUID id = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
 
   static ArtifactProperties properties(String key) {
-    return new ArtifactProperties(Path.of("unused"), Duration.ofDays(7), key, 300);
+    return new ArtifactProperties(
+        Path.of("unused"),
+        Duration.ofDays(7),
+        key,
+        300,
+        Duration.ofHours(1),
+        Duration.ofHours(1),
+        500);
   }
 
   @Test
@@ -58,7 +65,15 @@ class ArtifactLinksTest {
   @Test
   void theKeyAndTtlAreValidatedAndTheKeyIsNeverPrinted() {
     assertThatThrownBy(() -> properties("too-short")).hasMessageContaining("at least 32");
-    assertThatThrownBy(() -> new ArtifactProperties(Path.of("x"), Duration.ofDays(7), KEY, 301))
+    assertThatThrownBy(() ->
+            new ArtifactProperties(
+                Path.of("x"),
+                Duration.ofDays(7),
+                KEY,
+                301,
+                Duration.ofHours(1),
+                Duration.ofHours(1),
+                500))
         .hasMessageContaining("1..300");
     assertThat(properties(KEY).toString()).doesNotContain(KEY).contains("[REDACTED]");
   }

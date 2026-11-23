@@ -7,9 +7,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -115,6 +117,80 @@ public class ArtifactRepository {
           out.computeIfAbsent(view.attemptId(), k -> new ArrayList<>()).add(view);
         });
     return out;
+  }
+
+  // PRD-06 FR-6 retention. Each statement handles at most `batch` rows; SKIP LOCKED keeps two
+  // passes (or a second API instance) from waiting on each other.
+
+  public record KeyedRow(UUID id, String storageKey) {}
+
+  /**
+   * AVAILABLE rows past {@code expires_at} (database clock) become EXPIRED; served by {@code
+   * artifacts_expiring}.
+   */
+  public List<KeyedRow> expireDue(int batch) {
+    return jdbc.sql(
+            """
+            UPDATE artifacts SET state = 'EXPIRED', version = version + 1
+            WHERE id IN (SELECT id FROM artifacts
+                         WHERE state = 'AVAILABLE' AND expires_at <= now()
+                         ORDER BY expires_at LIMIT :batch FOR UPDATE SKIP LOCKED)
+            RETURNING id, storage_key
+            """)
+        .param("batch", batch)
+        .query((rs, i) -> new KeyedRow(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+        .list();
+  }
+
+  /** EXPIRED rows whose bytes still have to go (this pass's, and any an earlier pass failed on). */
+  public List<KeyedRow> expired(int batch) {
+    return jdbc.sql(
+            "SELECT id, storage_key FROM artifacts WHERE state = 'EXPIRED' ORDER BY id LIMIT :batch")
+        .param("batch", batch)
+        .query((rs, i) -> new KeyedRow(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+        .list();
+  }
+
+  /** Only after the bytes are deleted; conditional, so a row is purged once. */
+  public boolean markPurged(UUID id) {
+    return jdbc.sql(
+                "UPDATE artifacts SET state = 'PURGED', version = version + 1"
+                    + " WHERE id = :id AND state = 'EXPIRED'")
+            .param("id", id)
+            .update()
+        == 1;
+  }
+
+  /** AVAILABLE rows after {@code afterId}, by id (keyset), for the missing-bytes check. */
+  public List<KeyedRow> availableAfter(UUID afterId, int batch) {
+    return jdbc.sql(
+            "SELECT id, storage_key FROM artifacts WHERE state = 'AVAILABLE' AND id > :after"
+                + " ORDER BY id LIMIT :batch")
+        .param("after", afterId)
+        .param("batch", batch)
+        .query((rs, i) -> new KeyedRow(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+        .list();
+  }
+
+  public boolean markMissing(UUID id) {
+    return jdbc.sql(
+                "UPDATE artifacts SET state = 'MISSING', version = version + 1"
+                    + " WHERE id = :id AND state IN ('AVAILABLE', 'EXPIRED')")
+            .param("id", id)
+            .update()
+        == 1;
+  }
+
+  /** Which of these keys have a row (in any state). */
+  public Set<String> knownKeys(List<String> keys) {
+    if (keys.isEmpty()) {
+      return Set.of();
+    }
+    return new HashSet<>(
+        jdbc.sql("SELECT storage_key FROM artifacts WHERE storage_key IN (:keys)")
+            .param("keys", keys)
+            .query(String.class)
+            .list());
   }
 
   /**
