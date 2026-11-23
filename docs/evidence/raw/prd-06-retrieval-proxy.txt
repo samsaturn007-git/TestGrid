@@ -1,0 +1,41 @@
+# PRD-06 T4: artifact retrieval through the web container's nginx proxy (http://127.0.0.1:3001; port 3000 was held by an unrelated Next.js dev server), 2026-11-23
+# Live Compose stack; PRODUCT_DEFECT run f7911998-3552-4554-8c09-d915a65986d0. Signatures are elided.
+
+--- GET /api/v1/artifacts/0c5561a0-6896-4a15-a88a-1050913438e7 (through nginx)
+{
+    "id": "0c5561a0-6896-4a15-a88a-1050913438e7",
+    "attemptId": "9239cbaf-5a24-47ab-ad71-b059ea657abb",
+    "caseKey": "cart-total",
+    "kind": "SCREENSHOT",
+    "mime": "image/png",
+    "byteSize": 38919,
+    "sha256": "2c184ef44aa5fe666c7eac43e96ad5d886a0d23898b40d38af2024789faf4dc5",
+    "state": "AVAILABLE",
+    "expiresAt": "2026-11-30T14:42:56.701009Z",
+    "createdAt": "2026-11-23T14:42:56.701009Z"
+}
+--- POST .../links
+url: /api/v1/artifacts/0c5561a0-6896-4a15-a88a-1050913438e7/content?expires=1795445376&sig=<43 chars>
+expiresAt: 2026-11-23T14:49:36Z
+--- GET the signed content (headers)
+HTTP/1.1 200 
+Content-Type: image/png
+Content-Length: 38919
+Content-Disposition: attachment; filename="screenshot-0c5561a0-6896-4a15-a88a-1050913438e7.png"
+X-Content-Type-Options: nosniff
+Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox
+Cache-Control: private, no-store
+Cross-Origin-Resource-Policy: same-origin
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+Referrer-Policy: no-referrer
+sha256 served: 2c184ef44aa5fe666c7eac43e96ad5d886a0d23898b40d38af2024789faf4dc5
+sha256 stored: 2c184ef44aa5fe666c7eac43e96ad5d886a0d23898b40d38af2024789faf4dc5
+--- the same URL without its signature
+403
+--- trace download for the viewer
+curl: (23) Failure writing output to destination, passed 92 returned 4294967295
+
+# AC-1: the downloaded trace opened with 'playwright show-trace --host 127.0.0.1 --port 9323 trace-<id>.zip'
+# and captured by scripts/trace-viewer-shot.mjs -> docs/evidence/raw/prd-06-ac1-trace-viewer.png
+# (failing step getByTestId('cart-total'): Expected "$80.99", Received "$82.99")
