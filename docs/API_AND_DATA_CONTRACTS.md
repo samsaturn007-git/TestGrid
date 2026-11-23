@@ -301,6 +301,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 - Body: `multipart/form-data` with exactly one part, `name="file"`; anything else is `415` (content type) or `400` (framing). The part's own `Content-Type` is ignored.
 - Limits per kind: screenshot 5 MB, trace 50 MB, log 1 MB (`413 artifact-too-large`, from `Content-Length` before reading or while streaming). Magic bytes: PNG signature, ZIP local file header, UTF-8 text without NUL; an empty file is `415`. At most 20 artifacts and 200 MB per attempt (`413`). This path is the only one exempt from the 64 KB body cap (CONFLICT_REGISTER N21).
 - The API streams the part into the store and computes sha256 on the way; no database lock is held meanwhile. Any violation, or a lease lost before the row is written, leaves no file behind.
+- What the worker sends (PRD-06 FR-1): nothing for a fully passing attempt. Otherwise the log tail (the Playwright process's stdout and stderr, redacted as above, colour codes and NUL removed, last 256 KB), then the screenshot and trace of each `FAILED`, `TIMED_OUT` or `FLAKY` case (the last try of a failure, the first failed try of a flake). Files are read only if they are regular files inside the attempt's output directory. A trace that contains any secret value, or that can't be read completely, is withheld (CONFLICT_REGISTER N22). A failed or refused upload is logged as an `ARTIFACT_STORE` warning and never changes the completion.
 - `201` with `Location: /api/v1/artifacts/{id}` and `{id, attemptId, caseKey, kind, mime, byteSize, sha256, state, expiresAt, createdAt}`; the storage key never leaves the server. Writes `ARTIFACT_AVAILABLE`.
 
 **Access (PRD-03 FR-2)**
@@ -356,7 +357,7 @@ A repeated `start` by the lease holder is answered `200` without a second transi
 - Durations must be between 0 and the suite timeout plus a grace period (60 s).
 - `COMPLETED_WITH_RESULTS`: exactly one result per claimed case and `workerError: null`. `errorClass` is required for `FAILED` and `TIMED_OUT`, and `PASSED` / `SKIPPED` carry no error. `retryCount` is 0 … the suite's `playwrightRetries`, and `FLAKY` needs at least 1. The target status is computed from these results (§2.2); the worker's opinion is not asked.
 - `INFRA_ERROR`, `TIMED_OUT`, `CANCELLED`: `caseResults: []`. `INFRA_ERROR` needs `workerError {errorClass, message}`; `TIMED_OUT` defaults to `TEST_TIMEOUT`; `CANCELLED` is accepted only when the run has a cancel request.
-- Error messages are redacted (bearer values and long opaque strings masked, control characters removed, ≤ 2,000 characters) before they are stored.
+- Error messages are redacted before they are stored, by the worker and again by the API (PRD-06 FR-5): the values of `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` headers, bearer tokens, JWT-shaped strings, long opaque strings (40+ characters), and the value of every environment variable named `*_TOKEN`, `*_KEY`, `*_SECRET` or `*_PASSWORD` (8+ characters, the AC-4 canary included) are masked as `[REDACTED]`; control characters are removed; ≤ 2,000 characters.
 - Response `200 {attemptId, attemptStatus, errorClass, targetId, targetStatus, runId, runStatus}`; a replay returns the same body.
 - Lease tokens are stored only as a sha256 hash, compared in constant time, and never logged.
 

@@ -126,5 +126,6 @@ curl -s -X POST http://127.0.0.1:8080/api/v1/runs/<runId>/cancel
 | `make crash-check` | Real worker with `TG_FAULT=after_complete_before_ack` (one attempt, redelivery `409`) and `after_claim` (attempt 1 `ABANDONED`, attempt 2 `PASSED`) | ~1.5 min |
 | `make sigterm-check` | `SIGTERM` mid-run: grace period, `INFRA_ERROR` / `WORKER_SHUTDOWN`, registry `DRAINING` | ~45 s |
 | `make restart-check` | A run survives an API restart unchanged | ~30 s |
+| `make scan-canary` | PRD-06 AC-4: a fresh canary secret in the worker, the API and every test page is absent from API responses, events, database rows, stored artifacts (traces unzipped) and logs; the masked log line and the withheld trace show it really was planted | ~1.5 min |
 
-Fault points are honoured only with `TESTGRID_PROFILE=local`: `TG_FAULT=after_publish_before_mark` (API) and `TG_FAULT_WORKER=after_claim | after_complete_before_ack` (worker).
+The canary (`TESTGRID_CANARY_SECRET`) and fault points are honoured only with `TESTGRID_PROFILE=local`: `TG_FAULT=after_publish_before_mark` (API) and `TG_FAULT_WORKER=after_claim | after_complete_before_ack` (worker).

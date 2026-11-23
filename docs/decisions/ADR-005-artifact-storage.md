@@ -39,6 +39,7 @@
 - The 64 KB JSON body cap (contracts §1) can't apply to the upload path. That path gets its own streaming limits, and only on the internal port.
 - The API container needs a writable artifacts volume owned by its non-root user (uid 1000).
 - A failed upload never changes a test result. The worker logs an `ARTIFACT_STORE` warning and still completes the attempt.
+- A trace holding a known secret value is withheld rather than redacted (CONFLICT_REGISTER N22): the worker can't safely rewrite Playwright's trace format, so a failure with a secret in the page has a screenshot and a log tail but no trace.
 - Rows and bytes can disagree after a crash between the move and the insert, or after manual deletion. The hourly orphan sweeper reconciles both directions (FR-6).
 
 ## Verification
