@@ -25,6 +25,7 @@ public enum ProblemType {
       "Completion does not match the claim"),
   RATE_LIMITED("rate-limited", HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
   INVALID_RERUN("invalid-rerun", HttpStatus.UNPROCESSABLE_CONTENT, "Run cannot be rerun as asked"),
+  ARTIFACT_TOO_LARGE("artifact-too-large", HttpStatus.CONTENT_TOO_LARGE, "Artifact too large"),
   UNSUPPORTED_MEDIA_TYPE(
       "unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");
 
