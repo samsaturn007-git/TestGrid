@@ -271,7 +271,7 @@
       "tasks": {
         "T1": {
           "label": "Create ArtifactStore interface, local implementation with traversal/symlink defences, optional S3 adapter.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Add artifact migrations and bounded streaming upload with MIME sniffing and sha256.",
