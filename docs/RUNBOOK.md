@@ -118,6 +118,15 @@ curl -s -X POST http://127.0.0.1:8080/api/v1/runs/<runId>/cancel
 
 `202`: queued targets are `CANCELLED` at once; running ones stop on their next heartbeat (≤ 10 s) and finish `CANCELLED`, unless their completion commits first (then they keep their result). `200`: the run was already terminal and nothing changed; the request is still recorded as `RUN_CANCEL_REQUESTED {accepted: false}`.
 
+## 6a. Artifacts (PRD-06)
+
+- **Where:** the `artifacts` Compose volume, mounted at `/var/lib/testgrid/artifacts` in the API container (owned by uid 1000, mode 0700). Rows in `artifacts` are the truth; the volume only holds bytes.
+- **Retention:** 7 days (`TESTGRID_ARTIFACT_RETENTION`), purged hourly (`TESTGRID_ARTIFACT_PURGE_INTERVAL`). The API log says `artifact purge expired=… purged=… failed=…` and `artifact sweep orphanFiles=… missingRows=… staleParts=…` whenever a pass changed something. `TESTGRID_ARTIFACT_RETENTION_ENABLED=false` stops the job.
+- **A purge that keeps failing** (`could not delete expired artifact …`): the row stays `EXPIRED` and readers get `410`, so nothing is exposed; fix the volume (permissions, a directory where a file should be) and the next pass finishes.
+- **Rows marked `MISSING`:** the bytes were lost (volume replaced or deleted by hand). The case result and error text are kept; the UI says the file is missing.
+- **Signed links:** `TESTGRID_ARTIFACT_LINK_KEY` (≥ 32 characters). Changing it invalidates every outstanding link at once (they last 5 minutes anyway).
+- **Canary drill:** `make scan-canary` (§7).
+
 ## 7. Drills
 
 | Command | What it proves | Time |

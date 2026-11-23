@@ -135,7 +135,7 @@ These are starting values to tune with evidence, not claims. The full PRD-04 lis
 | Outbox poll | 500 ms, batch of 100 |
 | SSE ping | 15 s |
 | UI polling fallback | 5 s |
-| Artifact retention | 7 days |
+| Artifact retention | 7 days; purge and orphan sweep hourly, orphan grace 1 h (PRD-06 FR-6) |
 | Process kill grace | 10 s (`SIGTERM` → `SIGKILL` on the Playwright process group) |
 
 ## 7. Smart sharding (PRD-11)

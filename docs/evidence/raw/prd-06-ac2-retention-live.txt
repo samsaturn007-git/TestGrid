@@ -1,0 +1,37 @@
+# PRD-06 T6 / AC-2: the retention loop on the live Compose stack, 2026-11-23
+# API started with TESTGRID_ARTIFACT_RETENTION=1m TESTGRID_ARTIFACT_PURGE_INTERVAL=1m (defaults 7d / 1h).
+# Planted in the API volume before the run: an orphan .log with no row (mtime 2 h ago) and a stale .incoming part (2 h ago).
+# PRODUCT_DEFECT run at 16:07:07 stored LOG, SCREENSHOT and TRACE (expires 16:08:20); all three PURGED by 16:09:02.
+
+--- artifacts of run 7ea04437-98d4-453d-a4a5-f72d7befa54f after the live retention passes (retention 1m, interval 1m)
+kind | case_key | state | expires
+LOG | - | PURGED | 16:08:20
+SCREENSHOT | cart-total | PURGED | 16:08:20
+TRACE | cart-total | PURGED | 16:08:20
+(3 rows)
+--- POST /api/v1/artifacts/401a247d-5e6f-42e5-a97a-7280bd085b94/links (through nginx)
+410
+--- GET /api/v1/artifacts/401a247d-5e6f-42e5-a97a-7280bd085b94
+state: PURGED | expiresAt: 2026-11-23T16:08:20.691334Z
+--- planted orphan and stale part still present? (expect nothing)
+/var/lib/testgrid/artifacts/2026/11/22:
+
+/var/lib/testgrid/artifacts/.incoming:
+--- the purged files are gone from the store?
+gone 2026/11/23/774617f9-cc77-4441-950b-c59058c030d3.png
+gone 2026/11/23/6c439c93-a894-427a-916c-cbee876b4a3f.log
+gone 2026/11/23/8bf3e8cc-eb0d-4aed-aa52-238e254af8a0.zip
+--- retention log lines (api)
+"message":"artifact retention started interval=PT1M orphanGrace=PT1H retention=PT1M"
+"message":"deleted an artifact file with no database row: 2026/11/22/0f8fad5b-d9cb-469f-a165-70867728950e.log"
+"message":"artifact sweep orphanFiles=1 missingRows=0 staleParts=1"
+"message":"artifact purge expired=3 purged=3 failed=0"
+
+# Dashboard: docs/evidence/raw/prd-06-ac2-purged-drawer.png (each artifact PURGED with its explanation; case result and error kept)
+
+# Mutation check of the missing-rows keyset scan (BEFORE_ALL put back to new UUID(Long.MIN_VALUE, Long.MIN_VALUE)):
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 3.788 s <<< FAILURE! -- in dev.testgrid.api.internal.ArtifactRetentionTest
+expected: 2
+ but was: 1
+expected: 2
+# restored to new UUID(0L, 0L); the test passes.
