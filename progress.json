@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T14:32:01+00:00",
+  "updated_at": "2026-11-23T14:51:28+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -283,7 +283,7 @@
         },
         "T4": {
           "label": "Expose content and signed-link endpoints with 404/410 semantics.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Build timeline API and UI plus failure detail drawer with artifact states.",
