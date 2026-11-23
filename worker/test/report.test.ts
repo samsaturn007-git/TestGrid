@@ -105,4 +105,33 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
     report.suites.push(...report.suites);
     assert.throws(() => mapReport(report, 'chromium', CHECKOUT), /appears twice/);
   });
+
+  it('PRD-06: keeps the screenshot and trace of the failing try, and nothing for passing cases', () => {
+    const { evidence } = mapped('product-defect');
+    assert.deepEqual(
+      evidence.map((e) => e.caseKey),
+      ['cart-total'],
+    );
+    assert.match(evidence[0]?.screenshot ?? '', /test-failed-1\.png$/);
+    assert.match(evidence[0]?.trace ?? '', /trace\.zip$/);
+    // The error-context.md attachment (an ARIA snapshot of the page) is never collected.
+    assert.ok(!JSON.stringify(evidence).includes('error-context'));
+  });
+
+  it("PRD-06: reports each case start as an offset from the first case, from Playwright's clock", () => {
+    const cases = mapped('product-defect').cases;
+    const offsets = cases.map((c) => c.startOffsetMs);
+    assert.ok(
+      offsets.every((o) => o !== null && o >= 0),
+      JSON.stringify(offsets),
+    );
+    assert.equal(Math.min(...(offsets as number[])), 0);
+    // Claimed cases the report never mentions have no start.
+    const extra = mapReport(
+      parseReport(sample('checkout-smoke-chromium-product-defect.json')),
+      'chromium',
+      [...CHECKOUT, 'not-in-report'],
+    ).cases.find((c) => c.caseKey === 'not-in-report');
+    assert.equal(extra?.startOffsetMs, null);
+  });
 });

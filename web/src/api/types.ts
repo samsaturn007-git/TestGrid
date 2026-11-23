@@ -36,3 +36,14 @@ export type RerunRequest = Schemas['RerunRequest'];
 export type RerunScope = Schemas['RerunRequest']['scope'];
 export type WorkersResponse = Schemas['WorkersResponse'];
 export type RunCounts = Schemas['RunCounts'];
+
+// PRD-06
+export type ArtifactView = Schemas['ArtifactView'];
+export type ArtifactKind = Schemas['ArtifactView']['kind'];
+export type ArtifactState = Schemas['ArtifactView']['state'];
+export type ArtifactLink = Schemas['Link'];
+export type RunTimeline = Schemas['RunTimeline'];
+export type TimelineTarget = Schemas['TimelineTarget'];
+export type TimelineAttempt = Schemas['TimelineAttempt'];
+export type HeartbeatGap = Schemas['HeartbeatGap'];
+export type TimelineEvent = Schemas['TimelineEvent'];

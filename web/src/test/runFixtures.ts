@@ -1,4 +1,6 @@
 import type {
+  ArtifactView,
+  RunTimeline,
   AttemptResults,
   AttemptSummary,
   CaseResult,
@@ -101,6 +103,7 @@ export function result(
     retryCount: 0,
     errorClass: status === 'FAILED' ? 'ASSERTION' : null,
     errorMessage: status === 'FAILED' ? 'expected 42.00 to equal 40.00' : null,
+    startOffsetMs: null,
     ...overrides,
   };
 }
@@ -109,8 +112,34 @@ export function attemptResults(
   summary: AttemptSummary,
   caseResults: CaseResult[] = [],
   errorDetail: string | null = null,
+  artifacts: ArtifactView[] = [],
 ): AttemptResults {
-  return { attempt: summary, caseResults, errorDetail };
+  return { attempt: summary, caseResults, errorDetail, artifacts };
+}
+
+/** PRD-06: an artifact of an attempt, AVAILABLE unless overridden. */
+export function artifact(
+  attemptId: string,
+  kind: ArtifactView['kind'],
+  caseKey: string | null,
+  overrides: Partial<ArtifactView> = {},
+): ArtifactView {
+  const ext = { SCREENSHOT: 'png', TRACE: 'zip', LOG: 'log' }[kind];
+  return {
+    id: `0f8fad5b-d9cb-469f-a165-${kind === 'SCREENSHOT' ? '1' : kind === 'TRACE' ? '2' : '3'}0867728950e`,
+    attemptId,
+    caseKey,
+    kind,
+    mime: { SCREENSHOT: 'image/png', TRACE: 'application/zip', LOG: 'text/plain; charset=utf-8' }[
+      kind
+    ],
+    byteSize: ext === 'zip' ? 185_965 : 38_919,
+    sha256: 'a'.repeat(64),
+    state: 'AVAILABLE',
+    expiresAt: '2026-11-29T11:50:00.000Z',
+    createdAt: T2,
+    ...overrides,
+  };
 }
 
 /** Results for a run: `attempts[targetIndex]` is that target's attempts, newest first. */
@@ -124,6 +153,35 @@ export function results(r: RunResponse, attempts: AttemptResults[][]): RunResult
       engine: t.engine,
       status: t.status,
       attempts: attempts[i] ?? [],
+    })),
+  };
+}
+
+/** PRD-06: the timeline the API would build from these results (no heartbeats, no gaps). */
+export function timelineFor(r: RunResponse, res: RunResults, serverNow = T2): RunTimeline {
+  return {
+    runId: r.id,
+    status: r.status,
+    queuedAt: r.queuedAt,
+    finishedAt: r.finishedAt,
+    serverNow,
+    heartbeatIntervalSeconds: 10,
+    gapThresholdMs: 20_000,
+    runEvents: [],
+    targets: res.targets.map((t) => ({
+      id: t.id,
+      targetKey: t.targetKey,
+      engine: t.engine,
+      status: t.status,
+      events: [],
+      attempts: [...t.attempts].reverse().map((a) => ({
+        attempt: a.attempt,
+        heartbeats: [],
+        gaps: [],
+        caseResults: a.caseResults,
+        artifacts: a.artifacts,
+        events: [],
+      })),
     })),
   };
 }

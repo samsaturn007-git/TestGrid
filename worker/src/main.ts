@@ -5,12 +5,15 @@ import { loadConfig } from './config.ts';
 import { runConsumer } from './consumer.ts';
 import { createLogger } from './logger.ts';
 import { DEFAULT_WORKER_ROOT, loadManifest } from './manifest.ts';
+import { secretsFromEnv } from './redact.ts';
 import { WorkerRegistration } from './registration.ts';
 import { handleDelivery } from './worker.ts';
 import type { FaultPoint } from './worker.ts';
 
 const config = loadConfig(process.env);
-const secrets = [config.token, config.amqp.password];
+// FR-5: the service token, the broker password and every *_TOKEN/_KEY/_SECRET/_PASSWORD value
+// (the AC-4 canary included) are masked in logs, error text and the uploaded log tail.
+const secrets = [...new Set([config.token, config.amqp.password, ...secretsFromEnv(process.env)])];
 const log = createLogger(secrets, { workerId: config.workerId });
 const suites = loadManifest();
 log.info(
@@ -64,6 +67,7 @@ const deps = {
     baseUrl: config.baseUrl,
     secrets,
     parentEnv: process.env,
+    canary: config.canary,
   },
   shutdownGraceMs: config.shutdownGraceMs,
   stopping: stopping.signal,
@@ -75,6 +79,7 @@ const deps = {
   },
 };
 if (config.fault) log.warn({ fault: config.fault }, 'TG_FAULT armed');
+if (config.canary) log.warn('canary drill: the canary secret is put into every test page');
 
 // FR-7: register before taking any message.
 if (await registration.start()) {

@@ -8,5 +8,6 @@ Each ADR records one decision, the options that were rejected and why, and what 
 | [ADR-002](ADR-002-phased-delivery.md) | Phased delivery: single polling worker first, then RabbitMQ with a transactional outbox | Accepted | 2026-11-19 | E2E-001 (PRD-03), Q-001…Q-009 (PRD-04) |
 | [ADR-003](ADR-003-safe-execution-boundary.md) | Safe execution boundary: manifest-only suites, no client URLs or code | Accepted | 2026-11-19 | API-003 (PRD-02), SEC-001/002 (PRD-12) |
 | [ADR-004](ADR-004-dispatch-ownership.md) | Dispatch and scheduling ownership: the DB dispatcher decides, the broker transports | Accepted | 2026-11-19 | Q-001, Q-002 (PRD-04), SCHED-001 (PRD-11) |
+| [ADR-005](ADR-005-artifact-storage.md) | Artifact storage and retrieval: server-keyed store behind an interface, uploads under the lease, signed links | Accepted | 2026-11-23 | ART-001…003, SEC-002 seed (PRD-06) |
 
 **Status values:** `Proposed` → `Accepted` → `Superseded by ADR-NNN`.

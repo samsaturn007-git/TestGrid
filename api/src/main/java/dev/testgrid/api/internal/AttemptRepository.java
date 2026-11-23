@@ -234,8 +234,8 @@ public class AttemptRepository {
     jdbc.sql(
             """
             INSERT INTO case_results (attempt_id, case_key, status, duration_ms, retry_count,
-                                      error_class, error_message_redacted)
-            VALUES (:a, :k, :s, :d, :r, :e, :m)
+                                      error_class, error_message_redacted, start_offset_ms)
+            VALUES (:a, :k, :s, :d, :r, :e, :m, :o)
             """)
         .param("a", attemptId)
         .param("k", result.caseKey())
@@ -244,6 +244,14 @@ public class AttemptRepository {
         .param("r", result.retryCount())
         .param("e", errorClass == null ? null : errorClass.name())
         .param("m", message)
+        .param("o", result.startOffsetMs())
+        .update();
+  }
+
+  /** PRD-06 FR-7: one row per accepted heartbeat, so the timeline can show gaps. */
+  public void recordHeartbeat(UUID attemptId) {
+    jdbc.sql("INSERT INTO attempt_heartbeats (attempt_id) VALUES (:a)")
+        .param("a", attemptId)
         .update();
   }
 

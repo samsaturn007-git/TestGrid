@@ -31,7 +31,9 @@ class RunEventStreamSweepTest {
 
   @BeforeEach
   void setUp() {
-    jdbc.sql("TRUNCATE case_results, attempts, run_events, run_targets, runs").update();
+    jdbc.sql(
+            "TRUNCATE artifacts, attempt_heartbeats, case_results, attempts, run_events, run_targets, runs")
+        .update();
     runId = RunEventStreamTest.insertRun(jdbc);
   }
 

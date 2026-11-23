@@ -40,4 +40,25 @@ describe('loadConfig', () => {
     assert.throws(() => loadConfig({ ...base, TESTGRID_WORKER_SLOTS: '17' }));
     assert.throws(() => loadConfig({ ...base, RABBITMQ_HOST: 'evil.example/x' }));
   });
+
+  it('PRD-06: honours the canary only in the local profile and only in a safe shape', () => {
+    assert.equal(loadConfig(base).canary, null);
+    assert.equal(loadConfig({ ...base, TESTGRID_CANARY_SECRET: '' }).canary, null);
+    assert.throws(
+      () => loadConfig({ ...base, TESTGRID_CANARY_SECRET: 'tg-canary-0123456789abcdef' }),
+      /only honoured with TESTGRID_PROFILE=local/,
+    );
+    assert.equal(
+      loadConfig({
+        ...base,
+        TESTGRID_PROFILE: 'local',
+        TESTGRID_CANARY_SECRET: 'tg-canary-0123456789abcdef',
+      }).canary,
+      'tg-canary-0123456789abcdef',
+    );
+    assert.throws(
+      () => loadConfig({ ...base, TESTGRID_PROFILE: 'local', TESTGRID_CANARY_SECRET: 'short' }),
+      /TESTGRID_CANARY_SECRET/,
+    );
+  });
 });

@@ -1,0 +1,54 @@
+# PRD-06 final live pass on the final code (commit 7b73d6e), 2026-11-23; Compose stack rebuilt, web on 127.0.0.1:3001
+
+$ bash scripts/scan-canary.sh   # exit 0
+--- starting api and worker with a fresh canary (value not printed)
+created run c7550ee5-61e6-4e8f-a525-3c71db74c50a (PRODUCT_DEFECT on chromium)
+run finished: FAILED
+--- collecting what the run stored and served
+--- positive controls
+  ok   a log tail was stored for the failed attempt
+  ok   the log tail shows the masked canary line
+  ok   the failed case's screenshot was stored
+  ok   the failed case's trace was withheld because it held the canary
+--- scanning 865 files for the canary
+  ok   canary absent from API responses, events, database rows, stored artifacts and logs
+scan-canary: PASS
+--- recreating api and worker without the canary
+
+$ make e2e   # exit 0
+node scripts/e2e.mjs chromium
+e2e: engines chromium against http://127.0.0.1:8080
+  local:chromium:0 attempt 1 PASSED cases=6 (all PASSED)
+ok   checkout-smoke PASS → PASSED in 3.1s run=f9c11bd0-3e9a-4404-a92c-3715a90dd159
+  local:chromium:0 attempt 1 FAILED cases=6 cart-total=FAILED/ASSERTION
+ok   checkout-smoke PRODUCT_DEFECT → FAILED in 13.2s run=0366a6ee-6b8b-4947-b37e-1034434ffcba
+  local:chromium:0 attempt 1 FAILED cases=6 card-declined=FAILED/SELECTOR_NOT_FOUND checkout-happy-path=FAILED/SELECTOR_NOT_FOUND
+ok   checkout-smoke SELECTOR_DRIFT → FAILED in 13.2s run=75764c9d-bf12-401d-ba00-94f1678581a5
+  local:chromium:0 attempt 1 TIMED_OUT cases=6 card-declined=TIMED_OUT/TEST_TIMEOUT checkout-happy-path=TIMED_OUT/TEST_TIMEOUT
+ok   checkout-smoke TIMEOUT → TIMED_OUT in 42.5s run=35f93295-7d7f-4b0c-b2ab-3341eb766990
+  local:chromium:0 attempt 1 PASSED cases=12 (all PASSED)
+ok   catalog-regression PASS → PASSED in 3.0s run=49c1503a-89d5-4115-bab6-d8dd4cfa1252
+e2e OK
+
+$ (cd web && E2E_BASE_URL=http://127.0.0.1:3001 pnpm exec playwright test --reporter=line)   # exit 0
+[1/20] [chromium] › e2e/a11y.spec.ts:42:5 › axe, dark theme (PRD-05 AC-4) › overview
+[2/20] [chromium] › e2e/a11y.spec.ts:51:5 › axe, dark theme (PRD-05 AC-4) › runs list with filters
+[3/20] [chromium] › e2e/a11y.spec.ts:57:5 › axe, dark theme (PRD-05 AC-4) › run detail with case results open
+[4/20] [chromium] › e2e/a11y.spec.ts:65:5 › axe, dark theme (PRD-05 AC-4) › PRD-06: timeline and the failed case drawer, with its screenshot loaded
+[5/20] [chromium] › e2e/a11y.spec.ts:95:5 › axe, dark theme (PRD-05 AC-4) › suites with cases expanded
+[6/20] [chromium] › e2e/a11y.spec.ts:102:5 › axe, dark theme (PRD-05 AC-4) › new-run dialog, with field errors showing
+[7/20] [chromium] › e2e/a11y.spec.ts:114:5 › axe, dark theme (PRD-05 AC-4) › workers
+[8/20] [chromium] › e2e/a11y.spec.ts:120:5 › axe, dark theme (PRD-05 AC-4) › not found
+[9/20] [chromium] › e2e/a11y.spec.ts:42:5 › axe, light theme (PRD-05 AC-4) › overview
+[10/20] [chromium] › e2e/a11y.spec.ts:51:5 › axe, light theme (PRD-05 AC-4) › runs list with filters
+[11/20] [chromium] › e2e/a11y.spec.ts:57:5 › axe, light theme (PRD-05 AC-4) › run detail with case results open
+[12/20] [chromium] › e2e/a11y.spec.ts:65:5 › axe, light theme (PRD-05 AC-4) › PRD-06: timeline and the failed case drawer, with its screenshot loaded
+[13/20] [chromium] › e2e/a11y.spec.ts:95:5 › axe, light theme (PRD-05 AC-4) › suites with cases expanded
+[14/20] [chromium] › e2e/a11y.spec.ts:102:5 › axe, light theme (PRD-05 AC-4) › new-run dialog, with field errors showing
+[15/20] [chromium] › e2e/a11y.spec.ts:114:5 › axe, light theme (PRD-05 AC-4) › workers
+[16/20] [chromium] › e2e/a11y.spec.ts:120:5 › axe, light theme (PRD-05 AC-4) › not found
+[17/20] [chromium] › e2e/dashboard.spec.ts:26:3 › dashboard end to end (PRD-05) › UI-002: a run from the dialog ends PASSED with PASS, FAILED with PRODUCT_DEFECT, naming engine, attempt and case
+[18/20] [chromium] › e2e/dashboard.spec.ts:73:3 › dashboard end to end (PRD-05) › AC-4: keyboard only, start a run, land on its page, and cancel it
+[19/20] [chromium] › e2e/dashboard.spec.ts:107:3 › dashboard end to end (PRD-05) › UI-001 / AC-3: the stream is blocked mid-run, the page polls and settles on the database state, then goes live again
+[20/20] [chromium] › e2e/dashboard.spec.ts:157:3 › dashboard end to end (PRD-05) › UI-003 / AC-5: rerunning failed targets makes a linked run with only those targets
+  20 passed (2.1m)

@@ -1,0 +1,35 @@
+# PRD-06 T5 / AC-5: make kill-check (kill -9 of the worker mid-run, live Compose stack), 2026-11-23, exit 0
+
+created run 7752cf07-ca89-4495-b481-44c594d853e9 (TIMEOUT fixture: each attempt runs ~40 s)
+target RUNNING; sending SIGKILL to the worker container and starting it again
+waiting for the reaper to abandon attempt 1 and for attempt 2 to be claimed (bound 45 s)
+attempt 2 claimed 32 s after the kill
+waiting for attempt 2 to finish
+--- attempts (database)
+1 | ABANDONED | LEASE_EXPIRED | worker-5a989ad70445 | 0
+2 | TIMED_OUT | TEST_TIMEOUT | worker-5a989ad70445 | 6
+--- events
+RUN_CREATED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ATTEMPT_ABANDONED > TARGET_RETRY_SCHEDULED > TARGET_DISPATCHED > TARGET_CLAIMED > TARGET_STARTED > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > ARTIFACT_AVAILABLE > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > CASE_FINISHED > TARGET_FINISHED > RUN_FINISHED
+--- run
+run status: TIMED_OUT | target status: TIMED_OUT | attempts: 2
+kill-check OK
+
+# GET /api/v1/runs/<run>/timeline for that run, through the web container's nginx (port 3001), summarised by a script
+run 7752cf07-ca89-4495-b481-44c594d853e9 TIMED_OUT | interval 10 s | threshold 20000 ms
+run events: ['RUN_CREATED', 'RUN_FINISHED']
+target local:chromium:0 TIMED_OUT | target events: ['TARGET_DISPATCHED', 'TARGET_RETRY_SCHEDULED', 'TARGET_DISPATCHED']
+  attempt 1 ABANDONED LEASE_EXPIRED claimed 15:12:08.166 finished 15:12:41.996
+    heartbeats: []
+    gaps: [('15:12:08.210', '15:12:41.996', 33786)]
+    cases (key, status, startOffsetMs, durationMs): []
+    artifacts: []
+    events: ['TARGET_CLAIMED', 'TARGET_STARTED', 'ATTEMPT_ABANDONED']
+  attempt 2 TIMED_OUT TEST_TIMEOUT claimed 15:12:44.092 finished 15:13:27.460
+    heartbeats: ['15:12:54.132', '15:13:04.141', '15:13:14.134', '15:13:24.142']
+    gaps: []
+    cases (key, status, startOffsetMs, durationMs): [('add-to-cart', 'PASSED', 95, 1301), ('apply-coupon', 'PASSED', 1131, 791), ('browse-catalog', 'PASSED', 0, 726), ('card-declined', 'TIMED_OUT', 1706, 40212), ('cart-total', 'PASSED', 22, 1206), ('checkout-happy-path', 'TIMED_OUT', 1612, 40200)]
+    artifacts: [('LOG', None, 'AVAILABLE'), ('SCREENSHOT', 'card-declined', 'AVAILABLE'), ('TRACE', 'card-declined', 'AVAILABLE'), ('SCREENSHOT', 'checkout-happy-path', 'AVAILABLE'), ('TRACE', 'checkout-happy-path', 'AVAILABLE')]
+    events: ['TARGET_CLAIMED', 'TARGET_STARTED', 'ARTIFACT_AVAILABLE', 'ARTIFACT_AVAILABLE', 'ARTIFACT_AVAILABLE', 'ARTIFACT_AVAILABLE', 'ARTIFACT_AVAILABLE', 'CASE_FINISHED', 'CASE_FINISHED', 'CASE_FINISHED', 'CASE_FINISHED', 'CASE_FINISHED', 'CASE_FINISHED', 'TARGET_FINISHED']
+
+# Dashboard: docs/evidence/raw/prd-06-ac5-timeline.png (scripts/prd06-dashboard-shots.mjs); case drawer: docs/evidence/raw/prd-06-case-drawer.png
+# Real-browser axe incl. contrast, both themes: web/e2e/a11y.spec.ts 'PRD-06: timeline and the failed case drawer' passed (16/16 in the spec)

@@ -3,12 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Claim } from './claim.ts';
 import type { ErrorClass } from './classify.ts';
+import type { EvidenceBundle } from './evidence.ts';
 import type { LoadedSuite } from './manifest.ts';
 import { suiteByKey } from './manifest.ts';
 import { buildPlaywrightArgs } from './playwright-args.ts';
 import { redact } from './redact.ts';
 import { mapReport, parseReport, ReportError } from './report.ts';
-import type { CaseResult } from './report.ts';
+import type { CaseEvidence, CaseResult } from './report.ts';
 import { childEnv, runPlaywright } from './run-playwright.ts';
 import type { RunOutcome, StopReason } from './run-playwright.ts';
 
@@ -32,6 +33,11 @@ export interface AttemptDeps {
   baseUrl: string;
   secrets: readonly string[];
   parentEnv: NodeJS.ProcessEnv;
+  /**
+   * PRD-06 AC-4 drill (local profile only): a canary secret the spec support puts into the page
+   * and the test output, so the scan can prove redaction catches it. Null in normal runs.
+   */
+  canary?: string | null;
   killGraceMs?: number;
   cliPath?: string;
   onSpawn?: (args: readonly string[]) => void;
@@ -74,10 +80,18 @@ const STOPPED: Record<StopReason, (timeoutMs: number) => Completion> = {
   }),
 };
 
+/**
+ * Called once Playwright has finished and the completion is known, while the output directory
+ * still exists (it is deleted right after). The worker uploads the evidence here, under the lease.
+ * Whatever it does or throws, the returned completion is the same.
+ */
+export type EvidenceHook = (bundle: EvidenceBundle, completion: Completion) => Promise<void>;
+
 export async function executeAttempt(
   claim: Claim,
   deps: AttemptDeps,
   signal?: AbortSignal,
+  onEvidence?: EvidenceHook,
 ): Promise<Completion> {
   let loaded: LoadedSuite;
   try {
@@ -123,14 +137,25 @@ export async function executeAttempt(
         TG_FIXTURE_MODE: claim.fixture?.mode ?? 'PASS',
         TG_FIXTURE_SEED: String(claim.fixture?.seed ?? 42),
         PLAYWRIGHT_JSON_OUTPUT_FILE: reportFile,
+        ...(deps.canary ? { TG_CANARY: deps.canary } : {}),
       }),
       timeoutMs: claim.timeoutMs,
       ...(deps.killGraceMs === undefined ? {} : { killGraceMs: deps.killGraceMs }),
       ...(signal === undefined ? {} : { signal }),
       ...(deps.cliPath === undefined ? {} : { cliPath: deps.cliPath }),
     });
-    if (outcome.stoppedBy) return STOPPED[outcome.stoppedBy](claim.timeoutMs);
-    return fromReport(claim, outcome, reportFile, deps.secrets);
+    const outputDir = path.join(dir, 'output');
+    const { completion, cases } = outcome.stoppedBy
+      ? { completion: STOPPED[outcome.stoppedBy](claim.timeoutMs), cases: [] }
+      : fromReport(claim, outcome, reportFile, deps.secrets);
+    if (onEvidence) {
+      try {
+        await onEvidence({ outputDir, cases, logTail: outcome.logTail }, completion);
+      } catch {
+        // The hook logs its own failures; evidence never changes the result.
+      }
+    }
+    return completion;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -141,7 +166,18 @@ function fromReport(
   outcome: RunOutcome,
   reportFile: string,
   secrets: readonly string[],
-): Completion {
+): { completion: Completion; cases: CaseEvidence[] } {
+  const read = readReport(claim, outcome, reportFile, secrets);
+  // Early exits (no report, unreadable report, nothing ran) are a bare completion with no files.
+  return 'completion' in read ? read : { completion: read, cases: [] };
+}
+
+function readReport(
+  claim: Claim,
+  outcome: RunOutcome,
+  reportFile: string,
+  secrets: readonly string[],
+): Completion | { completion: Completion; cases: CaseEvidence[] } {
   let text: string;
   try {
     text = readFileSync(reportFile, 'utf8');
@@ -175,8 +211,14 @@ function fromReport(
     return infra('BROWSER_LAUNCH', failed[0]?.errorMessage ?? 'browser failed to launch', secrets);
   }
   return {
-    status: 'COMPLETED_WITH_RESULTS',
-    caseResults: mapped.cases.map((c) => ({ ...c, errorMessage: redact(c.errorMessage, secrets) })),
-    workerError: null,
+    completion: {
+      status: 'COMPLETED_WITH_RESULTS',
+      caseResults: mapped.cases.map((c) => ({
+        ...c,
+        errorMessage: redact(c.errorMessage, secrets),
+      })),
+      workerError: null,
+    },
+    cases: mapped.evidence,
   };
 }

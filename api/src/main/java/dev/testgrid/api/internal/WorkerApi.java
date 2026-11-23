@@ -108,7 +108,9 @@ public final class WorkerApi {
       @NotNull Integer durationMs,
       @NotNull Integer retryCount,
       ErrorClass errorClass,
-      @Size(max = 2000) String errorMessage) {}
+      @Size(max = 2000) String errorMessage,
+      // PRD-06 FR-7: optional; ms after the attempt's first case started (Playwright's clock).
+      @Min(0) Integer startOffsetMs) {}
 
   public record WorkerError(@NotNull ErrorClass errorClass, @Size(max = 2000) String message) {}
 

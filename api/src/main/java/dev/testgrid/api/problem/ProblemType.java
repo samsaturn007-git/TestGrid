@@ -14,6 +14,7 @@ public enum ProblemType {
       "idempotency-conflict", HttpStatus.CONFLICT, "Idempotency key reused with a different body"),
   NOT_FOUND("not-found", HttpStatus.NOT_FOUND, "Not found"),
   UNAUTHORIZED("unauthorized", HttpStatus.UNAUTHORIZED, "Missing or invalid credentials"),
+  FORBIDDEN("forbidden", HttpStatus.FORBIDDEN, "Forbidden"),
   ATTEMPT_NOT_ACTIVE("attempt-not-active", HttpStatus.CONFLICT, "Attempt is not active"),
   LEASE_EXPIRED("lease-expired", HttpStatus.GONE, "Lease expired or replaced"),
   STALE_DISPATCH("stale-dispatch", HttpStatus.CONFLICT, "Dispatch message is stale"),
@@ -25,6 +26,8 @@ public enum ProblemType {
       "Completion does not match the claim"),
   RATE_LIMITED("rate-limited", HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
   INVALID_RERUN("invalid-rerun", HttpStatus.UNPROCESSABLE_CONTENT, "Run cannot be rerun as asked"),
+  ARTIFACT_EXPIRED("artifact-expired", HttpStatus.GONE, "Artifact expired"),
+  ARTIFACT_TOO_LARGE("artifact-too-large", HttpStatus.CONTENT_TOO_LARGE, "Artifact too large"),
   UNSUPPORTED_MEDIA_TYPE(
       "unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");
 

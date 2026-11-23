@@ -29,12 +29,14 @@ import tools.jackson.databind.json.JsonMapper;
     properties = {
       "testgrid.internal.port=0",
       "testgrid.internal.worker-token=" + WorkerApiTestBase.TOKEN,
-      "testgrid.profile=local"
+      "testgrid.profile=local",
+      "testgrid.artifacts.root=" + WorkerApiTestBase.ARTIFACT_ROOT
     })
 @Import(PostgresTestcontainer.class)
 abstract class WorkerApiTestBase {
 
   static final String TOKEN = "test-only-worker-token-0123456789abcdef";
+  static final String ARTIFACT_ROOT = "target/test-artifacts/worker-api";
   static final String CHECKOUT_CASES_JSON =
       "[\"add-to-cart\",\"apply-coupon\",\"browse-catalog\",\"card-declined\",\"cart-total\","
           + "\"checkout-happy-path\"]";
@@ -57,7 +59,7 @@ abstract class WorkerApiTestBase {
   @BeforeEach
   void clean() {
     jdbc.sql(
-            "TRUNCATE workers, outbox_events, case_results, attempts, run_events, run_targets, runs")
+            "TRUNCATE workers, outbox_events, artifacts, attempt_heartbeats, case_results, attempts, run_events, run_targets, runs")
         .update();
     jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
   }

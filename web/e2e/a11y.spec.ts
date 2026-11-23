@@ -62,6 +62,36 @@ for (const theme of ['dark', 'light'] as const) {
       expect(await seriousViolations(page)).toEqual([]);
     });
 
+    test('PRD-06: timeline and the failed case drawer, with its screenshot loaded', async ({
+      page,
+    }) => {
+      await page.goto(`/runs/${finishedRunId}`);
+      await expect(
+        page
+          .getByRole('region', { name: 'Timeline' })
+          .getByText(/heartbeats?/)
+          .first(),
+      ).toBeVisible();
+      await page
+        .getByRole('button', { name: /^cart-total on chromium:.*FAILED.*Open details$/ })
+        .click();
+      const drawer = page.getByRole('dialog', { name: /cart-total/ });
+      const shot = drawer.getByRole('img', { name: /^Screenshot of cart-total/ });
+      await expect(shot).toBeVisible();
+      // The signed link really served the PNG into the <img> (CSP img-src 'self', attachment).
+      await expect
+        .poll(() => shot.evaluate((img: HTMLImageElement) => img.naturalWidth))
+        .toBeGreaterThan(0);
+      await expect(drawer.getByText(/^npx playwright show-trace trace-/)).toBeVisible();
+      await expect(drawer.getByLabel('Log tail, redacted')).toContainText('[REDACTED]');
+      expect(await seriousViolations(page)).toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(drawer).toBeHidden();
+      await expect(
+        page.getByRole('button', { name: /^cart-total on chromium:.*FAILED.*Open details$/ }),
+      ).toBeFocused();
+    });
+
     test('suites with cases expanded', async ({ page }) => {
       await page.goto(`/projects/${project}/suites`);
       await page.getByRole('button', { name: /Show 6 cases/ }).click();
