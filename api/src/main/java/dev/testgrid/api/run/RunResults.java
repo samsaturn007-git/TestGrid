@@ -24,7 +24,9 @@ public record RunResults(UUID runId, RunStatus status, List<Target> targets) {
       @ApiNullable String errorDetail,
       List<CaseResult> caseResults,
       // PRD-06: what was kept for this attempt (screenshots and traces per case, the log tail).
-      List<ArtifactView> artifacts) {}
+      List<ArtifactView> artifacts,
+      // PRD-07 (CONFLICT_REGISTER N25): the failure group of an attempt-level failure.
+      @ApiNullable UUID fingerprintId) {}
 
   @Schema(name = "CaseResult")
   public record CaseResult(
@@ -35,5 +37,7 @@ public record RunResults(UUID runId, RunStatus status, List<Target> targets) {
       @ApiNullable ErrorClass errorClass,
       @ApiNullable String errorMessage,
       // PRD-06 FR-7: ms after the attempt's first case started; null if the worker didn't say.
-      @ApiNullable Integer startOffsetMs) {}
+      @ApiNullable Integer startOffsetMs,
+      // PRD-07 FR-1: the failure group this result belongs to; null for passes and skips.
+      @ApiNullable UUID fingerprintId) {}
 }

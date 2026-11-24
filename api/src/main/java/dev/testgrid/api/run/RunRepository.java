@@ -381,7 +381,7 @@ public class RunRepository {
     record Row(UUID targetId, RunResults.Attempt attempt) {}
     List<Row> attempts =
         jdbc.sql(
-                "SELECT a.target_id, "
+                "SELECT a.target_id, a.fingerprint_id AS a_fingerprint_id, "
                     + ATTEMPT_COLUMNS
                     + """
                     FROM attempts a JOIN run_targets t ON t.id = a.target_id
@@ -393,7 +393,11 @@ public class RunRepository {
                 new Row(
                     rs.getObject("target_id", UUID.class),
                     new RunResults.Attempt(
-                        mapAttempt(rs), rs.getString("a_error_detail"), List.of(), List.of())))
+                        mapAttempt(rs),
+                        rs.getString("a_error_detail"),
+                        List.of(),
+                        List.of(),
+                        rs.getObject("a_fingerprint_id", UUID.class))))
             .list();
     Map<UUID, List<RunResults.CaseResult>> cases = new HashMap<>();
     jdbc.sql(
@@ -416,7 +420,8 @@ public class RunRepository {
                       rs.getInt("retry_count"),
                       errorClass == null ? null : ErrorClass.valueOf(errorClass),
                       rs.getString("error_message_redacted"),
-                      rs.getObject("start_offset_ms", Integer.class)));
+                      rs.getObject("start_offset_ms", Integer.class),
+                      rs.getObject("fingerprint_id", UUID.class)));
         });
     return targets.stream()
         .map(t ->
@@ -432,7 +437,8 @@ public class RunRepository {
                             r.attempt().attempt(),
                             r.attempt().errorDetail(),
                             List.copyOf(cases.getOrDefault(r.attempt().attempt().id(), List.of())),
-                            artifacts.getOrDefault(r.attempt().attempt().id(), List.of())))
+                            artifacts.getOrDefault(r.attempt().attempt().id(), List.of()),
+                            r.attempt().fingerprintId()))
                     .toList()))
         .toList();
   }

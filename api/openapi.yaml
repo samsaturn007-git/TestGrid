@@ -974,11 +974,17 @@ components:
           type:
           - string
           - "null"
+        fingerprintId:
+          type:
+          - string
+          - "null"
+          format: uuid
       required:
       - artifacts
       - attempt
       - caseResults
       - errorDetail
+      - fingerprintId
     AttemptSummary:
       type: object
       properties:
@@ -1294,6 +1300,11 @@ components:
           type:
           - string
           - "null"
+        fingerprintId:
+          type:
+          - string
+          - "null"
+          format: uuid
         retryCount:
           type: integer
           format: int32
@@ -1315,6 +1326,7 @@ components:
       - durationMs
       - errorClass
       - errorMessage
+      - fingerprintId
       - retryCount
       - startOffsetMs
       - status

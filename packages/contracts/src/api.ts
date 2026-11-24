@@ -451,6 +451,8 @@ export interface components {
             attempt: components["schemas"]["AttemptSummary"];
             caseResults: components["schemas"]["CaseResult"][];
             errorDetail: string | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
         };
         AttemptSummary: {
             /** Format: int32 */
@@ -556,6 +558,8 @@ export interface components {
             /** @enum {string|null} */
             errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
             errorMessage: string | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
             /** Format: int32 */
             retryCount: number;
             /** Format: int32 */
