@@ -162,7 +162,7 @@ Owner PRD in brackets. Every table has `created_at`. Mutable aggregates have a `
 | `GET /failure-groups/{id}` | Group detail with occurrences and evidence | below | 07 |
 | `PUT /failure-groups/{id}/override` | Human override of the category | `reason` required; writes an audit event | 07 |
 | `GET /cases/{caseKey}/history` | Outcome and duration history | `suiteKey, engine, limit ≤ 100`; below | 07 |
-| `GET /runs/compare?base=&head=` | Compare two runs (§8) | | 07 |
+| `GET /runs/compare?base=&head=` | Compare two runs (§8) | `400` bad or unknown parameters, `404` a run or no last green, `422 incomparable-runs` | 07 |
 | `GET /runs/{runId}/quality` | Quality evaluation and rule report | computed when the run finishes; idempotent | 08 |
 | `GET` / `PUT /projects/{projectId}/quality-policy` | Read the policy; `PUT` creates a new version | | 08 |
 | `GET` / `POST /projects/{projectId}/quarantines`, `DELETE /quarantines/{id}` | Quarantine management | expiry required, at most 30 days | 08 |
@@ -279,6 +279,7 @@ Each type is served as `https://testgrid.local/problems/<slug>`. HTTP errors wit
 | `validation-failed` | 400 | malformed JSON, too long, unknown field |
 | `unknown-suite` / `engine-not-allowed` / `fixture-not-allowed` | 422 | not in the manifest, or a fixture mode used outside the local profile |
 | `idempotency-conflict` | 409 | same key, different payload, or a different completion key after a terminal state |
+| `incomparable-runs` | 422 | `GET /runs/compare` with runs of different suite keys (PRD-07) |
 | `invalid-rerun` | 422 | `POST /runs/{runId}/rerun` on a run that has not finished, or `scope: FAILED_TARGETS` when no target ended `FAILED`, `TIMED_OUT` or `INFRA_ERROR` (PRD-05) |
 | `invalid-completion` | 422 | a well-formed completion that doesn't fit its claim: unknown, missing or duplicate case key, duration or retry count out of range, a status without its required error (PRD-03) |
 | `not-found` | 404 | |
@@ -393,8 +394,20 @@ Each `(caseKey, engine)` pair gets one of:
 | `ADDED` / `REMOVED` | case exists in only one run |
 | `NOT_COMPARABLE` | target missing or `INFRA_ERROR` on either side |
 
-- **Duration regression:** the head duration is more than `base × 1.5` and also more than `base + 500 ms` (both thresholds configurable).
-- **Shortcut:** `?base=last-green&head=<runId>` finds the most recent `PASSED` run on the same branch and suite.
+- **Duration regression:** the head duration is more than `base × 1.5` and also more than `base + 500 ms`. Both comparisons are strict, and both thresholds are configurable (`testgrid.compare.regression-ratio`, `testgrid.compare.regression-min-delta-ms`). It is flagged on any row where both sides ran, whatever the category.
+- **Shortcut:** `?base=last-green&head=<runId>` finds the most recent `PASSED` run on the same branch and suite. That means the newest run by `(queued_at, id)` that was queued before head, with `status = PASSED`, the same suite key (any revision) and the same branch. A head with no branch matches runs with no branch. If there is none, `404 not-found` says so.
+
+**Implementation (PRD-07 T4).** `RunComparison` (pure) and `RunComparisonService` read one `REPEATABLE READ` snapshot.
+- **What each side is:** a run's side is its suite revision's case keys, plus each engine's target. A target has results when it finished `PASSED`, `FAILED` or `TIMED_OUT`. Its results are the case results of its newest attempt that has any. One target per engine until PRD-11; shards' results will merge per engine.
+- **The algorithm:** each side is indexed once into a hash map keyed by `(caseKey, engine)`, and every key of the union is looked up in both. That is O(n) in the results; the display sort is O(n log n) over the rows.
+- **Category for each key**, first match:
+  1. `ADDED` if the base revision lacks the case (only for engines head ran); `REMOVED` if the head revision lacks it (only for engines base ran).
+  2. `NOT_COMPARABLE`, with a reason, when either side has no target for the engine, the target has no results (`INFRA_ERROR`, `CANCELLED`, unfinished), the case has no result, or it was `SKIPPED`.
+  3. `FLAKY_IN_HEAD` when head's status is `FLAKY`, or the case's **current** `case_health` label on that engine is `FLAKY` (so runs after head count too).
+  4. Otherwise by pass (`PASSED`, `FLAKY`) and fail (`FAILED`, `TIMED_OUT`): `NEW_FAILURE`, `FIXED`, `STILL_FAILING` (with `fingerprintChanged` when both fingerprints exist and differ) or `STILL_PASSING`.
+- **Response:** `{base, head, baseIsLastGreen, sameRevision, thresholds {regressionRatio, regressionMinDeltaMs}, counts[{category, count}] (every category, in the order above, zeros included), durationRegressions, rows[{caseKey, engine, category, baseStatus, headStatus, baseDurationMs, headDurationMs, durationRegression, baseFingerprintId, headFingerprintId, fingerprintChanged, headHealthLabel, reason}]}`. `base` and `head` are `{id, status, suiteKey, revision, branch, commitSha, fixtureMode, fixtureSeed, trigger, queuedAt, finishedAt}`. Rows are sorted by category (in that order), then case, then engine.
+- **Parameters:** `base` is a run ID or `last-green`, and `head` is a run ID (lowercase UUIDs). Both are required, each once; anything else is `400 validation-failed`. A run outside the caller's project is `404`.
+- **UI:** the dashboard page is `/compare?base=&head=`, reached from the run page's "Compare with last green" link.
 
 ### 8.1 Failure fingerprint `fp_v1` (PRD-07 FR-1)
 
