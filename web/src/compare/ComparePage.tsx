@@ -97,6 +97,11 @@ function Row({ row, suiteKey }: { row: ComparisonRow; suiteKey: string }) {
           </span>
         ) : null}
         {row.reason ? <span className="font-sans text-text-muted">{row.reason}</span> : null}
+        {row.headFingerprintId ? (
+          <Link to={`/failures/${row.headFingerprintId}`} className="font-sans">
+            failure group
+          </Link>
+        ) : null}
       </span>
     </li>
   );

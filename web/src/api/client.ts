@@ -78,3 +78,13 @@ export async function apiPost<T>(path: string, payload: unknown): Promise<PostRe
     replayed: response.headers.get('Idempotent-Replay') === 'true',
   };
 }
+
+/** PUT with a JSON body; the answer is the updated resource. */
+export async function apiPut<T>(path: string, payload: unknown): Promise<T> {
+  const { body } = await send(path, {
+    method: 'PUT',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return body as T;
+}
