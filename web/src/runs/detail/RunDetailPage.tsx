@@ -14,6 +14,7 @@ import { buildMatrix, latestAttempt, tally } from './model.ts';
 import { RunHeader } from './RunHeader.tsx';
 import { useRunEvents, type LiveMode } from '../useRunEvents.ts';
 import { LiveNote } from './LiveNote.tsx';
+import { QualityPanel } from '../../quality/QualityPanel.tsx';
 
 /**
  * Changes whenever anything the results depend on changes, so results are refetched exactly
@@ -115,6 +116,7 @@ export function RunDetailPage({ runId }: { runId: string }) {
         live={live}
         liveNote={<LiveNote mode={mode} />}
       />
+      <QualityPanel run={data} />
       {results.error && !results.data ? <ErrorState error={results.error} /> : null}
       <BrowserMatrix
         columns={columns}

@@ -67,3 +67,19 @@ export type FailureRuleCheck = Schemas['FailureRuleCheck'];
 export type FailureCategory = Schemas['FailureGroupView']['category'];
 export type OverrideRequest = Schemas['OverrideRequest'];
 export type AuditEntry = Schemas['AuditEntry'];
+
+// PRD-08
+export type QualityOutcome = NonNullable<Schemas['RunQualityView']['outcome']>;
+export type RunQualityView = Schemas['RunQualityView'];
+export type QualityRuleResult = Schemas['QualityRuleResult'];
+export type QualityRuleEvidence = Schemas['QualityRuleEvidence'];
+export type QualityPolicy = Schemas['QualityPolicy'];
+export type QualityPolicyView = Schemas['QualityPolicyView'];
+export type QualityPolicyVersion = Schemas['QualityPolicyVersion'];
+export type PolicyUpdateRequest = Schemas['PolicyUpdateRequest'];
+export type AutoMode = Schemas['QualityPolicyQuarantine']['autoMode'];
+export type Quarantine = Schemas['Quarantine'];
+export type QuarantineState = Schemas['Quarantine']['state'];
+export type QuarantineList = Schemas['QuarantineList'];
+export type QuarantineSuggestion = Schemas['QuarantineSuggestion'];
+export type CreateQuarantineRequest = Schemas['CreateQuarantineRequest'];

@@ -9,6 +9,8 @@ import { CaseHistoryPage } from '../cases/CaseHistoryPage.tsx';
 import { ComparePage } from '../compare/ComparePage.tsx';
 import { FailureGroupPage } from '../failures/FailureGroupPage.tsx';
 import { FailuresPage } from '../failures/FailuresPage.tsx';
+import { PolicyPage, PolicyRedirect } from '../quality/PolicyPage.tsx';
+import { QuarantinesPage } from '../quality/QuarantinesPage.tsx';
 import { AppShell } from './AppShell.tsx';
 
 // One route table for the browser router and for tests (createMemoryRouter).
@@ -26,6 +28,9 @@ export const routes: RouteObject[] = [
       { path: 'compare', element: <ComparePage /> },
       { path: 'failures', element: <FailuresPage /> },
       { path: 'failures/:groupId', element: <FailureGroupPage /> },
+      { path: 'policy', element: <PolicyRedirect /> },
+      { path: 'projects/:projectId/policy', element: <PolicyPage /> },
+      { path: 'quarantines', element: <QuarantinesPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
