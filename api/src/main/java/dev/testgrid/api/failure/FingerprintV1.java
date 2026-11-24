@@ -31,7 +31,7 @@ public final class FingerprintV1 {
   // Playwright's call log lists every retry of the locator, so its length depends on timing.
   private static final Pattern CALL_LOG = Pattern.compile("\\n[ \\t]*Call log:[\\s\\S]*\\z");
   private static final Pattern URL_QUERY =
-      Pattern.compile("(\\b[A-Za-z][A-Za-z0-9+.-]*://[^\\s?#\"'<>]*)\\?[^\\s#\"'<>]*");
+      Pattern.compile("(\\b[A-Za-z][A-Za-z0-9+.-]*://[^\\s?#\"'<>]*)\\?[^\\s#\"'<>)]*");
   private static final Pattern UUID =
       Pattern.compile("(?i)\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b");
   private static final Pattern TIMESTAMP =

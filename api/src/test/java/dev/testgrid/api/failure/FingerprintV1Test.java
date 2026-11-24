@@ -64,6 +64,9 @@ class FingerprintV1Test {
         .isEqualTo("pointer <HEX> commit <HEX> ok");
     assertThat(FingerprintV1.normalise("GET http://demo-shop:4173/cart?session=abc&seed=42#top"))
         .isEqualTo("GET http://demo-shop:<N>/cart#top");
+    // The query stops at a closing parenthesis, so a URL in brackets keeps its bracket.
+    assertThat(FingerprintV1.normalise("failed (see https://shop.test/x.png?sig=1) twice"))
+        .isEqualTo("failed (see https://shop.test/x.png) twice");
     assertThat(FingerprintV1.normalise("wrote /tmp/tg-attempt-x1/out.zip and /var/folders/q/T/a"))
         .isEqualTo("wrote <TMP> and <TMP>");
     assertThat(FingerprintV1.normalise("see test-results/checkout-cart-total-retry1/trace.zip"))

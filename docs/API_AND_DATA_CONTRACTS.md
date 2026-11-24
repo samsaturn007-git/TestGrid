@@ -430,7 +430,7 @@ Each `(caseKey, engine)` pair gets one of:
 **Normalisation `n(message)`.** One pass applies, in this order:
 1. Strip ANSI escape sequences (CSI and OSC), then every control character except `\n` and `\t`.
 2. Cut everything from the first line that starts with `Call log:` (Playwright's call log grows with timing, for example `14 × locator resolved`).
-3. Drop URL query strings: `scheme://host/path?query` keeps `scheme://host/path` (a `#fragment` stays).
+3. Drop URL query strings: `scheme://host/path?query` keeps `scheme://host/path` (a `#fragment` stays). The query ends at whitespace, `#`, a quote, `<`, `>` or `)`, so `(…/x.png?sig=1)` keeps its closing bracket.
 4. UUIDs → `<UUID>`.
 5. Timestamps → `<TS>`: ISO-8601 date-times (with `T` or a space, optional seconds, fraction and `Z`/offset) and bare `HH:MM:SS[.fff]` times.
 6. Temporary paths → `<TMP>`: `/tmp/…`, `[/private]/var/folders/…`, `X:\…\Temp\…` and Playwright's `test-results/…`.
