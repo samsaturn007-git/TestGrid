@@ -25,6 +25,8 @@ export interface Completion {
   workerError: { errorClass: ErrorClass; message: string | null } | null;
 }
 
+export const BROWSER_LAUNCH_FAULT_PATH = '/nonexistent/testgrid-browser-launch-fault';
+
 export interface AttemptDeps {
   suites: readonly LoadedSuite[];
   workerRoot: string;
@@ -38,6 +40,11 @@ export interface AttemptDeps {
    * and the test output, so the scan can prove redaction catches it. Null in normal runs.
    */
   canary?: string | null;
+  /**
+   * TG_FAULT=browser_launch (local profile only): Playwright looks for its browsers in a folder
+   * that doesn't exist, so the launch really fails with "Executable doesn't exist".
+   */
+  browserLaunchFault?: boolean;
   killGraceMs?: number;
   cliPath?: string;
   onSpawn?: (args: readonly string[]) => void;
@@ -138,6 +145,7 @@ export async function executeAttempt(
         TG_FIXTURE_SEED: String(claim.fixture?.seed ?? 42),
         PLAYWRIGHT_JSON_OUTPUT_FILE: reportFile,
         ...(deps.canary ? { TG_CANARY: deps.canary } : {}),
+        ...(deps.browserLaunchFault ? { PLAYWRIGHT_BROWSERS_PATH: BROWSER_LAUNCH_FAULT_PATH } : {}),
       }),
       timeoutMs: claim.timeoutMs,
       ...(deps.killGraceMs === undefined ? {} : { killGraceMs: deps.killGraceMs }),

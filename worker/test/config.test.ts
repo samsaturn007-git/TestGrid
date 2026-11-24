@@ -36,6 +36,17 @@ describe('loadConfig', () => {
     assert.throws(() => loadConfig({ ...base, TG_FAULT: 'rm -rf', TESTGRID_PROFILE: 'local' }));
   });
 
+  it('PRD-07 TG_FAULT=browser_launch arms the launch fault only in the local profile', () => {
+    assert.throws(
+      () => loadConfig({ ...base, TG_FAULT: 'browser_launch' }),
+      /only honoured with TESTGRID_PROFILE=local/,
+    );
+    const armed = loadConfig({ ...base, TG_FAULT: 'browser_launch', TESTGRID_PROFILE: 'local' });
+    assert.equal(armed.browserLaunchFault, true);
+    assert.equal(armed.fault, null, 'not a kill point');
+    assert.equal(loadConfig({ ...base, TESTGRID_PROFILE: 'local' }).browserLaunchFault, false);
+  });
+
   it('refuses slots outside 1..16 and a non-hostname broker host', () => {
     assert.throws(() => loadConfig({ ...base, TESTGRID_WORKER_SLOTS: '17' }));
     assert.throws(() => loadConfig({ ...base, RABBITMQ_HOST: 'evil.example/x' }));

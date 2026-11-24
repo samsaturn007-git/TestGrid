@@ -68,6 +68,7 @@ const deps = {
     secrets,
     parentEnv: process.env,
     canary: config.canary,
+    browserLaunchFault: config.browserLaunchFault,
   },
   shutdownGraceMs: config.shutdownGraceMs,
   stopping: stopping.signal,
@@ -79,6 +80,9 @@ const deps = {
   },
 };
 if (config.fault) log.warn({ fault: config.fault }, 'TG_FAULT armed');
+if (config.browserLaunchFault) {
+  log.warn({ fault: 'browser_launch' }, 'TG_FAULT armed: every browser launch will fail');
+}
 if (config.canary) log.warn('canary drill: the canary secret is put into every test page');
 
 // FR-7: register before taking any message.

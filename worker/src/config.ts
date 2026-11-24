@@ -33,7 +33,13 @@ const Env = z.object({
   // PRD-04 Verification fault points; refused outside the local profile, like the API's.
   TESTGRID_PROFILE: z.string().optional(),
   TG_FAULT: z
-    .enum(['', 'after_claim', 'after_complete_before_ack', 'after_publish_before_mark'])
+    .enum([
+      '',
+      'after_claim',
+      'after_complete_before_ack',
+      'after_publish_before_mark',
+      'browser_launch',
+    ])
     .default(''),
   // PRD-06 AC-4 canary drill (scripts/scan-canary.sh); refused outside the local profile.
   TESTGRID_CANARY_SECRET: z
@@ -56,6 +62,11 @@ export interface WorkerConfig {
   shutdownGraceMs: number;
   /** A worker-side fault point to fire, or null. */
   fault: FaultPoint | null;
+  /**
+   * PRD-07 FR-8 (CONFLICT_REGISTER N27, reused by PRD-10 D10): every attempt's browser fails to
+   * launch for real, so the classifier sees a genuine BROWSER_LAUNCH, not a fabricated one.
+   */
+  browserLaunchFault: boolean;
   /** The AC-4 canary, put into the page by the spec support; null outside a drill. */
   canary: string | null;
 }
@@ -114,6 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     slots: e.TESTGRID_WORKER_SLOTS,
     reconnectMaxMs: e.TESTGRID_RECONNECT_MAX_MS,
     fault,
+    browserLaunchFault: e.TG_FAULT === 'browser_launch',
     shutdownGraceMs: e.TESTGRID_SHUTDOWN_GRACE_MS,
     canary: e.TESTGRID_CANARY_SECRET === '' ? null : e.TESTGRID_CANARY_SECRET,
   };
