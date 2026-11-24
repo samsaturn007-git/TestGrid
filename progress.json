@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T16:44:15+00:00",
+  "updated_at": "2026-11-24T18:19:12+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -375,7 +375,7 @@
         },
         "T6": {
           "label": "Build quality panel, policy and quarantine UI.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Write passing/failing/infra/quarantined scripted examples and document CI security.",
