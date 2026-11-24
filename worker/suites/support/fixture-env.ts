@@ -14,6 +14,8 @@ export type FixtureMode = (typeof FIXTURE_MODES)[number];
 // here as well so a stray env var can't point tests elsewhere.
 const ALLOWED_HOSTS = new Set(['127.0.0.1', 'localhost', 'demo-shop']);
 
+export const MAX_SEED = 2 ** 31 - 1;
+
 export interface FixtureEnv {
   mode: FixtureMode;
   seed: number;
@@ -26,8 +28,10 @@ export function parseFixtureEnv(env: Record<string, string | undefined>): Fixtur
     throw new Error(`TG_FIXTURE_MODE must be one of ${FIXTURE_MODES.join(', ')}; got "${mode}"`);
   }
   const rawSeed = env.TG_FIXTURE_SEED ?? '42';
-  if (!/^\d{1,9}$/.test(rawSeed)) {
-    throw new Error(`TG_FIXTURE_SEED must be a non-negative integer below 1e9; got "${rawSeed}"`);
+  // The API accepts seeds 0 … 2³¹−1 (contracts §4) and so does the shop; a narrower rule here made
+  // every run with a seed of 1e9 or more fail before it started (CONFLICT_REGISTER N31).
+  if (!/^\d{1,10}$/.test(rawSeed) || Number(rawSeed) > MAX_SEED) {
+    throw new Error(`TG_FIXTURE_SEED must be an integer 0 … ${MAX_SEED}; got "${rawSeed}"`);
   }
   const baseUrl = env.TG_BASE_URL ?? 'http://127.0.0.1:4173';
   const url = new URL(baseUrl);

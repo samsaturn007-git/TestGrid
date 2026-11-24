@@ -47,10 +47,10 @@
 ## Test pyramid
 
 - **Unit:**
-  - Java: state transitions, aggregate truth table, idempotency hash, quality rules, schedulers.
-  - TypeScript: manifest parser, argument builder, reporter mapping, redactor, bin-packing, fingerprint normalisation.
+  - Java: state transitions, aggregate truth table, idempotency hash, fingerprint normalisation (`fp_v1`, CONFLICT_REGISTER N28), quality rules, schedulers.
+  - TypeScript: manifest parser, argument builder, reporter mapping, redactor, bin-packing, stack-frame extraction.
   - React: StatusBadge and hooks.
-- **Property:** jqwik (Java) for scheduler fairness and transitions; fast-check (TypeScript) for normalisation idempotence and shard coverage.
+- **Property:** seeded JUnit generators for normalisation idempotence (PRD-07; jqwik has no JUnit 6 release, CONFLICT_REGISTER N28); jqwik (Java) for scheduler fairness and transitions and fast-check (TypeScript) for shard coverage, if their versions check out when those PRDs start.
 - **Contract:** OpenAPI drift check, completion JSON schema, manifest JSON Schema, BrowserStack HTTP mock.
 - **Integration:** Testcontainers with Postgres and RabbitMQ for the outbox, dispatcher, leases, duplicates, reaper, cancel races and SSE replay.
 - **End-to-end:** demo-shop → worker → DB → dashboard on three engines. The dashboard itself is tested with Playwright.

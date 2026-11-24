@@ -70,7 +70,7 @@ describe('App shell (PRD-05 FR-1)', () => {
     const user = userEvent.setup();
     await screen.findByText('Local project');
 
-    for (const name of ['Runs', 'Suites', 'Workers', 'Overview']) {
+    for (const name of ['Runs', 'Suites', 'Failures', 'Workers', 'Overview']) {
       screen.getByRole('link', { name }).focus();
       await user.keyboard('{Enter}');
       expect(await screen.findByRole('heading', { level: 1, name })).toBeInTheDocument();

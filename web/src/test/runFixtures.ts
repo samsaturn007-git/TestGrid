@@ -104,6 +104,7 @@ export function result(
     errorClass: status === 'FAILED' ? 'ASSERTION' : null,
     errorMessage: status === 'FAILED' ? 'expected 42.00 to equal 40.00' : null,
     startOffsetMs: null,
+    fingerprintId: null,
     ...overrides,
   };
 }
@@ -114,7 +115,7 @@ export function attemptResults(
   errorDetail: string | null = null,
   artifacts: ArtifactView[] = [],
 ): AttemptResults {
-  return { attempt: summary, caseResults, errorDetail, artifacts };
+  return { attempt: summary, caseResults, errorDetail, artifacts, fingerprintId: null };
 }
 
 /** PRD-06: an artifact of an attempt, AVAILABLE unless overridden. */

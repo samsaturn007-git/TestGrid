@@ -68,6 +68,17 @@ describe('executeAttempt', () => {
     );
   });
 
+  it('PRD-07 TG_FAULT=browser_launch: a real launch failure is INFRA_ERROR / BROWSER_LAUNCH', async () => {
+    const done = await executeAttempt(claim('PASS'), { ...deps(), browserLaunchFault: true });
+    assert.equal(done.status, 'INFRA_ERROR');
+    assert.equal(done.workerError?.errorClass, 'BROWSER_LAUNCH');
+    assert.match(done.workerError?.message ?? '', /Executable doesn't exist at \/nonexistent\//);
+    assert.deepEqual(done.caseResults, []);
+    // Without the fault the same claim runs normally.
+    const normal = await executeAttempt(claim('PRODUCT_DEFECT'), deps());
+    assert.equal(normal.status, 'COMPLETED_WITH_RESULTS');
+  });
+
   it('a crash without a report is INFRA_ERROR / UNKNOWN, never a pass', async () => {
     const done = await executeAttempt(claim('PASS', 1), deps());
     assert.equal(done.status, 'INFRA_ERROR');

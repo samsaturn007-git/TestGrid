@@ -47,3 +47,23 @@ export type TimelineTarget = Schemas['TimelineTarget'];
 export type TimelineAttempt = Schemas['TimelineAttempt'];
 export type HeartbeatGap = Schemas['HeartbeatGap'];
 export type TimelineEvent = Schemas['TimelineEvent'];
+
+// PRD-07
+export type CaseHistoryView = Schemas['CaseHistoryView'];
+export type EngineHistory = Schemas['CaseEngineHistory'];
+export type CaseHealth = Schemas['CaseHealth'];
+export type CaseHealthLabel = Schemas['CaseHealth']['label'];
+export type CaseHistoryResult = Schemas['CaseHistoryResult'];
+export type RunComparisonView = Schemas['RunComparisonView'];
+export type ComparisonRow = Schemas['ComparisonRow'];
+export type ComparisonRun = Schemas['ComparisonRun'];
+export type ComparisonCategory = Schemas['ComparisonRow']['category'];
+export type FailureGroupSummary = Schemas['FailureGroupSummary'];
+export type PageFailureGroupSummary = Schemas['PageFailureGroupSummary'];
+export type FailureGroupView = Schemas['FailureGroupView'];
+export type FailureOccurrence = Schemas['FailureOccurrence'];
+export type FailureEvidence = Schemas['FailureEvidence'];
+export type FailureRuleCheck = Schemas['FailureRuleCheck'];
+export type FailureCategory = Schemas['FailureGroupView']['category'];
+export type OverrideRequest = Schemas['OverrideRequest'];
+export type AuditEntry = Schemas['AuditEntry'];

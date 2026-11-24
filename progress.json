@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T17:53:54+00:00",
+  "updated_at": "2026-11-24T14:57:07+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -300,7 +300,7 @@
     "PRD-07": {
       "title": "Failure fingerprints, flaky-test analytics, case history and run comparison",
       "filename": "prds/PRD-07-failure-intelligence.md",
-      "status": "not_started",
+      "status": "done",
       "deps": [
         "PRD-06"
       ],
@@ -311,34 +311,34 @@
       "tasks": {
         "T1": {
           "label": "Implement `fp_v1` normalization and hashing with unit tests incl. collision and stability cases.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement rule-table classifier with confidence, evidence and audited human override.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement rolling case-health window, labels and case history API/UI.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Implement run comparison API with last-green shortcut and compare UI.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Build failure groups list/detail UI with evidence and occurrences.",
-          "done": false
+          "done": true
         },
         "T6": {
           "label": "Create seeded truth dataset and evaluation harness.",
-          "done": false
+          "done": true
         },
         "T7": {
           "label": "Publish confusion matrix, precision/recall per category and known ambiguous cases.",
-          "done": false
+          "done": true
         }
       },
-      "evidence": null,
+      "evidence": "docs/evidence/PRD-07.md",
       "blocker": null
     },
     "PRD-08": {

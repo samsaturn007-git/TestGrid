@@ -1,0 +1,58 @@
+N32: the SELECTOR_DRIFT race, reproduced, explained and fixed (2026-11-24, UTC). Live, in the
+testgrid-eval Compose stack's worker container (Playwright 1.65.1, firefox-1572), against its demo shop.
+
+Command, run inside testgrid-eval-worker-1 (/app/worker), with
+TG_BASE_URL=http://demo-shop:4173 TG_FIXTURE_MODE=<mode> TG_FIXTURE_SEED=1:
+
+  node node_modules/@playwright/test/cli.js test --project=firefox \
+    --grep "@checkout-happy-path|@card-declined" --repeat-each=40 --retries=0 \
+    --output=/tmp/pw --reporter=json            (3 workers, as in playwright.config.ts)
+
+1. Before the fix (the stack built at 3b8d775; the cart page unchanged since PRD-01), SELECTOR_DRIFT, --trace=on
+   checkout with an approved card shows an order number: failed 37, passed 3
+   a card ending in 0002 is declined:                    failed 36, passed 4
+   => 7 of 80 drifted cases checked out.
+
+   Trace of one that passed (card-ending-in-0002, repeat 13):
+     POST /__fixture/session            201  set-cookie tg_shop_sid=wrip-QpKLolO…
+     GET  /api/products/ember-candle    200  cookie tg_shop_sid=wrip-QpKLolO   (no new cookie)
+     GET  /api/cart, POST /api/cart/items, GET /api/cart                        (same cookie)
+     GET  /api/ui-config                200  cookie tg_shop_sid=wrip-QpKLolO   (the drift session)
+     POST /api/orders                   402  cookie tg_shop_sid=wrip-QpKLolO
+   click log for getByTestId('checkout-button'):
+     waiting for getByTestId('checkout-button')
+       locator resolved to <button disabled type="button" data-testid="checkout-button">Proceed to checkout</button>
+     attempting click action
+       waiting for element to be visible, enabled and stable
+       element is visible, enabled and stable
+       performing click action
+       click action done
+   => The session was never lost (a separate probe of 150 fresh drift sessions per engine also
+      found 0 lost cookies). The locator resolved to the disabled button while it still had the
+      placeholder id; React then enabled and renamed that same DOM node to cart-checkout-cta, and
+      Playwright clicked the element it already held.
+
+2. Fix: demo-shop/src/client/pages/CartPage.tsx renders the button with no test id until
+   /api/ui-config has answered. The demo shop was rebuilt
+   (COMPOSE_PROJECT_NAME=testgrid-eval docker compose … up -d --build --wait demo-shop).
+
+3. After the fix, SELECTOR_DRIFT, host load average ≈ 10 (another project's containers on the machine)
+   checkout with an approved card shows an order number: failed 35, timedOut 5
+   a card ending in 0002 is declined:                    failed 34, timedOut 6
+   errors: locator.click Timeout 5000ms exceeded 69; Test timeout of 20000ms exceeded 9;
+           Test timeout of 20000ms exceeded while setting up "page" 2
+   => 0 of 80 passed. The 20 s test timeouts come from the load (see 5).
+
+4. After the fix, PASS
+   checkout with an approved card shows an order number: passed 40
+   a card ending in 0002 is declined:                    passed 40
+   playwright exit 0
+   => a normal session still finds checkout-button once the config has loaded.
+
+5. After the fix, SELECTOR_DRIFT again, load average ≈ 3–5
+   checkout with an approved card shows an order number: failed 40
+   a card ending in 0002 is declined:                    failed 40
+   errors: locator.click Timeout 5000ms exceeded 79;
+           locator.click: Target page, context or browser has been closed 1
+   wall 209 s
+   => 0 of 80 passed; 79 with the selector error that makes them TEST_BROKEN.

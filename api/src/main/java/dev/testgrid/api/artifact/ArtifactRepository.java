@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -112,6 +113,25 @@ public class ArtifactRepository {
                 + " WHERE g.run_id = :r"
                 + " ORDER BY a.attempt_id, a.created_at, a.id")
         .param("r", runId)
+        .query(rs -> {
+          ArtifactView view = map(rs, 0).view().effective(rs.getBoolean("past"));
+          out.computeIfAbsent(view.attemptId(), k -> new ArrayList<>()).add(view);
+        });
+    return out;
+  }
+
+  /** PRD-07 FR-7: the artifacts of these attempts, by attempt, with their effective state. */
+  public Map<UUID, List<ArtifactView>> byAttempts(Collection<UUID> attemptIds) {
+    Map<UUID, List<ArtifactView>> out = new HashMap<>();
+    if (attemptIds.isEmpty()) {
+      return out;
+    }
+    jdbc.sql(
+            "SELECT a.id, a.attempt_id, a.case_key, a.kind, a.mime, a.storage_key, a.byte_size,"
+                + " a.sha256, a.state, a.expires_at, a.created_at, a.expires_at <= now() AS past"
+                + " FROM artifacts a WHERE a.attempt_id IN (:ids)"
+                + " ORDER BY a.attempt_id, a.created_at, a.id")
+        .param("ids", List.copyOf(attemptIds))
         .query(rs -> {
           ArtifactView view = map(rs, 0).view().effective(rs.getBoolean("past"));
           out.computeIfAbsent(view.attemptId(), k -> new ArrayList<>()).add(view);

@@ -10,6 +10,7 @@ const NAV_ICONS = {
   runs: 'M3 4h10M3 8h10M3 12h6',
   suites: 'M8 2.5l5.5 3L8 8.5 2.5 5.5zM2.5 8.5L8 11.5l5.5-3M2.5 11L8 14l5.5-3',
   workers: 'M3 3h10v4H3zM3 9h10v4H3zM5.5 5h.01M5.5 11h.01',
+  failures: 'M8 2.5l6 11H2zM8 6.5v3.5M8 12h.01',
 };
 
 function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
@@ -100,6 +101,7 @@ export function AppShell() {
               icon={NAV_ICONS.suites}
               label="Suites"
             />
+            <NavItem to="/failures" icon={NAV_ICONS.failures} label="Failures" />
             <NavItem to="/workers" icon={NAV_ICONS.workers} label="Workers" />
           </div>
         </nav>

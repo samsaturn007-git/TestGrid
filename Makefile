@@ -18,7 +18,7 @@ FIXTURE_SEED ?= 42
 export TG_FIXTURE_MODE := $(FIXTURE_MODE)
 export TG_FIXTURE_SEED := $(FIXTURE_SEED)
 
-.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e dashboard-e2e kill-check crash-check stuck-runs dlq dlq-replay sigterm-check scan-canary doctor health clean
+.PHONY: help env install up down reset logs ps check format lint typecheck test test-node test-api contracts contracts-check restart-check smoke fixture-checks modes e2e dashboard-e2e kill-check crash-check eval-failures stuck-runs dlq dlq-replay sigterm-check scan-canary doctor health clean
 
 help: ## List the available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -52,6 +52,7 @@ check: ## Format check, lint and typecheck (TypeScript and Java)
 	pnpm format:check
 	pnpm lint
 	pnpm typecheck
+	pnpm exec tsc -p scripts/tsconfig.json
 	$(MVNW) spotless:check compile
 
 format: ## Apply Prettier and Spotless formatting
@@ -98,6 +99,9 @@ kill-check: ## kill -9 the worker mid-run; attempt 1 ABANDONED and kept, attempt
 
 crash-check: ## Real worker with TG_FAULT after_complete_before_ack and after_claim (PRD-04 AC-3, AC-4)
 	@bash scripts/crash-check.sh
+
+eval-failures: ## Failure classifier vs labelled scenarios; needs a clean stack (make reset, then make up). PRD-07 FR-8
+	node scripts/eval-failures.ts $(EVAL_ARGS)
 
 stuck-runs: ## Targets that should have moved but did not (I8; docs/RUNBOOK.md §3). Read-only
 	@bash scripts/stuck-runs.sh

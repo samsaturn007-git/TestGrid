@@ -86,6 +86,7 @@ export function RunHeader({
         <span>
           Run ID <code className="select-all font-mono text-text-secondary">{run.id}</code>
         </span>
+        <Link to={`/compare?base=last-green&head=${run.id}`}>Compare with last green</Link>
         {run.parentRunId ? (
           <span>
             Rerun of{' '}

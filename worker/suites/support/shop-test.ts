@@ -21,7 +21,8 @@ export const test = base.extend<{ fixtureSession: void }>({
   fixtureSession: [
     async ({ context }, use, testInfo) => {
       const res = await context.request.post('/__fixture/session', {
-        data: { mode: fixtureEnv.mode, seed: fixtureEnv.seed + testInfo.retry },
+        // Wraps at 2³¹ so a retry of the largest seed stays within the shop's 0 … 2³¹−1.
+        data: { mode: fixtureEnv.mode, seed: (fixtureEnv.seed + testInfo.retry) % 2 ** 31 },
       });
       expect(res.status(), 'fixture session must be created (is DEMO_SHOP_FIXTURES=enabled?)').toBe(
         201,

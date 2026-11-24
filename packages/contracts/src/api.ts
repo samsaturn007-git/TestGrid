@@ -81,6 +81,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cases/{caseKey}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A case's recent results and health label per engine
+         * @description Results are newest first. health is the rolling window (FR-4) with its label and reason, or null before the case's first result on that engine. Without engine, every engine the suite allows is listed.
+         */
+        get: operations["getCaseHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/failure-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Failure groups, most occurrences first
+         * @description category matches the shown category (override, else rule) and may repeat or be comma-separated; engine keeps groups with an occurrence on it; from (inclusive) and to (exclusive) bound lastSeenAt. Keyset-paginated with nextCursor.
+         */
+        get: operations["listFailureGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/failure-groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A failure group with its rule, evidence, occurrences and override
+         * @description category is the override when there is one, otherwise the rule's label (ruleCategory). The label is likely, not proven: evidence says which rule matched and why.
+         */
+        get: operations["getFailureGroup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/failure-groups/{id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Override a failure group's category, with a reason
+         * @description Stores who, why and when and writes an audit event in the same transaction. The override stays in front of the rule's label for this fingerprint version. Repeating the current override changes nothing.
+         */
+        put: operations["overrideFailureGroup"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -164,6 +244,26 @@ export interface paths {
          * @description Keyset-paginated: pass nextCursor back as cursor, with the same filters. Null on the last page. Repeat status or trigger to match any of several values; different filters must all match.
          */
         get: operations["listRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What changed between two runs of one suite, per case and engine
+         * @description base=last-green picks the newest PASSED run of the same suite key on the same branch, queued before head. Rows are ordered by category (NEW_FAILURE first), case and engine.
+         */
+        get: operations["compareRuns"];
         put?: never;
         post?: never;
         delete?: never;
@@ -351,6 +451,8 @@ export interface components {
             attempt: components["schemas"]["AttemptSummary"];
             caseResults: components["schemas"]["CaseResult"][];
             errorDetail: string | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
         };
         AttemptSummary: {
             /** Format: int32 */
@@ -374,8 +476,80 @@ export interface components {
             status: "CLAIMED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED" | "ABANDONED";
             workerId: string;
         };
+        AuditEntry: {
+            action: string;
+            actor: string;
+            /** Format: uuid */
+            id: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            occurredAt: string;
+        };
         Capabilities: {
             fixturesAllowed: boolean;
+        };
+        CaseEngineHistory: {
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            health: components["schemas"]["CaseHealth"] | null;
+            results: components["schemas"]["CaseHistoryResult"][];
+        };
+        CaseHealth: {
+            /** Format: date-time */
+            computedAt: string;
+            /** Format: int32 */
+            failCount: number;
+            /** Format: int32 */
+            flakyCount: number;
+            /** Format: int32 */
+            flipCount: number;
+            flipRate: number;
+            /** @enum {string} */
+            label: "STABLE" | "FLAKY" | "FAILING" | "INSUFFICIENT_DATA";
+            /** Format: int32 */
+            observed: number;
+            /** Format: int32 */
+            passCount: number;
+            reason: string;
+            recentOutcomes: string;
+            /** Format: int32 */
+            windowSize: number;
+        };
+        CaseHistoryResult: {
+            /** Format: uuid */
+            attemptId: string;
+            /** Format: int32 */
+            attemptNo: number;
+            branch: string | null;
+            commitSha: string | null;
+            /** Format: int32 */
+            durationMs: number;
+            /** @enum {string|null} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
+            /** Format: date-time */
+            finishedAt: string;
+            /** Format: int32 */
+            retryCount: number;
+            /** Format: uuid */
+            runId: string;
+            /** @enum {string} */
+            runStatus: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            /** @enum {string} */
+            status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
+            /** Format: uuid */
+            targetId: string;
+            /** @enum {string} */
+            trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
+        };
+        CaseHistoryView: {
+            caseKey: string;
+            engines: components["schemas"]["CaseEngineHistory"][];
+            suiteKey: string;
+            title: string;
         };
         CaseResult: {
             caseKey: string;
@@ -384,12 +558,69 @@ export interface components {
             /** @enum {string|null} */
             errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
             errorMessage: string | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
             /** Format: int32 */
             retryCount: number;
             /** Format: int32 */
             startOffsetMs: number | null;
             /** @enum {string} */
             status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
+        };
+        ComparisonCount: {
+            /** @enum {string} */
+            category: "NEW_FAILURE" | "FIXED" | "STILL_FAILING" | "FLAKY_IN_HEAD" | "ADDED" | "REMOVED" | "NOT_COMPARABLE" | "STILL_PASSING";
+            /** Format: int32 */
+            count: number;
+        };
+        ComparisonRow: {
+            /** Format: int32 */
+            baseDurationMs: number | null;
+            /** Format: uuid */
+            baseFingerprintId: string | null;
+            /** @enum {string|null} */
+            baseStatus: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY" | null;
+            caseKey: string;
+            /** @enum {string} */
+            category: "NEW_FAILURE" | "FIXED" | "STILL_FAILING" | "FLAKY_IN_HEAD" | "ADDED" | "REMOVED" | "NOT_COMPARABLE" | "STILL_PASSING";
+            durationRegression: boolean;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            fingerprintChanged: boolean;
+            /** Format: int32 */
+            headDurationMs: number | null;
+            /** Format: uuid */
+            headFingerprintId: string | null;
+            headHealthLabel: string | null;
+            /** @enum {string|null} */
+            headStatus: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY" | null;
+            reason: string | null;
+        };
+        ComparisonRun: {
+            branch: string | null;
+            commitSha: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** @enum {string|null} */
+            fixtureMode: "PASS" | "PRODUCT_DEFECT" | "AUTOMATION_FLAKE" | "SELECTOR_DRIFT" | "TIMEOUT" | null;
+            /** Format: int32 */
+            fixtureSeed: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            queuedAt: string;
+            revision: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            suiteKey: string;
+            /** @enum {string} */
+            trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
+        };
+        ComparisonThresholds: {
+            /** Format: int32 */
+            regressionMinDeltaMs: number;
+            /** Format: double */
+            regressionRatio: number;
         };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
@@ -400,6 +631,132 @@ export interface components {
             targets: components["schemas"]["TargetRequest"][];
             /** @enum {string} */
             trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
+        };
+        FailureConfidence: {
+            agreement: number;
+            base: number;
+            cap: number;
+            disagreementPenalty: number;
+            floor: number;
+            occurrenceBonus: number;
+            value: number;
+        };
+        FailureEvidence: {
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            confidence: components["schemas"]["FailureConfidence"];
+            explanation: string;
+            facts: components["schemas"]["FailureFacts"];
+            ruleId: string;
+            ruleName: string;
+            rulesTried: components["schemas"]["FailureRuleCheck"][];
+        };
+        FailureFacts: {
+            /** Format: int32 */
+            attempts: number;
+            casesLabelledFlaky: string[];
+            /** Format: int32 */
+            engines: number;
+            /** @enum {string} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN";
+            /** Format: int32 */
+            occurrences: number;
+            /** Format: int32 */
+            passedOnRetry: number;
+            /** Format: int32 */
+            runs: number;
+            statusesSeen: string[];
+        };
+        FailureGroupLinks: {
+            self: string;
+        };
+        FailureGroupSummary: {
+            algoVersion: string;
+            caseKeys: string[];
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            confidence: number;
+            engines: ("chromium" | "firefox" | "webkit")[];
+            /** @enum {string} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN";
+            fingerprint: string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            links: components["schemas"]["FailureGroupLinks"];
+            normalisedMessage: string;
+            /** Format: int32 */
+            occurrenceCount: number;
+            overridden: boolean;
+            /** @enum {string} */
+            ruleCategory: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            ruleId: string;
+            /** Format: int32 */
+            runCount: number;
+            wholeTarget: boolean;
+        };
+        FailureGroupView: {
+            algoVersion: string;
+            audit: components["schemas"]["AuditEntry"][];
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            confidence: number;
+            /** @enum {string} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN";
+            evidence: components["schemas"]["FailureEvidence"];
+            fingerprint: string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            normalisedMessage: string;
+            /** Format: int32 */
+            occurrenceCount: number;
+            occurrences: components["schemas"]["FailureOccurrence"][];
+            override: components["schemas"]["FailureOverride"] | null;
+            /** @enum {string} */
+            ruleCategory: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            ruleId: string;
+        };
+        FailureOccurrence: {
+            artifacts: components["schemas"]["ArtifactView"][];
+            /** Format: uuid */
+            attemptId: string;
+            /** Format: int32 */
+            attemptNo: number;
+            caseKey: string | null;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            errorMessage: string | null;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            runId: string;
+            status: string;
+            suiteKey: string;
+            /** Format: uuid */
+            targetId: string;
+        };
+        FailureOverride: {
+            /** Format: date-time */
+            at: string;
+            by: string;
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            reason: string;
+        };
+        FailureRuleCheck: {
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            matched: boolean;
+            name: string;
+            reason: string;
+            ruleId: string;
         };
         FieldError: {
             field: string;
@@ -423,6 +780,15 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             url: string;
+        };
+        OverrideRequest: {
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            reason: string;
+        };
+        PageFailureGroupSummary: {
+            items: components["schemas"]["FailureGroupSummary"][];
+            nextCursor: string | null;
         };
         PageProject: {
             items: components["schemas"]["Project"][];
@@ -467,6 +833,17 @@ export interface components {
         };
         ResourceLinks: {
             self: string;
+        };
+        RunComparisonView: {
+            base: components["schemas"]["ComparisonRun"];
+            baseIsLastGreen: boolean;
+            counts: components["schemas"]["ComparisonCount"][];
+            /** Format: int32 */
+            durationRegressions: number;
+            head: components["schemas"]["ComparisonRun"];
+            rows: components["schemas"]["ComparisonRow"][];
+            sameRevision: boolean;
+            thresholds: components["schemas"]["ComparisonThresholds"];
         };
         RunCounts: {
             /** Format: date-time */
@@ -882,6 +1259,181 @@ export interface operations {
             };
         };
     };
+    getCaseHistory: {
+        parameters: {
+            query?: {
+                /** @description The suite the case belongs to */
+                suiteKey?: string;
+                /** @description chromium, firefox or webkit; every allowed engine if absent */
+                engine?: string;
+                /** @description Results per engine, 1-100, default 20 */
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                caseKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseHistoryView"];
+                };
+            };
+            /** @description validation-failed (a key, engine, limit or an unknown parameter) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (no revision of the suite has this case) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listFailureGroups: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the caller's project */
+                projectId?: string;
+                /** @description FailureCategory; repeat or comma-separate for several */
+                category?: string[];
+                /** @description chromium, firefox or webkit */
+                engine?: string;
+                /** @description ISO-8601 instant, inclusive */
+                from?: string;
+                /** @description ISO-8601 instant, exclusive */
+                to?: string;
+                /** @description 1-100, default 20 */
+                limit?: string;
+                /** @description Opaque; from a previous page's nextCursor */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of groups */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFailureGroupSummary"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (projectId outside the caller's scope) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getFailureGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The group */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailureGroupView"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    overrideFailureGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideRequest"];
+            };
+        };
+        responses: {
+            /** @description The group with its override */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailureGroupView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     listProjects: {
         parameters: {
             query?: never;
@@ -1097,6 +1649,58 @@ export interface operations {
             };
             /** @description not-found (projectId outside the caller's scope) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    compareRuns: {
+        parameters: {
+            query?: {
+                /** @description A run ID, or last-green */
+                base?: string;
+                /** @description A run ID */
+                head?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The comparison */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunComparisonView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (a run, or no last green run) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description incomparable-runs (different suite keys) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

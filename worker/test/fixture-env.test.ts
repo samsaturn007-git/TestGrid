@@ -29,8 +29,14 @@ describe('parseFixtureEnv', () => {
     }
   });
 
+  it('PRD-07 (N31): accepts every seed the API accepts, up to 2^31 - 1', () => {
+    for (const seed of ['0', '999999999', '1013904228', '2147483647']) {
+      assert.equal(parseFixtureEnv({ TG_FIXTURE_SEED: seed }).seed, Number(seed));
+    }
+  });
+
   it('rejects malformed seeds', () => {
-    for (const seed of ['-1', '1.5', 'abc', '1e3', '9999999999']) {
+    for (const seed of ['-1', '1.5', 'abc', '1e3', '9999999999', '2147483648', '12345678901']) {
       assert.throws(() => parseFixtureEnv({ TG_FIXTURE_SEED: seed }), /TG_FIXTURE_SEED/);
     }
   });

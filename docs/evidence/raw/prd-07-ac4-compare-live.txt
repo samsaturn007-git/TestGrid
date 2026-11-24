@@ -1,0 +1,61 @@
+Captured 2026-11-24T14:07:16Z against a fresh testgrid-eval Compose stack (COMPOSE_PROJECT_NAME=testgrid-eval make reset, then these two runs only), real worker, demo shop and Playwright. Command: python3 ac4.py (scratchpad helper, plain urllib); rows are the JSON response reduced to its fields.
+
+$ POST /projects/00000000-0000-4000-8000-000000000001/runs  fixture PASS, seed 42, branch main, 3 engines -> HTTP 202, run 2b365436-3b1f-4c34-853e-a54a5c64ac68
+  finished: PASSED
+$ POST /projects/00000000-0000-4000-8000-000000000001/runs  fixture PRODUCT_DEFECT, seed 42, branch main, 3 engines -> HTTP 202, run 7dec8ce0-6f8a-48a4-85c1-339c836d616d
+  finished: FAILED
+
+$ curl -s 'http://127.0.0.1:8080/api/v1/runs/compare?base=2b365436-3b1f-4c34-853e-a54a5c64ac68&head=7dec8ce0-6f8a-48a4-85c1-339c836d616d'
+HTTP 200
+base: {'id': '2b365436-3b1f-4c34-853e-a54a5c64ac68', 'fixtureMode': 'PASS', 'branch': 'main', 'status': 'PASSED'}
+head: {'id': '7dec8ce0-6f8a-48a4-85c1-339c836d616d', 'fixtureMode': 'PRODUCT_DEFECT', 'branch': 'main', 'status': 'FAILED'}
+sameRevision: True  baseIsLastGreen: False  thresholds: {'regressionRatio': 1.5, 'regressionMinDeltaMs': 500}  durationRegressions: 3
+counts: {'NEW_FAILURE': 3, 'FIXED': 0, 'STILL_FAILING': 0, 'FLAKY_IN_HEAD': 0, 'ADDED': 0, 'REMOVED': 0, 'NOT_COMPARABLE': 0, 'STILL_PASSING': 15}
+
+case                 engine    category       base    head    baseMs headMs regr  fpChanged reason
+cart-total           chromium  NEW_FAILURE    PASSED  FAILED     912  11496 True  False     None
+cart-total           firefox   NEW_FAILURE    PASSED  FAILED    3590  14405 True  False     None
+cart-total           webkit    NEW_FAILURE    PASSED  FAILED    3405  13098 True  False     None
+add-to-cart          chromium  STILL_PASSING  PASSED  PASSED    1086    984 False False     None
+add-to-cart          firefox   STILL_PASSING  PASSED  PASSED    3300   3192 False False     None
+add-to-cart          webkit    STILL_PASSING  PASSED  PASSED    3792   2422 False False     None
+apply-coupon         chromium  STILL_PASSING  PASSED  PASSED     793    611 False False     None
+apply-coupon         firefox   STILL_PASSING  PASSED  PASSED    1403    934 False False     None
+apply-coupon         webkit    STILL_PASSING  PASSED  PASSED    2598   1707 False False     None
+browse-catalog       chromium  STILL_PASSING  PASSED  PASSED     595    510 False False     None
+browse-catalog       firefox   STILL_PASSING  PASSED  PASSED    2328   2695 False False     None
+browse-catalog       webkit    STILL_PASSING  PASSED  PASSED    2305   1765 False False     None
+card-declined        chromium  STILL_PASSING  PASSED  PASSED     533    458 False False     None
+card-declined        firefox   STILL_PASSING  PASSED  PASSED    1417    892 False False     None
+card-declined        webkit    STILL_PASSING  PASSED  PASSED    1928    926 False False     None
+checkout-happy-path  chromium  STILL_PASSING  PASSED  PASSED     687    490 False False     None
+checkout-happy-path  firefox   STILL_PASSING  PASSED  PASSED    1492    995 False False     None
+checkout-happy-path  webkit    STILL_PASSING  PASSED  PASSED    2300   1509 False False     None
+
+$ curl -s 'http://127.0.0.1:8080/api/v1/runs/compare?base=last-green&head=7dec8ce0-6f8a-48a4-85c1-339c836d616d'
+HTTP 200
+base: {'id': '2b365436-3b1f-4c34-853e-a54a5c64ac68', 'fixtureMode': 'PASS', 'branch': 'main', 'status': 'PASSED'}
+head: {'id': '7dec8ce0-6f8a-48a4-85c1-339c836d616d', 'fixtureMode': 'PRODUCT_DEFECT', 'branch': 'main', 'status': 'FAILED'}
+sameRevision: True  baseIsLastGreen: True  thresholds: {'regressionRatio': 1.5, 'regressionMinDeltaMs': 500}  durationRegressions: 3
+counts: {'NEW_FAILURE': 3, 'FIXED': 0, 'STILL_FAILING': 0, 'FLAKY_IN_HEAD': 0, 'ADDED': 0, 'REMOVED': 0, 'NOT_COMPARABLE': 0, 'STILL_PASSING': 15}
+
+case                 engine    category       base    head    baseMs headMs regr  fpChanged reason
+cart-total           chromium  NEW_FAILURE    PASSED  FAILED     912  11496 True  False     None
+cart-total           firefox   NEW_FAILURE    PASSED  FAILED    3590  14405 True  False     None
+cart-total           webkit    NEW_FAILURE    PASSED  FAILED    3405  13098 True  False     None
+add-to-cart          chromium  STILL_PASSING  PASSED  PASSED    1086    984 False False     None
+add-to-cart          firefox   STILL_PASSING  PASSED  PASSED    3300   3192 False False     None
+add-to-cart          webkit    STILL_PASSING  PASSED  PASSED    3792   2422 False False     None
+apply-coupon         chromium  STILL_PASSING  PASSED  PASSED     793    611 False False     None
+apply-coupon         firefox   STILL_PASSING  PASSED  PASSED    1403    934 False False     None
+apply-coupon         webkit    STILL_PASSING  PASSED  PASSED    2598   1707 False False     None
+browse-catalog       chromium  STILL_PASSING  PASSED  PASSED     595    510 False False     None
+browse-catalog       firefox   STILL_PASSING  PASSED  PASSED    2328   2695 False False     None
+browse-catalog       webkit    STILL_PASSING  PASSED  PASSED    2305   1765 False False     None
+card-declined        chromium  STILL_PASSING  PASSED  PASSED     533    458 False False     None
+card-declined        firefox   STILL_PASSING  PASSED  PASSED    1417    892 False False     None
+card-declined        webkit    STILL_PASSING  PASSED  PASSED    1928    926 False False     None
+checkout-happy-path  chromium  STILL_PASSING  PASSED  PASSED     687    490 False False     None
+checkout-happy-path  firefox   STILL_PASSING  PASSED  PASSED    1492    995 False False     None
+checkout-happy-path  webkit    STILL_PASSING  PASSED  PASSED    2300   1509 False False     None
+exit 0

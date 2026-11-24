@@ -230,12 +230,17 @@ public class AttemptRepository {
   }
 
   public void insertCaseResult(
-      UUID attemptId, WorkerApi.CaseResult result, ErrorClass errorClass, String message) {
+      UUID attemptId,
+      WorkerApi.CaseResult result,
+      ErrorClass errorClass,
+      String message,
+      UUID fingerprintId) {
     jdbc.sql(
             """
             INSERT INTO case_results (attempt_id, case_key, status, duration_ms, retry_count,
-                                      error_class, error_message_redacted, start_offset_ms)
-            VALUES (:a, :k, :s, :d, :r, :e, :m, :o)
+                                      error_class, error_message_redacted, start_offset_ms,
+                                      fingerprint_id)
+            VALUES (:a, :k, :s, :d, :r, :e, :m, :o, :fp)
             """)
         .param("a", attemptId)
         .param("k", result.caseKey())
@@ -245,6 +250,7 @@ public class AttemptRepository {
         .param("e", errorClass == null ? null : errorClass.name())
         .param("m", message)
         .param("o", result.startOffsetMs())
+        .param("fp", fingerprintId)
         .update();
   }
 
@@ -260,12 +266,13 @@ public class AttemptRepository {
       AttemptStatus status,
       ErrorClass errorClass,
       String detail,
-      String completionKey) {
+      String completionKey,
+      UUID fingerprintId) {
     return jdbc.sql(
             """
             UPDATE attempts
             SET status = :s, error_class = :e, error_detail_redacted = :d, completion_key = :k,
-                finished_at = now(), version = version + 1
+                fingerprint_id = :fp, finished_at = now(), version = version + 1
             WHERE id = :id AND status IN ('CLAIMED', 'RUNNING')
             """)
         .param("id", attemptId)
@@ -273,6 +280,7 @@ public class AttemptRepository {
         .param("e", errorClass == null ? null : errorClass.name())
         .param("d", detail)
         .param("k", completionKey)
+        .param("fp", fingerprintId)
         .update();
   }
 
@@ -293,6 +301,25 @@ public class AttemptRepository {
    * {@link #recomputeRun} does) is a lock upgrade, and two transactions upgrading on the same run
    * deadlock. Call it right after locking the target, so the order stays target before run.
    */
+  /** Where an attempt's results belong: its project, suite key and engine. */
+  public record AttemptScope(UUID projectId, String suiteKey, Engine engine) {}
+
+  public AttemptScope scopeOf(UUID targetId) {
+    return jdbc.sql(
+            """
+            SELECT r.project_id, s.suite_key, t.engine
+            FROM run_targets t JOIN runs r ON r.id = t.run_id JOIN suites s ON s.id = r.suite_id
+            WHERE t.id = :t
+            """)
+        .param("t", targetId)
+        .query((rs, i) ->
+            new AttemptScope(
+                rs.getObject("project_id", UUID.class),
+                rs.getString("suite_key"),
+                Engine.fromWireName(rs.getString("engine"))))
+        .single();
+  }
+
   public void lockRun(UUID runId) {
     jdbc.sql("SELECT id FROM runs WHERE id = :r FOR UPDATE").param("r", runId).query().singleRow();
   }

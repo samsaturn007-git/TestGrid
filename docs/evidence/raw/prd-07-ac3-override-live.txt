@@ -1,0 +1,170 @@
+Captured 2026-11-24T14:05:34Z against the testgrid-eval Compose stack (http://127.0.0.1:8080) right after the evaluation run recorded in docs/evidence/data/failure-eval.md. Command: python3 ac3-capture.py (scratchpad helper, plain urllib).
+
+# AC-3 live: the AUTOMATION_FLAKE fixture's group, its FLAKY history, an override and its audit row
+
+$ curl -X GET http://127.0.0.1:8080/api/v1/failure-groups?category=AUTOMATION_FLAKE
+HTTP 200
+[
+  {
+    "id": "79daab8c-53cb-4375-a645-77a02329781d",
+    "category": "AUTOMATION_FLAKE",
+    "ruleCategory": "AUTOMATION_FLAKE",
+    "confidence": 0.55,
+    "occurrenceCount": 12,
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "caseKeys": [
+      "checkout-happy-path"
+    ],
+    "overridden": false
+  }
+]
+
+$ curl -X GET http://127.0.0.1:8080/api/v1/cases/checkout-happy-path/history?suiteKey=checkout-smoke
+HTTP 200
+[
+  {
+    "engine": "chromium",
+    "label": "FLAKY",
+    "reason": "2 passed only on a retry (\u2265 2)",
+    "windowSize": 20,
+    "observed": 20,
+    "passCount": 8,
+    "failCount": 12,
+    "flakyCount": 2,
+    "flipCount": 1,
+    "flipRate": 0.053,
+    "recentOutcomes": "PPPPPKKPFFFFFFFTTTTT",
+    "computedAt": "2026-11-24T14:04:07.867217Z"
+  },
+  {
+    "engine": "firefox",
+    "label": "FLAKY",
+    "reason": "2 passed only on a retry (\u2265 2)",
+    "windowSize": 20,
+    "observed": 20,
+    "passCount": 8,
+    "failCount": 12,
+    "flakyCount": 2,
+    "flipCount": 1,
+    "flipRate": 0.053,
+    "recentOutcomes": "PPPPPKKPFFFFFFFTTTTT",
+    "computedAt": "2026-11-24T14:03:25.083845Z"
+  },
+  {
+    "engine": "webkit",
+    "label": "FLAKY",
+    "reason": "2 passed only on a retry (\u2265 2)",
+    "windowSize": 20,
+    "observed": 20,
+    "passCount": 8,
+    "failCount": 12,
+    "flakyCount": 2,
+    "flipCount": 1,
+    "flipRate": 0.053,
+    "recentOutcomes": "PPPPPKKPFFFFFFFTTTTT",
+    "computedAt": "2026-11-24T14:02:36.371413Z"
+  }
+]
+
+$ curl -X GET http://127.0.0.1:8080/api/v1/failure-groups/79daab8c-53cb-4375-a645-77a02329781d
+HTTP 200
+{
+  "category": "AUTOMATION_FLAKE",
+  "ruleCategory": "AUTOMATION_FLAKE",
+  "ruleId": "R4",
+  "confidence": 0.55,
+  "override": null,
+  "audit": [],
+  "evidence.explanation": "The assertion passed when Playwright retried it, or the case's recent history flips between passing and failing, so it is likely timing in the test.",
+  "evidence.facts": {
+    "errorClass": "ASSERTION",
+    "occurrences": 12,
+    "attempts": 12,
+    "runs": 4,
+    "engines": 3,
+    "passedOnRetry": 6,
+    "statusesSeen": [
+      "FAILED",
+      "FLAKY"
+    ],
+    "casesLabelledFlaky": [
+      "checkout-happy-path on chromium",
+      "checkout-happy-path on firefox",
+      "checkout-happy-path on webkit"
+    ]
+  }
+}
+
+$ curl -X PUT http://127.0.0.1:8080/api/v1/failure-groups/79daab8c-53cb-4375-a645-77a02329781d/override -d '{"category": "PRODUCT_SUSPECTED", "reason": "AC-3 evidence: checked by hand, the banner delay is a product bug"}'
+HTTP 200
+{
+  "category": "PRODUCT_SUSPECTED",
+  "ruleCategory": "AUTOMATION_FLAKE",
+  "override": {
+    "category": "PRODUCT_SUSPECTED",
+    "reason": "AC-3 evidence: checked by hand, the banner delay is a product bug",
+    "by": "local",
+    "at": "2026-11-24T14:05:35.053644Z"
+  },
+  "audit": [
+    {
+      "id": "3eafcdc2-e691-4b93-b41c-f7c8029104a1",
+      "actor": "local",
+      "action": "FAILURE_CATEGORY_OVERRIDDEN",
+      "occurredAt": "2026-11-24T14:05:35.053644Z",
+      "metadata": {
+        "to": "PRODUCT_SUSPECTED",
+        "from": "AUTOMATION_FLAKE",
+        "reason": "AC-3 evidence: checked by hand, the banner delay is a product bug",
+        "ruleId": "R4",
+        "confidence": 0.55,
+        "algoVersion": "fp_v1",
+        "fingerprint": "ba36edd66a8ba130",
+        "ruleCategory": "AUTOMATION_FLAKE"
+      }
+    }
+  ]
+}
+
+$ curl -X PUT http://127.0.0.1:8080/api/v1/failure-groups/79daab8c-53cb-4375-a645-77a02329781d/override -d '{"category": "PRODUCT_SUSPECTED", "reason": "AC-3 evidence: checked by hand, the banner delay is a product bug"}'
+HTTP 200
+{
+  "category": "PRODUCT_SUSPECTED",
+  "auditRows": 1
+}
+
+$ curl -X GET http://127.0.0.1:8080/api/v1/failure-groups?category=PRODUCT_SUSPECTED
+HTTP 200
+[
+  {
+    "id": "a10f5388-ce69-41be-a471-1b2ef91642f7",
+    "category": "PRODUCT_SUSPECTED",
+    "ruleCategory": "PRODUCT_SUSPECTED",
+    "overridden": false
+  },
+  {
+    "id": "79daab8c-53cb-4375-a645-77a02329781d",
+    "category": "PRODUCT_SUSPECTED",
+    "ruleCategory": "AUTOMATION_FLAKE",
+    "overridden": true
+  }
+]
+
+exit 0
+
+$ docker exec testgrid-eval-postgres-1 psql -c "SELECT action, object_type, object_id, actor, metadata_redacted->>'from' AS from_category, metadata_redacted->>'to' AS to_category FROM audit_events"
+           action            |     object_type     |              object_id               | actor |  from_category   |    to_category    
+-----------------------------+---------------------+--------------------------------------+-------+------------------+-------------------
+ FAILURE_CATEGORY_OVERRIDDEN | failure_fingerprint | 79daab8c-53cb-4375-a645-77a02329781d | local | AUTOMATION_FLAKE | PRODUCT_SUSPECTED
+(1 row)
+
+exit 0
+
+$ docker exec testgrid-eval-postgres-1 psql -c "UPDATE audit_events SET actor = 'someone'"   (the table is append-only)
+ERROR:  audit_events rows are append-only (UPDATE rejected)
+CONTEXT:  PL/pgSQL function audit_events_append_only() line 3 at RAISE
+exit 1

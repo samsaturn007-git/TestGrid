@@ -373,9 +373,23 @@ class LeaseProtocolTest extends WorkerApiTestBase {
         .hasMessageContaining("immutable");
     assertThatThrownBy(() -> jdbc.sql("DELETE FROM case_results").update())
         .hasMessageContaining("immutable");
-    assertThat(jdbc.sql("UPDATE case_results SET fingerprint_id = gen_random_uuid()").update())
-        .as("PRD-07 may still link a fingerprint")
+    // PRD-07 (V11): the fingerprint link may be filled in once, and only with a real group.
+    assertThatThrownBy(
+            () -> jdbc.sql("UPDATE case_results SET fingerprint_id = gen_random_uuid()").update())
+        .hasMessageContaining("case_results_fingerprint_fk");
+    UUID group =
+        jdbc.sql(
+                "INSERT INTO failure_fingerprints (project_id, algo_version, fingerprint,"
+                    + " error_class, category, confidence, rule_id, evidence, sample_message,"
+                    + " occurrence_count) SELECT id, 'fp_v1', '0123456789abcdef', 'ASSERTION',"
+                    + " 'UNKNOWN', 0.3, 'R6', '{}', 'm', 1 FROM projects LIMIT 1 RETURNING id")
+            .query(UUID.class)
+            .single();
+    assertThat(jdbc.sql("UPDATE case_results SET fingerprint_id = :g").param("g", group).update())
+        .as("PRD-07 may link a fingerprint once")
         .isEqualTo(6);
+    assertThatThrownBy(() -> jdbc.sql("UPDATE case_results SET fingerprint_id = NULL").update())
+        .hasMessageContaining("immutable");
   }
 
   private void expireLease(Claim claim) {

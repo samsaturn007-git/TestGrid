@@ -1,0 +1,72 @@
+# PRD-07 FR-2: the failure classifier's rule table (contracts §8.2). Rules are tried in order and
+# the first match wins. A rule matches when any one of its `when` alternatives holds; every field
+# inside an alternative must hold. Fields:
+#   errorClassIn:     the group's error class (part of its fp_v1 hash) is one of these
+#   statusSeen:       at least one occurrence has this case or attempt status
+#   minPassedOnRetry: at least this many occurrences passed on a Playwright retry (status FLAKY)
+#   minAttempts:      the group was seen in at least this many distinct attempts (any run)
+#   caseHealthFlaky:  true: case_health labels at least one of the group's cases FLAKY (FR-4);
+#                     false: none of them
+# Confidence = baseConfidence + perExtraOccurrence × min(occurrences − 1, maxExtraOccurrences)
+#   − disagreementPenalty × (1 − agreement), kept between floor and cap and rounded to 0.01.
+# agreement is the share of occurrences that fit the rule: by default those that did not pass on
+# a retry; `agreeing: passedOnRetry` counts those that did instead (the flake rule).
+# The last rule must match everything. The API refuses to start if this file is invalid, or if a
+# PRODUCT_SUSPECTED rule could match anything but an ASSERTION (AC-2: infrastructure faults are
+# never product defects).
+version: 1
+confidence:
+  cap: 0.95
+  floor: 0.05
+  perExtraOccurrence: 0.02
+  maxExtraOccurrences: 5
+  disagreementPenalty: 0.30
+rules:
+  - id: R1
+    name: selector-not-found
+    category: TEST_BROKEN
+    baseConfidence: 0.80
+    explanation: The test's locator never matched an element, so the selector is likely out of date.
+    when:
+      - errorClassIn: [SELECTOR_NOT_FOUND]
+  - id: R2
+    name: test-timeout
+    category: TIMEOUT
+    baseConfidence: 0.85
+    explanation: The test ran out of time before it finished.
+    when:
+      - errorClassIn: [TEST_TIMEOUT]
+      - statusSeen: TIMED_OUT
+  - id: R3
+    name: environment
+    category: ENVIRONMENT
+    baseConfidence: 0.85
+    explanation: The browser, the worker or the network failed, not the test or the product.
+    when:
+      - errorClassIn: [BROWSER_LAUNCH, WORKER_LOST, NETWORK]
+  - id: R4
+    name: assertion-flaky
+    category: AUTOMATION_FLAKE
+    baseConfidence: 0.60
+    agreeing: passedOnRetry
+    explanation: The assertion passed when Playwright retried it, or the case's recent history flips between passing and failing, so it is likely timing in the test.
+    when:
+      - errorClassIn: [ASSERTION]
+        minPassedOnRetry: 1
+      - errorClassIn: [ASSERTION]
+        caseHealthFlaky: true
+  - id: R5
+    name: assertion-reproduced
+    category: PRODUCT_SUSPECTED
+    baseConfidence: 0.70
+    explanation: The same assertion failed in at least two attempts and never passed on a retry, so the product may be wrong.
+    when:
+      - errorClassIn: [ASSERTION]
+        minAttempts: 2
+  - id: R6
+    name: no-rule-matched
+    category: UNKNOWN
+    baseConfidence: 0.30
+    explanation: No rule matched these facts.
+    when:
+      - {}

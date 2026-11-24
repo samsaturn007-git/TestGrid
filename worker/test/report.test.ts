@@ -20,8 +20,16 @@ function sample(name: string): string {
   );
 }
 
+// Where the samples were recorded (their stacks say /repo/worker/suites/…).
+const RECORDED_ROOT = '/repo/worker';
+
 function mapped(mode: string, engine = 'chromium', keys = CHECKOUT) {
-  return mapReport(parseReport(sample(`checkout-smoke-chromium-${mode}.json`)), engine, keys);
+  return mapReport(
+    parseReport(sample(`checkout-smoke-chromium-${mode}.json`)),
+    engine,
+    keys,
+    RECORDED_ROOT,
+  );
 }
 
 function byKey(mode: string) {
@@ -42,6 +50,31 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
     for (const [key, c] of cases) {
       if (key !== 'cart-total') assert.equal(c.status, 'PASSED', key);
     }
+  });
+
+  it('PRD-07: sends the spec frame of each failure, without line numbers, and none for passes', () => {
+    const defect = byKey('product-defect');
+    assert.deepEqual(defect.get('cart-total')?.errorFrames, [
+      'suites/checkout-smoke.spec.ts:<anonymous>',
+    ]);
+    for (const [key, c] of defect) {
+      if (key !== 'cart-total') assert.deepEqual(c.errorFrames, [], key);
+    }
+    assert.deepEqual(byKey('selector-drift').get('checkout-happy-path')?.errorFrames, [
+      'suites/checkout-smoke.spec.ts:<anonymous>',
+    ]);
+    // A test timeout has no stack of its own.
+    const timedOut = [...byKey('timeout').values()].filter((c) => c.status === 'TIMED_OUT');
+    assert.ok(timedOut.length > 0);
+    assert.ok(timedOut.every((c) => c.errorFrames.length === 0));
+    // Recorded elsewhere, the same stack is outside this root: no frame rather than a wrong one.
+    const elsewhere = mapReport(
+      parseReport(sample('checkout-smoke-chromium-product-defect.json')),
+      'chromium',
+      CHECKOUT,
+      '/app/worker',
+    );
+    assert.ok(elsewhere.cases.every((c) => c.errorFrames.length === 0));
   });
 
   it('SELECTOR_DRIFT: the checkout cases fail as SELECTOR_NOT_FOUND', () => {
@@ -103,7 +136,7 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
   it('rejects a report that lists one case twice', () => {
     const report = parseReport(sample('checkout-smoke-chromium-product-defect.json'));
     report.suites.push(...report.suites);
-    assert.throws(() => mapReport(report, 'chromium', CHECKOUT), /appears twice/);
+    assert.throws(() => mapReport(report, 'chromium', CHECKOUT, RECORDED_ROOT), /appears twice/);
   });
 
   it('PRD-06: keeps the screenshot and trace of the failing try, and nothing for passing cases', () => {
@@ -131,6 +164,7 @@ describe('Playwright JSON report (recorded 1.65.1 samples)', () => {
       parseReport(sample('checkout-smoke-chromium-product-defect.json')),
       'chromium',
       [...CHECKOUT, 'not-in-report'],
+      RECORDED_ROOT,
     ).cases.find((c) => c.caseKey === 'not-in-report');
     assert.equal(extra?.startOffsetMs, null);
   });

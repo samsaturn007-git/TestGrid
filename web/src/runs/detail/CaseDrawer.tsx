@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { freshArtifactLink, useArtifactLink, useArtifactText } from '../../api/queries.ts';
 import type {
   ArtifactState,
@@ -215,13 +216,14 @@ function formatBytes(bytes: number): string {
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface DrawerCase {
+  suiteKey: string;
   target: RunTarget;
   attempt: AttemptResults;
   result: CaseResult;
 }
 
 export function CaseDrawer({ value, onClose }: { value: DrawerCase; onClose: () => void }) {
-  const { target, attempt, result } = value;
+  const { suiteKey, target, attempt, result } = value;
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
@@ -296,6 +298,12 @@ export function CaseDrawer({ value, onClose }: { value: DrawerCase; onClose: () 
               <dd className="font-mono text-text">{result.retryCount}</dd>
             </div>
           </dl>
+          <Link
+            to={`/cases/${encodeURIComponent(result.caseKey)}?suiteKey=${encodeURIComponent(suiteKey)}`}
+            className="self-start text-body-sm"
+          >
+            Case history and health for {result.caseKey}
+          </Link>
           <section className="flex flex-col gap-1.5" aria-label="Error message">
             <h4 className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
               Error · redacted before storage

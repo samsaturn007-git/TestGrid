@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { apiSearch, type RunFilters } from '../runs/runFilters.ts';
-import { ApiError, apiGet, apiPost } from './client.ts';
+import { ApiError, apiGet, apiPost, apiPut } from './client.ts';
 import type {
   Capabilities,
   CreateRunRequest,
@@ -19,6 +19,13 @@ import type {
   RunResults,
   RunTimeline,
   ArtifactLink,
+  CaseHistoryView,
+  Engine,
+  FailureCategory,
+  FailureGroupView,
+  OverrideRequest,
+  PageFailureGroupSummary,
+  RunComparisonView,
   SuiteDetail,
   WorkersResponse,
 } from './types.ts';
@@ -52,6 +59,11 @@ export const queryKeys = {
   artifactText: (artifactId: string) => ['artifacts', artifactId, 'text'] as const,
   runCounts: (projectId: string, hours: number) => ['run-counts', projectId, hours] as const,
   workers: ['workers'] as const,
+  comparison: (base: string, head: string) => ['runs', 'compare', base, head] as const,
+  failureGroupLists: ['failure-groups', 'list'] as const,
+  failureGroup: (id: string) => ['failure-groups', 'detail', id] as const,
+  caseHistory: (suiteKey: string, caseKey: string) =>
+    ['cases', suiteKey, caseKey, 'history'] as const,
 };
 
 export function useProjects() {
@@ -277,5 +289,100 @@ export function useWorkers(refreshMs = WORKERS_REFRESH_MS) {
     queryKey: queryKeys.workers,
     queryFn: ({ signal }) => apiGet<WorkersResponse>('/workers', signal),
     refetchInterval: refreshMs,
+  });
+}
+
+/** PRD-07 FR-5: the last 20 results per engine and each engine's health label. */
+export const CASE_HISTORY_LIMIT = 20;
+
+export function useCaseHistory(caseKey: string, suiteKey: string | null) {
+  return useQuery({
+    queryKey: queryKeys.caseHistory(suiteKey ?? '', caseKey),
+    queryFn: ({ signal }) =>
+      apiGet<CaseHistoryView>(
+        `/cases/${encodeURIComponent(caseKey)}/history?suiteKey=${encodeURIComponent(suiteKey ?? '')}&limit=${CASE_HISTORY_LIMIT}`,
+        signal,
+      ),
+    enabled: suiteKey !== null && suiteKey !== '',
+  });
+}
+
+/** PRD-07 FR-6: `base` is a run ID or `last-green`. */
+export function useComparison(base: string | null, head: string | null) {
+  return useQuery({
+    queryKey: queryKeys.comparison(base ?? '', head ?? ''),
+    queryFn: ({ signal }) =>
+      apiGet<RunComparisonView>(
+        `/runs/compare?base=${encodeURIComponent(base ?? '')}&head=${encodeURIComponent(head ?? '')}`,
+        signal,
+      ),
+    enabled: Boolean(base) && Boolean(head),
+  });
+}
+
+/** PRD-07 FR-7 list filters; `sinceMs` is a "last seen within" window. */
+export interface FailureFilters {
+  category: FailureCategory | null;
+  engine: Engine | null;
+  sinceMs: number | null;
+}
+
+interface FailurePageParam {
+  cursor: string | null;
+  from: string | null;
+}
+
+const FIRST_FAILURE_PAGE: FailurePageParam = { cursor: null, from: null };
+
+export function failureSearch(filters: FailureFilters, page: FailurePageParam): string {
+  const params = new URLSearchParams();
+  if (filters.category) params.set('category', filters.category);
+  if (filters.engine) params.set('engine', filters.engine);
+  if (page.from) params.set('from', page.from);
+  if (page.cursor) params.set('cursor', page.cursor);
+  return params.toString();
+}
+
+/**
+ * The first page fixes the window's start (`from`) and every later page reuses it, so "Load
+ * more" pages one consistent set, and the clock is read in the query, not during render.
+ */
+export function useFailureGroups(filters: FailureFilters) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.failureGroupLists, filters] as const,
+    queryFn: async ({ pageParam, signal }) => {
+      const from =
+        pageParam.from ??
+        (filters.sinceMs === null ? null : new Date(Date.now() - filters.sinceMs).toISOString());
+      const page = await apiGet<PageFailureGroupSummary>(
+        `/failure-groups?${failureSearch(filters, { cursor: pageParam.cursor, from })}`,
+        signal,
+      );
+      return { ...page, from };
+    },
+    initialPageParam: FIRST_FAILURE_PAGE,
+    getNextPageParam: (last): FailurePageParam | undefined =>
+      last.nextCursor ? { cursor: last.nextCursor, from: last.from } : undefined,
+  });
+}
+
+export function useFailureGroup(id: string) {
+  return useQuery({
+    queryKey: queryKeys.failureGroup(id),
+    queryFn: ({ signal }) =>
+      apiGet<FailureGroupView>(`/failure-groups/${encodeURIComponent(id)}`, signal),
+  });
+}
+
+/** FR-3: the answer is the updated group; the list is refetched because its category changed. */
+export function useOverrideFailureGroup(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: OverrideRequest) =>
+      apiPut<FailureGroupView>(`/failure-groups/${encodeURIComponent(id)}/override`, body),
+    onSuccess: async (group) => {
+      client.setQueryData(queryKeys.failureGroup(id), group);
+      await client.invalidateQueries({ queryKey: queryKeys.failureGroupLists });
+    },
   });
 }
