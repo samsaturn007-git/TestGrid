@@ -362,6 +362,7 @@ A repeated `start` by the lease holder is answered `200` without a second transi
 ```
 - `status` is `COMPLETED_WITH_RESULTS`, `INFRA_ERROR`, `TIMED_OUT` or `CANCELLED`.
 - Each case result may carry `startOffsetMs` (PRD-06 FR-7): ms after the attempt's first case started, from Playwright's report. Optional and nullable; when present it is 0 … the suite timeout plus the grace period (`422` otherwise, `400` if negative). Offsets, not timestamps, so the worker's clock never enters the database.
+- Each case result may carry `errorFrames` (PRD-07 FR-1, CONFLICT_REGISTER N24): at most 3 of the failure's top stack frames, innermost first, as `file:function`. The file is relative to the worker root; frames under `node_modules`, `node:` or outside the root are skipped. There is never a line number, and an anonymous function is `<anonymous>`. Each frame must match `^(?!/)(?!(?:.*/)?\.\.(?:/|:))[A-Za-z0-9._/-]{1,160}:[A-Za-z_$<][A-Za-z0-9_$.<>-]{0,79}$` (`400` otherwise: absolute path, `..`, a line number, `|` or `;`). Optional; absent, `null` and `[]` all mean none. Frames need an `errorClass`, and a `PASSED` or `SKIPPED` case carries none (`422`).
 - The API checks the case keys against the claimed `caseKeys` and rejects any unknown, missing or duplicate key with `422`.
 - Durations must be between 0 and the suite timeout plus a grace period (60 s).
 - `COMPLETED_WITH_RESULTS`: exactly one result per claimed case and `workerError: null`. `errorClass` is required for `FAILED` and `TIMED_OUT`, and `PASSED` / `SKIPPED` carry no error. `retryCount` is 0 … the suite's `playwrightRetries`, and `FLAKY` needs at least 1. The target status is computed from these results (§2.2); the worker's opinion is not asked.
@@ -390,6 +391,27 @@ Each `(caseKey, engine)` pair gets one of:
 
 - **Duration regression:** the head duration is more than `base × 1.5` and also more than `base + 500 ms` (both thresholds configurable).
 - **Shortcut:** `?base=last-green&head=<runId>` finds the most recent `PASSED` run on the same branch and suite.
+
+### 8.1 Failure fingerprint `fp_v1` (PRD-07 FR-1)
+
+`dev.testgrid.api.failure.FingerprintV1`, computed by the API from what the worker sent. Pure, so a future `fp_v2` can sit beside it; fingerprints are stored with their `algo_version` and only compared within one version.
+
+**Normalisation `n(message)`.** One pass applies, in this order:
+1. Strip ANSI escape sequences (CSI and OSC), then every control character except `\n` and `\t`.
+2. Cut everything from the first line that starts with `Call log:` (Playwright's call log grows with timing, for example `14 × locator resolved`).
+3. Drop URL query strings: `scheme://host/path?query` keeps `scheme://host/path` (a `#fragment` stays).
+4. UUIDs → `<UUID>`.
+5. Timestamps → `<TS>`: ISO-8601 date-times (with `T` or a space, optional seconds, fraction and `Z`/offset) and bare `HH:MM:SS[.fff]` times.
+6. Temporary paths → `<TMP>`: `/tmp/…`, `[/private]/var/folders/…`, `X:\…\Temp\…` and Playwright's `test-results/…`.
+7. Hex → `<HEX>`: `0x…`, and bare runs of 8 or more hex characters with at least one digit and one letter (commit and run IDs; words like `deadbeefcafe` stay).
+8. Each remaining run of digits → `<N>`.
+9. Runs of spaces and tabs become one space, blank lines and spaces around line breaks are removed, and the text is trimmed.
+
+The pass repeats until the text stops changing, so `n(n(x)) = n(x)` holds by construction. A placeholder can create a new word boundary, so one pass alone would not guarantee it. The loop always ends: no rule adds a digit, `/` or tab, and every change removes one of them or shortens the text.
+
+**Fingerprint.** `sha256("fp_v1|" + errorClass + "|" + frames.join(";") + "|" + n(message))`, first 16 lowercase hex characters (64 bits). Frames can't contain `|` or `;` and the error class is an enum, so the free-text message, which comes last, can't shift a field boundary. Only the first 3 frames count. The value for the recorded `PRODUCT_DEFECT` failure (`ASSERTION`, frame `suites/checkout-smoke.spec.ts:<anonymous>`) is pinned in `FingerprintV1Test` as `31e12582bd8cb543`: a change to any rule changes it, and that means `fp_v2`.
+
+**Input.** The message is the redacted one the API stores, with redaction before normalisation, so a secret is masked before its digits become `<N>` and never reaches `sample_message` in pieces. The redactor removes the ESC character but leaves the rest of a colour code (`[31m`), so the completion path (PRD-07 T2) calls `FingerprintV1.stripAnsi` before it redacts. The worker already sends messages without colours.
 
 ---
 
