@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T08:24:52+00:00",
+  "updated_at": "2026-11-24T08:44:26+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -311,7 +311,7 @@
       "tasks": {
         "T1": {
           "label": "Implement `fp_v1` normalization and hashing with unit tests incl. collision and stability cases.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement rule-table classifier with confidence, evidence and audited human override.",
