@@ -355,7 +355,7 @@
       "tasks": {
         "T1": {
           "label": "Implement versioned policy model, evaluator, rule results and boundary tests.",
-          "done": false
+          "done": true
         },
         "T2": {
           "label": "Implement quarantine API, expiry, auto/suggest modes and audit events.",
