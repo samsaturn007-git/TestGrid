@@ -49,8 +49,12 @@ export function CartPage() {
     );
   }
 
+  // No test id until the config says which one (CONFLICT_REGISTER N32). A placeholder id would
+  // let a locator resolve to this button while it is disabled; when the config arrives, React
+  // renames the same DOM node, and Playwright then clicks the node it already holds. In a
+  // SELECTOR_DRIFT session the old id must never exist, not even for a few milliseconds.
   const checkoutTestId =
-    uiConfig.status === 'ready' ? uiConfig.data.checkoutButtonTestId : 'checkout-button';
+    uiConfig.status === 'ready' ? uiConfig.data.checkoutButtonTestId : undefined;
 
   return (
     <section data-testid="cart-page">
