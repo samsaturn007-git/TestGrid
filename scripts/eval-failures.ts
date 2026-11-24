@@ -88,6 +88,8 @@ interface Row {
   predicted: Category | typeof NONE;
   ruleId: string;
   confidence: string;
+  /** The matched rule's reason when the run finished: why it got that label then. */
+  ruleReason: string;
   final: Category | typeof NONE;
   expected: Category | typeof NONE;
 }
@@ -230,6 +232,7 @@ async function rowsOf(s: Scenario, runNo: number, results: Schemas['RunResults']
         predicted: g.ruleCategory,
         ruleId: g.ruleId,
         confidence: g.confidence.toFixed(2),
+        ruleReason: g.evidence.rulesTried.find((r) => r.matched)?.reason ?? '',
       });
     }
   }
@@ -246,6 +249,7 @@ async function rowsOf(s: Scenario, runNo: number, results: Schemas['RunResults']
       predicted: NONE,
       ruleId: '',
       confidence: '',
+      ruleReason: '',
     });
   }
   return rows;
@@ -268,6 +272,7 @@ function csv(rows: Row[]): string {
     'predicted_after_run',
     'rule_id',
     'confidence',
+    'rule_reason',
     'final_category',
     'expected',
     'correct_after_run',
@@ -292,6 +297,7 @@ function csv(rows: Row[]): string {
       r.predicted,
       r.ruleId,
       r.confidence,
+      r.ruleReason,
       r.final,
       r.expected,
       r.predicted === r.expected,
@@ -336,6 +342,21 @@ function precisionRecall(rows: Row[], pick: (r: Row) => Category | typeof NONE):
     );
   }
   return lines.join('\n');
+}
+
+/** Every row whose label after the run or final label is not its ground truth (T7). */
+function misclassified(rows: Row[]): string[] {
+  const wrong = rows.filter((r) => r.predicted !== r.expected || r.final !== r.expected);
+  if (wrong.length === 0) return ['None.'];
+  const cell = (v: string) => v.replace(/\|/g, '\\|');
+  return [
+    '| scenario | run | engine | case | expected | after run | rule, confidence and reason then | final |',
+    '|---|---:|---|---|---|---|---|---|',
+    ...wrong.map(
+      (r) =>
+        `| ${r.scenario} | ${r.runNo} | ${r.engine || '-'} | ${r.caseKey || '-'} | ${r.expected} | ${r.predicted} | ${r.ruleId ? `${r.ruleId} ${r.confidence}: ${cell(r.ruleReason)}` : '-'} | ${r.final} |`,
+    ),
+  ];
 }
 
 function git(...a: string[]): string {
@@ -440,6 +461,10 @@ async function main() {
     matrix(rows, final),
     '',
     precisionRecall(rows, final),
+    '',
+    '## Misclassified rows',
+    '',
+    ...misclassified(rows),
     '',
     '## AC-3: health of the cases the AUTOMATION_FLAKE fixture failed',
     '',
