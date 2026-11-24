@@ -232,6 +232,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What changed between two runs of one suite, per case and engine
+         * @description base=last-green picks the newest PASSED run of the same suite key on the same branch, queued before head. Rows are ordered by category (NEW_FAILURE first), case and engine.
+         */
+        get: operations["compareRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}": {
         parameters: {
             query?: never;
@@ -523,6 +543,61 @@ export interface components {
             /** @enum {string} */
             status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
         };
+        ComparisonCount: {
+            /** @enum {string} */
+            category: "NEW_FAILURE" | "FIXED" | "STILL_FAILING" | "FLAKY_IN_HEAD" | "ADDED" | "REMOVED" | "NOT_COMPARABLE" | "STILL_PASSING";
+            /** Format: int32 */
+            count: number;
+        };
+        ComparisonRow: {
+            /** Format: int32 */
+            baseDurationMs: number | null;
+            /** Format: uuid */
+            baseFingerprintId: string | null;
+            /** @enum {string|null} */
+            baseStatus: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY" | null;
+            caseKey: string;
+            /** @enum {string} */
+            category: "NEW_FAILURE" | "FIXED" | "STILL_FAILING" | "FLAKY_IN_HEAD" | "ADDED" | "REMOVED" | "NOT_COMPARABLE" | "STILL_PASSING";
+            durationRegression: boolean;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            fingerprintChanged: boolean;
+            /** Format: int32 */
+            headDurationMs: number | null;
+            /** Format: uuid */
+            headFingerprintId: string | null;
+            headHealthLabel: string | null;
+            /** @enum {string|null} */
+            headStatus: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY" | null;
+            reason: string | null;
+        };
+        ComparisonRun: {
+            branch: string | null;
+            commitSha: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** @enum {string|null} */
+            fixtureMode: "PASS" | "PRODUCT_DEFECT" | "AUTOMATION_FLAKE" | "SELECTOR_DRIFT" | "TIMEOUT" | null;
+            /** Format: int32 */
+            fixtureSeed: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            queuedAt: string;
+            revision: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            suiteKey: string;
+            /** @enum {string} */
+            trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
+        };
+        ComparisonThresholds: {
+            /** Format: int32 */
+            regressionMinDeltaMs: number;
+            /** Format: double */
+            regressionRatio: number;
+        };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
             idempotencyKey: string;
@@ -698,6 +773,17 @@ export interface components {
         };
         ResourceLinks: {
             self: string;
+        };
+        RunComparisonView: {
+            base: components["schemas"]["ComparisonRun"];
+            baseIsLastGreen: boolean;
+            counts: components["schemas"]["ComparisonCount"][];
+            /** Format: int32 */
+            durationRegressions: number;
+            head: components["schemas"]["ComparisonRun"];
+            rows: components["schemas"]["ComparisonRow"][];
+            sameRevision: boolean;
+            thresholds: components["schemas"]["ComparisonThresholds"];
         };
         RunCounts: {
             /** Format: date-time */
@@ -1450,6 +1536,58 @@ export interface operations {
             };
             /** @description not-found (projectId outside the caller's scope) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    compareRuns: {
+        parameters: {
+            query?: {
+                /** @description A run ID, or last-green */
+                base?: string;
+                /** @description A run ID */
+                head?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The comparison */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunComparisonView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (a run, or no last green run) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description incomparable-runs (different suite keys) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

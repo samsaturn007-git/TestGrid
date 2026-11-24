@@ -510,6 +510,53 @@ paths:
       summary: "List runs, newest first"
       tags:
       - runs
+  /api/v1/runs/compare:
+    get:
+      description: "base=last-green picks the newest PASSED run of the same suite\
+        \ key on the same branch, queued before head. Rows are ordered by category\
+        \ (NEW_FAILURE first), case and engine."
+      operationId: compareRuns
+      parameters:
+      - description: "A run ID, or last-green"
+        in: query
+        name: base
+        required: false
+        schema:
+          type: string
+      - description: A run ID
+        in: query
+        name: head
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunComparisonView"
+          description: The comparison
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "not-found (a run, or no last green run)"
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: incomparable-runs (different suite keys)
+      summary: "What changed between two runs of one suite, per case and engine"
+      tags:
+      - runs
   /api/v1/runs/{runId}:
     get:
       operationId: getRun
@@ -1197,6 +1244,197 @@ components:
       - retryCount
       - startOffsetMs
       - status
+    ComparisonCount:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - NEW_FAILURE
+          - FIXED
+          - STILL_FAILING
+          - FLAKY_IN_HEAD
+          - ADDED
+          - REMOVED
+          - NOT_COMPARABLE
+          - STILL_PASSING
+        count:
+          type: integer
+          format: int32
+      required:
+      - category
+      - count
+    ComparisonRow:
+      type: object
+      properties:
+        baseDurationMs:
+          type:
+          - integer
+          - "null"
+          format: int32
+        baseFingerprintId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        baseStatus:
+          type:
+          - string
+          - "null"
+          enum:
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - SKIPPED
+          - FLAKY
+        caseKey:
+          type: string
+        category:
+          type: string
+          enum:
+          - NEW_FAILURE
+          - FIXED
+          - STILL_FAILING
+          - FLAKY_IN_HEAD
+          - ADDED
+          - REMOVED
+          - NOT_COMPARABLE
+          - STILL_PASSING
+        durationRegression:
+          type: boolean
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        fingerprintChanged:
+          type: boolean
+        headDurationMs:
+          type:
+          - integer
+          - "null"
+          format: int32
+        headFingerprintId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        headHealthLabel:
+          type:
+          - string
+          - "null"
+        headStatus:
+          type:
+          - string
+          - "null"
+          enum:
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - SKIPPED
+          - FLAKY
+        reason:
+          type:
+          - string
+          - "null"
+      required:
+      - baseDurationMs
+      - baseFingerprintId
+      - baseStatus
+      - caseKey
+      - category
+      - durationRegression
+      - engine
+      - fingerprintChanged
+      - headDurationMs
+      - headFingerprintId
+      - headHealthLabel
+      - headStatus
+      - reason
+    ComparisonRun:
+      type: object
+      properties:
+        branch:
+          type:
+          - string
+          - "null"
+        commitSha:
+          type:
+          - string
+          - "null"
+        finishedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        fixtureMode:
+          type:
+          - string
+          - "null"
+          enum:
+          - PASS
+          - PRODUCT_DEFECT
+          - AUTOMATION_FLAKE
+          - SELECTOR_DRIFT
+          - TIMEOUT
+        fixtureSeed:
+          type:
+          - integer
+          - "null"
+          format: int32
+        id:
+          type: string
+          format: uuid
+        queuedAt:
+          type: string
+          format: date-time
+        revision:
+          type: string
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        suiteKey:
+          type: string
+        trigger:
+          type: string
+          enum:
+          - MANUAL
+          - CI
+          - RERUN
+          - BENCHMARK
+          - CHAOS
+      required:
+      - branch
+      - commitSha
+      - finishedAt
+      - fixtureMode
+      - fixtureSeed
+      - id
+      - queuedAt
+      - revision
+      - status
+      - suiteKey
+      - trigger
+    ComparisonThresholds:
+      type: object
+      properties:
+        regressionMinDeltaMs:
+          type: integer
+          format: int32
+        regressionRatio:
+          type: number
+          format: double
+      required:
+      - regressionMinDeltaMs
+      - regressionRatio
     CreateRunRequest:
       type: object
       properties:
@@ -1716,6 +1954,39 @@ components:
           type: string
       required:
       - self
+    RunComparisonView:
+      type: object
+      properties:
+        base:
+          $ref: "#/components/schemas/ComparisonRun"
+        baseIsLastGreen:
+          type: boolean
+        counts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComparisonCount"
+        durationRegressions:
+          type: integer
+          format: int32
+        head:
+          $ref: "#/components/schemas/ComparisonRun"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComparisonRow"
+        sameRevision:
+          type: boolean
+        thresholds:
+          $ref: "#/components/schemas/ComparisonThresholds"
+      required:
+      - base
+      - baseIsLastGreen
+      - counts
+      - durationRegressions
+      - head
+      - rows
+      - sameRevision
+      - thresholds
     RunCounts:
       type: object
       properties:
