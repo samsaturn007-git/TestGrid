@@ -1,0 +1,36 @@
+Captured 2026-11-24T14:06:22Z against the testgrid-eval Compose stack. Base = PASS run #5, head = PRODUCT_DEFECT run #1 of the evaluation in docs/evidence/data/failure-eval.md (3 engines each, branch eval-failures). The table below is the JSON response, reduced to its fields.
+
+$ curl -s 'http://127.0.0.1:8080/api/v1/runs/compare?base=85cb3a26-8861-4c69-bd14-44966bfc491d&head=99f35106-0058-4285-8e3b-b86e9d97d70c'
+HTTP 200
+base: {'id': '85cb3a26-8861-4c69-bd14-44966bfc491d', 'fixtureMode': 'PASS', 'branch': 'eval-failures', 'status': 'PASSED'}
+head: {'id': '99f35106-0058-4285-8e3b-b86e9d97d70c', 'fixtureMode': 'PRODUCT_DEFECT', 'branch': 'eval-failures', 'status': 'FAILED'}
+sameRevision: True  baseIsLastGreen: False  thresholds: {'regressionRatio': 1.5, 'regressionMinDeltaMs': 500}  durationRegressions: 3
+counts: {'NEW_FAILURE': 3, 'FIXED': 0, 'STILL_FAILING': 0, 'FLAKY_IN_HEAD': 3, 'ADDED': 0, 'REMOVED': 0, 'NOT_COMPARABLE': 0, 'STILL_PASSING': 12}
+
+case                 engine    category       base    head    baseMs headMs regr  fpChanged
+cart-total           chromium  NEW_FAILURE    PASSED  FAILED     993  11330 True  False
+cart-total           firefox   NEW_FAILURE    PASSED  FAILED    3046  14496 True  False
+cart-total           webkit    NEW_FAILURE    PASSED  FAILED    2581  13057 True  False
+checkout-happy-path  chromium  FLAKY_IN_HEAD  PASSED  PASSED     797    417 False False
+checkout-happy-path  firefox   FLAKY_IN_HEAD  PASSED  PASSED    1508   1424 False False
+checkout-happy-path  webkit    FLAKY_IN_HEAD  PASSED  PASSED    2489   1433 False False
+add-to-cart          chromium  STILL_PASSING  PASSED  PASSED    1022   1003 False False
+add-to-cart          firefox   STILL_PASSING  PASSED  PASSED    3395   2936 False False
+add-to-cart          webkit    STILL_PASSING  PASSED  PASSED    2585   2508 False False
+apply-coupon         chromium  STILL_PASSING  PASSED  PASSED     827    605 False False
+apply-coupon         firefox   STILL_PASSING  PASSED  PASSED    1412   1505 False False
+apply-coupon         webkit    STILL_PASSING  PASSED  PASSED    2694   1816 False False
+browse-catalog       chromium  STILL_PASSING  PASSED  PASSED     599    608 False False
+browse-catalog       firefox   STILL_PASSING  PASSED  PASSED    2790   2664 False False
+browse-catalog       webkit    STILL_PASSING  PASSED  PASSED    1590   1574 False False
+card-declined        chromium  STILL_PASSING  PASSED  PASSED     659    389 False False
+card-declined        firefox   STILL_PASSING  PASSED  PASSED    1437    629 False False
+card-declined        webkit    STILL_PASSING  PASSED  PASSED    2395   1059 False False
+exit 0
+
+Reasons for the FLAKY_IN_HEAD rows (from the same response):
+  checkout-happy-path chromium headHealthLabel=FLAKY: its history on chromium is labelled FLAKY
+  checkout-happy-path firefox headHealthLabel=FLAKY: its history on firefox is labelled FLAKY
+  checkout-happy-path webkit headHealthLabel=FLAKY: its history on webkit is labelled FLAKY
+
+Known limitation (docs/evidence/PRD-07.md): FLAKY_IN_HEAD reads the case's CURRENT case_health label. The AUTOMATION_FLAKE scenario ran after these two runs and left checkout-happy-path FLAKY, so an old comparison shows it. The clean AC-4 capture is raw/prd-07-ac4-compare-live.txt.
