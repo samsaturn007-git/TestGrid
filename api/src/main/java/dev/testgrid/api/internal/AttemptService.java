@@ -13,6 +13,8 @@ import dev.testgrid.api.domain.ErrorClass;
 import dev.testgrid.api.domain.EventType;
 import dev.testgrid.api.domain.TargetOutcome;
 import dev.testgrid.api.domain.TargetStatus;
+import dev.testgrid.api.failure.FailureRecorder;
+import dev.testgrid.api.failure.FingerprintV1;
 import dev.testgrid.api.internal.AttemptRepository.LockedAttempt;
 import dev.testgrid.api.internal.WorkerApi.CaseResult;
 import dev.testgrid.api.internal.WorkerApi.CompletionRequest;
@@ -25,6 +27,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,6 +60,7 @@ public class AttemptService {
   private final DispatchSignal signal;
   private final DispatchRepository dispatch;
   private final ArtifactRepository artifactRows;
+  private final FailureRecorder failures;
 
   public AttemptService(
       AttemptRepository attempts,
@@ -65,7 +69,8 @@ public class AttemptService {
       JsonMapper mapper,
       DispatchSignal signal,
       DispatchRepository dispatch,
-      ArtifactRepository artifactRows) {
+      ArtifactRepository artifactRows,
+      FailureRecorder failures) {
     this.attempts = attempts;
     this.properties = properties;
     this.settings = settings;
@@ -73,6 +78,7 @@ public class AttemptService {
     this.signal = signal;
     this.dispatch = dispatch;
     this.artifactRows = artifactRows;
+    this.failures = failures;
   }
 
   /**
@@ -274,9 +280,35 @@ public class AttemptService {
       // two targets of one run complete at once).
       attempts.lockRun(attempt.runId());
 
+      // PRD-07 FR-1: colours off before redaction (the redactor drops ESC but keeps "[31m"), and
+      // redaction before fingerprinting, so a secret is masked before its digits become <N>.
+      UUID projectId = attempts.projectOf(attempt.runId());
+      Map<String, String> messages = new HashMap<>();
+      List<FailureRecorder.CaseFailure> caseFailures = new ArrayList<>();
       for (CaseResult c : request.caseResults()) {
-        String message = Redactor.redact(c.errorMessage());
-        attempts.insertCaseResult(attemptId, c, c.errorClass(), message);
+        String message = Redactor.redact(FingerprintV1.stripAnsi(c.errorMessage()));
+        messages.put(c.caseKey(), message);
+        if (c.errorClass() != null
+            && c.status() != CaseStatus.PASSED
+            && c.status() != CaseStatus.SKIPPED) {
+          caseFailures.add(
+              new FailureRecorder.CaseFailure(c.caseKey(), c.errorClass(), c.frames(), message));
+        }
+      }
+      Map<String, UUID> fingerprintOf = failures.recordCases(projectId, caseFailures);
+      UUID attemptFingerprint = null;
+      if (request.caseResults().isEmpty()
+          && result.errorClass() != null
+          && (result.status() == TargetStatus.INFRA_ERROR
+              || result.status() == TargetStatus.TIMED_OUT)) {
+        attemptFingerprint =
+            failures.recordAttempt(projectId, result.errorClass(), result.detail());
+      }
+
+      for (CaseResult c : request.caseResults()) {
+        String message = messages.get(c.caseKey());
+        attempts.insertCaseResult(
+            attemptId, c, c.errorClass(), message, fingerprintOf.get(c.caseKey()));
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("caseKey", c.caseKey());
         payload.put("status", c.status().name());
@@ -293,13 +325,19 @@ public class AttemptService {
               AttemptStatus.valueOf(result.status().name()),
               result.errorClass(),
               result.detail(),
-              request.completionKey())
+              request.completionKey(),
+              attemptFingerprint)
           != 1) {
         throw new IllegalStateException("locked active attempt " + attemptId + " moved");
       }
       if (attempts.finishTarget(attempt.targetId(), result.status()) != 1) {
         throw new IllegalStateException("target of an active attempt was already terminal");
       }
+      List<UUID> touched = new ArrayList<>(fingerprintOf.values());
+      if (attemptFingerprint != null) {
+        touched.add(attemptFingerprint);
+      }
+      failures.classify(touched);
       Map<String, Object> finished = new LinkedHashMap<>();
       finished.put("status", result.status().name());
       finished.put("attemptNo", attempt.attemptNo());
@@ -336,7 +374,9 @@ public class AttemptService {
   /** Contracts §2.2: results decide; the worker's own status only counts when there are none. */
   private static Result resultOf(LockedAttempt attempt, CompletionRequest request) {
     String detail =
-        request.workerError() == null ? null : Redactor.redact(request.workerError().message());
+        request.workerError() == null
+            ? null
+            : Redactor.redact(FingerprintV1.stripAnsi(request.workerError().message()));
     return switch (request.status()) {
       case COMPLETED_WITH_RESULTS -> {
         var outcome =
