@@ -151,6 +151,76 @@ paths:
       summary: What this deployment accepts
       tags:
       - meta
+  /api/v1/failure-groups/{id}:
+    get:
+      description: "category is the override when there is one, otherwise the rule's\
+        \ label (ruleCategory). The label is likely, not proven: evidence says which\
+        \ rule matched and why."
+      operationId: getFailureGroup
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureGroupView"
+          description: The group
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "A failure group with its rule, evidence, occurrences and override"
+      tags:
+      - failures
+  /api/v1/failure-groups/{id}/override:
+    put:
+      description: "Stores who, why and when and writes an audit event in the same\
+        \ transaction. The override stays in front of the rule's label for this fingerprint\
+        \ version. Repeating the current override changes nothing."
+      operationId: overrideFailureGroup
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OverrideRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureGroupView"
+          description: The group with its override
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "Override a failure group's category, with a reason"
+      tags:
+      - failures
   /api/v1/projects:
     get:
       operationId: listProjects
@@ -810,6 +880,28 @@ components:
       - startedAt
       - status
       - workerId
+    AuditEntry:
+      type: object
+      properties:
+        action:
+          type: string
+        actor:
+          type: string
+        id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: {}
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+      - action
+      - actor
+      - id
+      - metadata
+      - occurredAt
     Capabilities:
       type: object
       properties:
@@ -870,6 +962,31 @@ components:
       - retryCount
       - startOffsetMs
       - status
+    ConfidenceWork:
+      type: object
+      properties:
+        agreement:
+          type: number
+        base:
+          type: number
+        cap:
+          type: number
+        disagreementPenalty:
+          type: number
+        floor:
+          type: number
+        occurrenceBonus:
+          type: number
+        value:
+          type: number
+      required:
+      - agreement
+      - base
+      - cap
+      - disagreementPenalty
+      - floor
+      - occurrenceBonus
+      - value
     CreateRunRequest:
       type: object
       properties:
@@ -906,6 +1023,175 @@ components:
       - suiteKey
       - targets
       - trigger
+    Evidence:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        confidence:
+          $ref: "#/components/schemas/ConfidenceWork"
+        explanation:
+          type: string
+        facts:
+          $ref: "#/components/schemas/Facts"
+        ruleId:
+          type: string
+        ruleName:
+          type: string
+        rulesTried:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleCheck"
+      required:
+      - category
+      - confidence
+      - explanation
+      - facts
+      - ruleId
+      - ruleName
+      - rulesTried
+    Facts:
+      type: object
+      properties:
+        attempts:
+          type: integer
+          format: int32
+        engines:
+          type: integer
+          format: int32
+        errorClass:
+          type: string
+          enum:
+          - ASSERTION
+          - TEST_TIMEOUT
+          - SELECTOR_NOT_FOUND
+          - BROWSER_LAUNCH
+          - WORKER_LOST
+          - WORKER_SHUTDOWN
+          - LEASE_EXPIRED
+          - NETWORK
+          - ARTIFACT_STORE
+          - CONFIG
+          - CANCELLED
+          - UNKNOWN
+        occurrences:
+          type: integer
+          format: int32
+        passedOnRetry:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int32
+        statusesSeen:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+      required:
+      - attempts
+      - engines
+      - errorClass
+      - occurrences
+      - passedOnRetry
+      - runs
+      - statusesSeen
+    FailureGroupView:
+      type: object
+      properties:
+        algoVersion:
+          type: string
+        audit:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEntry"
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        confidence:
+          type: number
+        errorClass:
+          type: string
+          enum:
+          - ASSERTION
+          - TEST_TIMEOUT
+          - SELECTOR_NOT_FOUND
+          - BROWSER_LAUNCH
+          - WORKER_LOST
+          - WORKER_SHUTDOWN
+          - LEASE_EXPIRED
+          - NETWORK
+          - ARTIFACT_STORE
+          - CONFIG
+          - CANCELLED
+          - UNKNOWN
+        evidence:
+          $ref: "#/components/schemas/Evidence"
+        fingerprint:
+          type: string
+        firstSeenAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        lastSeenAt:
+          type: string
+          format: date-time
+        normalisedMessage:
+          type: string
+        occurrenceCount:
+          type: integer
+          format: int32
+        occurrences:
+          type: array
+          items:
+            $ref: "#/components/schemas/Occurrence"
+        override:
+          oneOf:
+          - $ref: "#/components/schemas/Override"
+          - type: "null"
+        ruleCategory:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        ruleId:
+          type: string
+      required:
+      - algoVersion
+      - audit
+      - category
+      - confidence
+      - errorClass
+      - evidence
+      - fingerprint
+      - firstSeenAt
+      - id
+      - lastSeenAt
+      - normalisedMessage
+      - occurrenceCount
+      - occurrences
+      - override
+      - ruleCategory
+      - ruleId
     FieldError:
       type: object
       properties:
@@ -962,6 +1248,96 @@ components:
       required:
       - expiresAt
       - url
+    Occurrence:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        attemptNo:
+          type: integer
+          format: int32
+        caseKey:
+          type:
+          - string
+          - "null"
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        errorMessage:
+          type:
+          - string
+          - "null"
+        occurredAt:
+          type: string
+          format: date-time
+        runId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        suiteKey:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+      required:
+      - attemptId
+      - attemptNo
+      - caseKey
+      - engine
+      - errorMessage
+      - occurredAt
+      - runId
+      - status
+      - suiteKey
+      - targetId
+    Override:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        reason:
+          type: string
+      required:
+      - at
+      - by
+      - category
+      - reason
+    OverrideRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 0
+      required:
+      - category
+      - reason
     PageProject:
       type: object
       properties:
@@ -1074,6 +1450,32 @@ components:
           type: string
       required:
       - self
+    RuleCheck:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        matched:
+          type: boolean
+        name:
+          type: string
+        reason:
+          type: string
+        ruleId:
+          type: string
+      required:
+      - category
+      - matched
+      - name
+      - reason
+      - ruleId
     RunCounts:
       type: object
       properties:
