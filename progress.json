@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T16:12:56+00:00",
+  "updated_at": "2026-11-24T16:24:36+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -363,7 +363,7 @@
         },
         "T3": {
           "label": "Build CLI with run/status/gate/compare, polling deadline and documented exit codes.",
-          "done": false
+          "done": true
         },
         "T4": {
           "label": "Add CI-scoped API token and protect write endpoints used by the CLI.",
