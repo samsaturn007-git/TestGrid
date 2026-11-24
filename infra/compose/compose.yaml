@@ -69,6 +69,9 @@ services:
       # Worker API (PRD-03 FR-2): its own port, reachable only inside Compose; never published.
       TESTGRID_INTERNAL_PORT: '8081'
       TESTGRID_WORKER_TOKEN: ${TESTGRID_WORKER_TOKEN:?set TESTGRID_WORKER_TOKEN in .env (copy .env.example)}
+      # PRD-08 FR-5 CI token (CONFLICT_REGISTER N33). Optional: unset means trigger CI runs are
+      # refused. The API stores only its sha256; the CLI sends it from TESTGRID_TOKEN.
+      TESTGRID_CI_TOKEN: ${TESTGRID_CI_TOKEN:-}
       # PRD-04 outbox publisher and topology.
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-testgrid}

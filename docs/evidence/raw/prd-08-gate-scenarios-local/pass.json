@@ -1,0 +1,134 @@
+{
+  "command": "run",
+  "runId": "bd96ceaa-edab-48c4-8beb-4095df31e4e9",
+  "runStatus": "PASSED",
+  "suiteKey": "checkout-smoke",
+  "outcome": "PASS",
+  "exitCode": 0,
+  "reason": "every blocking rule passed",
+  "deadlineReached": false,
+  "policy": { "id": "918ed9bf-3c43-4405-8b54-9939a1464ac7", "version": 1 },
+  "evaluatedAt": "2026-11-24T19:06:40.166463Z",
+  "rules": [
+    {
+      "ruleId": "required-targets",
+      "observed": 1,
+      "threshold": 1,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": [
+        {
+          "target": "local:chromium:0",
+          "engine": "chromium",
+          "caseKey": null,
+          "status": "PASSED",
+          "counted": true,
+          "detail": "ended PASSED with test results"
+        }
+      ]
+    },
+    {
+      "ruleId": "infra-error",
+      "observed": 0,
+      "threshold": 0,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "critical-cases",
+      "observed": 0,
+      "threshold": 0,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "max-failed-cases",
+      "observed": 0,
+      "threshold": 0,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "max-flaky-rate",
+      "observed": 0,
+      "threshold": 0.2,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "duration-regression",
+      "observed": 6,
+      "threshold": 0,
+      "outcome": "FAIL",
+      "blocking": false,
+      "evidence": [
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "cart-total",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "910 ms -> 2133 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        },
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "add-to-cart",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "1095 ms -> 2311 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        },
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "apply-coupon",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "893 ms -> 1606 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        },
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "browse-catalog",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "606 ms -> 1400 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        },
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "card-declined",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "638 ms -> 1175 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        },
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "checkout-happy-path",
+          "status": "PASSED",
+          "counted": true,
+          "detail": "728 ms -> 1326 ms against run 07747c69-dd4f-4ac6-a964-84384a12b271"
+        }
+      ]
+    },
+    {
+      "ruleId": "quarantine-honored",
+      "observed": 0,
+      "threshold": null,
+      "outcome": "PASS",
+      "blocking": false,
+      "evidence": []
+    }
+  ],
+  "failedCases": [],
+  "quarantinedFailures": [],
+  "links": {
+    "run": "http://127.0.0.1:8080/api/v1/runs/bd96ceaa-edab-48c4-8beb-4095df31e4e9",
+    "quality": "http://127.0.0.1:8080/api/v1/runs/bd96ceaa-edab-48c4-8beb-4095df31e4e9/quality"
+  }
+}

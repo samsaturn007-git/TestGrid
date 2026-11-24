@@ -178,6 +178,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/quality-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The project's active quality policy, or one past version, with the history
+         * @description versions lists every version newest first (at most 100).
+         */
+        get: operations["getQualityPolicy"];
+        /**
+         * Create the next policy version and make it active
+         * @description Never edits a version: the current one is deactivated and the next number is created, with an audit event that carries the reason. Runs already evaluated keep the version they were evaluated with.
+         */
+        put: operations["putQualityPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{projectId}/quarantines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quarantines, newest first (at most 200), with the cap and suggestions
+         * @description state is computed from the database clock. suggestions lists FLAKY cases without an active quarantine when the policy's autoMode is SUGGEST.
+         */
+        get: operations["listQuarantines"];
+        put?: never;
+        /**
+         * Quarantine a case, on one engine or all, with a reason and an expiry
+         * @description expiresAt must be in the future and at most 30 days ahead (database clock). Writes a QUARANTINE_CREATED audit event. 409 quarantine-conflict when an active quarantine already covers the case, or maxActive are active.
+         */
+        post: operations["createQuarantine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/run-counts": {
         parameters: {
             query?: never;
@@ -227,6 +275,26 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quarantines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a quarantine now
+         * @description Writes a QUARANTINE_REVOKED audit event. The row is kept; revoking one already revoked or expired changes nothing.
+         */
+        delete: operations["revokeQuarantine"];
         options?: never;
         head?: never;
         patch?: never;
@@ -321,6 +389,26 @@ export interface paths {
          * @description Each event: id = eventId, event = type, data = the contracts Â§5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC.
          */
         get: operations["streamRunEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{runId}/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The run's quality evaluation and rule report
+         * @description Made once, when the run finishes, with the policy active then; a finished run without one yet is evaluated by this request. Before the run finishes outcome is null. PASS maps to CLI exit 0, FAIL to 1, INDETERMINATE to 2 (contracts Â§2.4).
+         */
+        get: operations["getRunQuality"];
         put?: never;
         post?: never;
         delete?: never;
@@ -622,6 +710,16 @@ export interface components {
             /** Format: double */
             regressionRatio: number;
         };
+        CreateQuarantineRequest: {
+            caseKey: string;
+            /** @enum {string} */
+            engine?: "chromium" | "firefox" | "webkit";
+            /** Format: date-time */
+            expiresAt: string;
+            reason: string;
+            /** @enum {string} */
+            source?: "MANUAL" | "SUGGESTED" | "AUTO";
+        };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
             idempotencyKey: string;
@@ -802,6 +900,10 @@ export interface components {
             items: components["schemas"]["Suite"][];
             nextCursor: string | null;
         };
+        PolicyUpdateRequest: {
+            policy: components["schemas"]["QualityPolicy"];
+            reason: string;
+        };
         /** @description RFC 9457 Problem Details */
         Problem: {
             detail: string;
@@ -825,6 +927,124 @@ export interface components {
             links: components["schemas"]["ResourceLinks"];
             name: string;
             slug: string;
+        };
+        QualityPolicy: {
+            durationRegression: components["schemas"]["QualityPolicyDurationRegression"];
+            failOnCriticalCase: boolean;
+            failOnInfraError: boolean;
+            /** Format: int32 */
+            maxFailedCases: number;
+            /** Format: double */
+            maxFlakyRate: number;
+            quarantine: components["schemas"]["QualityPolicyQuarantine"];
+            requiredTargets: string[];
+        };
+        QualityPolicyDurationRegression: {
+            blocking: boolean;
+            enabled: boolean;
+            /** Format: double */
+            maxRatio: number;
+            /** Format: int32 */
+            minDeltaMs: number;
+        };
+        QualityPolicyQuarantine: {
+            /** @enum {string} */
+            autoMode: "OFF" | "SUGGEST" | "AUTO";
+            honor: boolean;
+            /** Format: int32 */
+            maxActive: number;
+        };
+        QualityPolicyRef: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number;
+        };
+        QualityPolicyVersion: {
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number;
+        };
+        QualityPolicyView: {
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            policy: components["schemas"]["QualityPolicy"];
+            /** Format: uuid */
+            projectId: string;
+            /** Format: int32 */
+            version: number;
+            versions: components["schemas"]["QualityPolicyVersion"][];
+        };
+        QualityRuleEvidence: {
+            caseKey: string | null;
+            counted: boolean;
+            detail: string;
+            /** @enum {string|null} */
+            engine: "chromium" | "firefox" | "webkit" | null;
+            status: string | null;
+            target: string | null;
+        };
+        QualityRuleResult: {
+            blocking: boolean;
+            evidence: components["schemas"]["QualityRuleEvidence"][];
+            observed: number | null;
+            /** @enum {string} */
+            outcome: "PASS" | "FAIL" | "INDETERMINATE";
+            ruleId: string;
+            threshold: number | null;
+        };
+        Quarantine: {
+            caseKey: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            /** @enum {string|null} */
+            engine: "chromium" | "firefox" | "webkit" | null;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            reason: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+            /** @enum {string} */
+            source: "MANUAL" | "SUGGESTED" | "AUTO";
+            /** @enum {string} */
+            state: "ACTIVE" | "EXPIRED" | "REVOKED";
+        };
+        QuarantineList: {
+            /** Format: int32 */
+            activeCount: number;
+            /** @enum {string} */
+            autoMode: "OFF" | "SUGGEST" | "AUTO";
+            items: components["schemas"]["Quarantine"][];
+            /** Format: int32 */
+            maxActive: number;
+            /** Format: date-time */
+            serverNow: string;
+            suggestions: components["schemas"]["QuarantineSuggestion"][];
+        };
+        QuarantineSuggestion: {
+            caseKey: string;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            /** Format: int32 */
+            flakyCount: number;
+            /** Format: double */
+            flipRate: number;
+            /** Format: int32 */
+            observed: number;
+            reason: string;
+            suiteKey: string;
         };
         RerunRequest: {
             idempotencyKey: string;
@@ -859,6 +1079,20 @@ export interface components {
         RunLinks: {
             self: string;
             suite: string | null;
+        };
+        RunQualityView: {
+            /** Format: date-time */
+            evaluatedAt: string | null;
+            /** Format: uuid */
+            evaluationId: string | null;
+            /** @enum {string|null} */
+            outcome: "PASS" | "FAIL" | "INDETERMINATE" | null;
+            policy: components["schemas"]["QualityPolicyRef"] | null;
+            rules: components["schemas"]["QualityRuleResult"][];
+            /** Format: uuid */
+            runId: string;
+            /** @enum {string} */
+            runStatus: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
         };
         RunResponse: {
             /** Format: date-time */
@@ -1454,6 +1688,189 @@ export interface operations {
             };
         };
     };
+    getQualityPolicy: {
+        parameters: {
+            query?: {
+                /** @description A past version number; the active one when absent */
+                version?: string;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityPolicyView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putQualityPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description The new active version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityPolicyView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listQuarantines: {
+        parameters: {
+            query?: {
+                /** @description ACTIVE, EXPIRED or REVOKED; all when absent */
+                state?: string;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quarantines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineList"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createQuarantine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuarantineRequest"];
+            };
+        };
+        responses: {
+            /** @description The quarantine */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quarantine"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description quarantine-conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     countRuns: {
         parameters: {
             query?: {
@@ -1545,6 +1962,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description unauthorized: a trigger CI run without a token, or a malformed, unknown, revoked or expired token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description forbidden: the token lacks runs:write */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description not-found (project) */
             404: {
                 headers: {
@@ -1592,6 +2027,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageSuite"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revokeQuarantine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quarantine */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quarantine"];
                 };
             };
             /** @description not-found */
@@ -1824,6 +2290,37 @@ export interface operations {
             };
             /** @description rate-limited: too many open streams; see Retry-After */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getRunQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The evaluation, or an empty one while the run is unfinished */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunQualityView"];
+                };
+            };
+            /** @description not-found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

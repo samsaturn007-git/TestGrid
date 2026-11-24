@@ -19,6 +19,9 @@ public class AuditRepository {
   /** Until PRD-12 there is no authentication, so every human action is the local user. */
   public static final String LOCAL_ACTOR = "local";
 
+  /** The API itself: an AUTO quarantine, or the expiry of one (PRD-08 FR-3). */
+  public static final String SYSTEM_ACTOR = "system";
+
   public record AuditEntry(
       UUID id, String actor, String action, Instant occurredAt, Map<String, Object> metadata) {}
 

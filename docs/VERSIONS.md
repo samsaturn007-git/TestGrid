@@ -55,6 +55,8 @@ Exact versions in `package.json` files (no `^`), resolved in the single `pnpm-lo
 | `actions/setup-java` | v6.3.0 (2026-11-14) | `d1374f8ac74474200d16ef8ecee22c7ae7a51880` |
 | `actions/upload-artifact` | v7.0.2 (2026-10-07) | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
 
+Re-checked 2026-11-24 for PRD-08's `testgrid-gate.yml`: `upload-artifact` v7.0.2 is still the latest release, and `gh api repos/actions/upload-artifact/git/ref/tags/v7.0.2` resolves directly to the commit above. The gate workflow reuses these four pins; `scripts/workflow-audit.sh` (`make workflow-audit`, run in CI) fails any `uses:` not pinned to a 40-hex SHA.
+
 ### 1.2 PRD-02 libraries (checked 2026-11-20)
 
 Java libraries without a `<version>` in `api/pom.xml` come from the Spring Boot 4.1.2 BOM ([spring-boot-dependencies-4.1.2.pom](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.2/spring-boot-dependencies-4.1.2.pom)). The BOM version wins over "latest", so Boot's tested combination stays intact.

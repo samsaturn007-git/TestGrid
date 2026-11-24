@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RerunRequest, RunResponse, RunResults } from '../../api/types.ts';
 import { catalogApi, json, problem, stubApi, type StubHandler } from '../../test/api.ts';
+import { qualityFor } from '../../test/qualityFixtures.ts';
 import { expectNoSeriousA11yViolations } from '../../test/axe.ts';
 import { FakeEventSource } from '../../test/eventSource.ts';
 import { renderApp } from '../../test/render.tsx';
@@ -32,6 +33,7 @@ function runApi(
       if (request.path === `/runs/${r.id}`) return json(r);
       if (request.path === `/runs/${r.id}/results`) return json(res);
       if (request.path === `/runs/${r.id}/timeline`) return json(timelineFor(r, res));
+      if (request.path === `/runs/${r.id}/quality`) return json(qualityFor(r));
     }
     return undefined;
   };

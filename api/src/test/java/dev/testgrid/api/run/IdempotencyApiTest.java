@@ -45,7 +45,7 @@ class IdempotencyApiTest {
   private static String request(String key, String engines, String extra) {
     return "{\"suiteKey\":\"checkout-smoke\",\"targets\":"
         + engines
-        + ",\"trigger\":\"CI\",\"idempotencyKey\":\""
+        + ",\"trigger\":\"MANUAL\",\"idempotencyKey\":\""
         + key
         + "\""
         + extra

@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { apiSearch, type RunFilters } from '../runs/runFilters.ts';
-import { ApiError, apiGet, apiPost, apiPut } from './client.ts';
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from './client.ts';
 import type {
   Capabilities,
   CreateRunRequest,
@@ -28,6 +28,12 @@ import type {
   RunComparisonView,
   SuiteDetail,
   WorkersResponse,
+  CreateQuarantineRequest,
+  PolicyUpdateRequest,
+  QualityPolicyView,
+  Quarantine,
+  QuarantineList,
+  RunQualityView,
 } from './types.ts';
 
 export function createQueryClient(): QueryClient {
@@ -64,6 +70,9 @@ export const queryKeys = {
   failureGroup: (id: string) => ['failure-groups', 'detail', id] as const,
   caseHistory: (suiteKey: string, caseKey: string) =>
     ['cases', suiteKey, caseKey, 'history'] as const,
+  runQuality: (runId: string) => ['runs', 'detail', runId, 'quality'] as const,
+  policy: (projectId: string) => ['projects', projectId, 'quality-policy'] as const,
+  quarantines: (projectId: string) => ['projects', projectId, 'quarantines'] as const,
 };
 
 export function useProjects() {
@@ -384,5 +393,77 @@ export function useOverrideFailureGroup(id: string) {
       client.setQueryData(queryKeys.failureGroup(id), group);
       await client.invalidateQueries({ queryKey: queryKeys.failureGroupLists });
     },
+  });
+}
+
+/** PRD-08 FR-2: polled briefly after the run finishes, until the evaluation exists. */
+export const QUALITY_POLL_MS = 2000;
+
+export function useRunQuality(runId: string, finished: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.runQuality(runId), finished] as const,
+    queryFn: ({ signal }) =>
+      apiGet<RunQualityView>(`/runs/${encodeURIComponent(runId)}/quality`, signal),
+    enabled: finished,
+    // A stored evaluation never changes; only a missing one is worth asking for again.
+    staleTime: (query) => (query.state.data?.outcome ? Infinity : 0),
+    refetchInterval: (query) =>
+      finished && query.state.data && query.state.data.outcome === null ? QUALITY_POLL_MS : false,
+  });
+}
+
+/** The active policy, or one past version. Versions never change, so they never go stale. */
+export function useQualityPolicy(projectId: string, version: number | null) {
+  return useQuery({
+    queryKey: [...queryKeys.policy(projectId), version] as const,
+    queryFn: ({ signal }) =>
+      apiGet<QualityPolicyView>(
+        `/projects/${encodeURIComponent(projectId)}/quality-policy${version === null ? '' : `?version=${version}`}`,
+        signal,
+      ),
+    staleTime: version === null ? 0 : Infinity,
+  });
+}
+
+export function useUpdatePolicy(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: PolicyUpdateRequest) =>
+      apiPut<QualityPolicyView>(`/projects/${encodeURIComponent(projectId)}/quality-policy`, body),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: queryKeys.policy(projectId) });
+      // The cap and autoMode shown with the quarantines come from the policy.
+      await client.invalidateQueries({ queryKey: queryKeys.quarantines(projectId) });
+    },
+  });
+}
+
+/** Refreshed every minute: expiry is decided by the server's clock, not by this page. */
+export const QUARANTINES_REFRESH_MS = 60_000;
+
+export function useQuarantines(projectId: string) {
+  return useQuery({
+    queryKey: queryKeys.quarantines(projectId),
+    queryFn: ({ signal }) =>
+      apiGet<QuarantineList>(`/projects/${encodeURIComponent(projectId)}/quarantines`, signal),
+    refetchInterval: QUARANTINES_REFRESH_MS,
+  });
+}
+
+export function useCreateQuarantine(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateQuarantineRequest) =>
+      (await apiPost<Quarantine>(`/projects/${encodeURIComponent(projectId)}/quarantines`, body))
+        .data,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.quarantines(projectId) }),
+  });
+}
+
+export function useRevokeQuarantine(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<Quarantine>(`/quarantines/${encodeURIComponent(id)}`),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.quarantines(projectId) }),
   });
 }

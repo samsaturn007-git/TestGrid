@@ -139,3 +139,11 @@ curl -s -X POST http://127.0.0.1:8080/api/v1/runs/<runId>/cancel
 | `make scan-canary` | PRD-06 AC-4: a fresh canary secret in the worker, the API and every test page is absent from API responses, events, database rows, stored artifacts (traces unzipped) and logs; the masked log line and the withheld trace show it really was planted | ~1.5 min |
 
 The canary (`TESTGRID_CANARY_SECRET`) and fault points are honoured only with `TESTGRID_PROFILE=local`: `TG_FAULT=after_publish_before_mark` (API) and `TG_FAULT_WORKER=after_claim | after_complete_before_ack` (worker), and `TG_FAULT_WORKER=browser_launch` (PRD-07, CONFLICT_REGISTER N27: every browser launch really fails).
+
+## 8. The CI quality gate (PRD-08)
+
+- **Exit codes** (contracts §2.4): 0 `PASS`, 1 `FAIL` (test evidence), 2 `INDETERMINATE` (a required target missing or without test evidence, the run cancelled, the CLI deadline, the API unreachable), 3 configuration or authentication. Only a server-side `PASS` is 0.
+- **A red gate:** the job summary names the failing rules and cases; the `testgrid-gate` artifact holds the run's JSON, screenshots, traces and logs. Exit 2 means retry the run (look at the workers), not fix a test.
+- **A known-flaky case:** quarantine it from `/quarantines` with a reason and an expiry (at most 30 days). The gate stops blocking on it but still reports it; it ends on its own at expiry.
+- **Changing the rules:** `/projects/{id}/policy`, with a reason. Runs already evaluated keep their version.
+- **Scenarios:** `make gate-scenarios` (stack up, `TESTGRID_TOKEN` set to the API's `TESTGRID_CI_TOKEN`) runs pass, fail, bad token, bad suite, stopped workers and quarantine expiry, and checks each exit code; the workflow's `scenarios` job runs the same script on every PR.

@@ -79,6 +79,12 @@ export async function apiPost<T>(path: string, payload: unknown): Promise<PostRe
   };
 }
 
+/** DELETE; the answer is the resource as it is afterwards. */
+export async function apiDelete<T>(path: string): Promise<T> {
+  const { body } = await send(path, { method: 'DELETE', headers: { Accept: 'application/json' } });
+  return body as T;
+}
+
 /** PUT with a JSON body; the answer is the updated resource. */
 export async function apiPut<T>(path: string, payload: unknown): Promise<T> {
   const { body } = await send(path, {

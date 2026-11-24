@@ -57,6 +57,12 @@ for (const theme of ['dark', 'light'] as const) {
     test('run detail with case results open', async ({ page }) => {
       await page.goto(`/runs/${finishedRunId}`);
       await expect(page.getByRole('rowheader', { name: /cart-total/ })).toBeVisible();
+      // PRD-08 FR-7: the default policy fails a critical case, so the gate panel says FAIL.
+      await expect(
+        page
+          .getByRole('region', { name: 'Quality gate' })
+          .getByRole('img', { name: 'Quality gate: FAIL' }),
+      ).toBeVisible();
       await page.getByRole('button', { name: 'Show case results' }).click();
       await expect(page.getByRole('tablist', { name: 'Engine' })).toBeVisible();
       expect(await seriousViolations(page)).toEqual([]);
@@ -108,6 +114,15 @@ for (const theme of ['dark', 'light'] as const) {
       await dialog.getByLabel(/Commit SHA/).fill('zz91');
       await dialog.getByRole('button', { name: 'Start run' }).click();
       await expect(dialog.getByRole('alert')).toBeVisible();
+      expect(await seriousViolations(page)).toEqual([]);
+    });
+
+    test('PRD-08: quality policy and quarantines', async ({ page }) => {
+      await page.goto(`/projects/${project}/policy`);
+      await expect(page.getByRole('region', { name: /Version \d+/ })).toBeVisible();
+      expect(await seriousViolations(page)).toEqual([]);
+      await page.goto('/quarantines');
+      await expect(page.getByRole('form', { name: 'Quarantine a case' })).toBeVisible();
       expect(await seriousViolations(page)).toEqual([]);
     });
 

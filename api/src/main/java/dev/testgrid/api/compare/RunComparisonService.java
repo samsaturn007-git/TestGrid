@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -51,9 +52,13 @@ public class RunComparisonService {
    */
   @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
   public RunComparisonView compare(UUID baseId, UUID headId) {
-    Loaded head = load(headId, "head");
-    UUID resolved = baseId == null ? lastGreen(head.ref()) : baseId;
-    Loaded base = load(resolved, "base");
+    UUID project = scope.projectId();
+    Loaded head = load(project, headId, "head");
+    UUID resolved =
+        baseId == null
+            ? lastGreen(project, head.ref()).orElseThrow(() -> noLastGreen(head.ref()))
+            : baseId;
+    Loaded base = load(project, resolved, "base");
     if (!base.ref().suiteKey().equals(head.ref().suiteKey())) {
       throw new ApiProblemException(
           ProblemType.INCOMPARABLE_RUNS,
@@ -65,7 +70,10 @@ public class RunComparisonService {
     }
     RunComparison.Result result =
         RunComparison.compare(
-            side(base), side(head), health(head.ref().suiteKey()), properties.thresholds());
+            side(base),
+            side(head),
+            health(project, head.ref().suiteKey()),
+            properties.thresholds());
     List<CategoryCount> counts =
         result.counts().entrySet().stream()
             .map(e -> new CategoryCount(e.getKey(), e.getValue()))
@@ -83,7 +91,29 @@ public class RunComparisonService {
         result.rows());
   }
 
-  private Loaded load(UUID runId, String which) {
+  /** The last green run and the comparison rows against it, in the caller's transaction. */
+  public record LastGreenComparison(UUID lastGreenRunId, List<RunComparison.Row> rows) {}
+
+  /**
+   * Compares {@code headId} with its last green run using {@code thresholds} (the quality policy's,
+   * PRD-08 FR-2), or empty when there is no last green. For callers without a request, such as the
+   * quality evaluator, so the project is passed in rather than taken from the caller's scope.
+   */
+  @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+  public Optional<LastGreenComparison> againstLastGreen(
+      UUID projectId, UUID headId, RunComparison.Thresholds thresholds) {
+    Loaded head = load(projectId, headId, "head");
+    return lastGreen(projectId, head.ref())
+        .map(baseId -> {
+          Loaded base = load(projectId, baseId, "base");
+          RunComparison.Result result =
+              RunComparison.compare(
+                  side(base), side(head), health(projectId, head.ref().suiteKey()), thresholds);
+          return new LastGreenComparison(baseId, result.rows());
+        });
+  }
+
+  private Loaded load(UUID projectId, UUID runId, String which) {
     return jdbc.sql(
             """
             SELECT r.id, r.status, r.suite_id, s.suite_key, s.revision, r.branch, r.commit_sha,
@@ -92,7 +122,7 @@ public class RunComparisonService {
             WHERE r.id = :id AND r.project_id = :p
             """)
         .param("id", runId)
-        .param("p", scope.projectId())
+        .param("p", projectId)
         .query((rs, i) -> {
           String mode = rs.getString("fixture_mode");
           Timestamp finished = rs.getTimestamp("finished_at");
@@ -117,7 +147,7 @@ public class RunComparisonService {
             new ApiProblemException(ProblemType.NOT_FOUND, which + " run " + runId + " not found"));
   }
 
-  private UUID lastGreen(RunRef head) {
+  private Optional<UUID> lastGreen(UUID projectId, RunRef head) {
     return jdbc.sql(
             """
             SELECT r.id
@@ -128,21 +158,23 @@ public class RunComparisonService {
             ORDER BY r.queued_at DESC, r.id DESC
             LIMIT 1
             """)
-        .param("p", scope.projectId())
+        .param("p", projectId)
         .param("k", head.suiteKey())
         .param("b", head.branch())
         .param("q", Timestamp.from(head.queuedAt()))
         .param("h", head.id())
         .query(UUID.class)
-        .optional()
-        .orElseThrow(() ->
-            new ApiProblemException(
-                ProblemType.NOT_FOUND,
-                "no PASSED run of "
-                    + head.suiteKey()
-                    + (head.branch() == null ? " without a branch" : " on branch " + head.branch())
-                    + " was queued before run "
-                    + head.id()));
+        .optional();
+  }
+
+  private static ApiProblemException noLastGreen(RunRef head) {
+    return new ApiProblemException(
+        ProblemType.NOT_FOUND,
+        "no PASSED run of "
+            + head.suiteKey()
+            + (head.branch() == null ? " without a branch" : " on branch " + head.branch())
+            + " was queued before run "
+            + head.id());
   }
 
   /**
@@ -201,11 +233,11 @@ public class RunComparisonService {
     return new Side(cases, engines);
   }
 
-  private Map<Key, String> health(String suiteKey) {
+  private Map<Key, String> health(UUID projectId, String suiteKey) {
     Map<Key, String> labels = new HashMap<>();
     jdbc.sql(
             "SELECT case_key, engine, label FROM case_health WHERE project_id = :p AND suite_key = :k")
-        .param("p", scope.projectId())
+        .param("p", projectId)
         .param("k", suiteKey)
         .query((rs, i) ->
             labels.put(

@@ -11,6 +11,8 @@ const NAV_ICONS = {
   suites: 'M8 2.5l5.5 3L8 8.5 2.5 5.5zM2.5 8.5L8 11.5l5.5-3M2.5 11L8 14l5.5-3',
   workers: 'M3 3h10v4H3zM3 9h10v4H3zM5.5 5h.01M5.5 11h.01',
   failures: 'M8 2.5l6 11H2zM8 6.5v3.5M8 12h.01',
+  policy: 'M8 2l5 2v4c0 3-2.2 5.2-5 6-2.8-.8-5-3-5-6V4zM5.8 8l1.6 1.6L10.4 6.6',
+  quarantines: 'M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM4.2 4.2l7.6 7.6',
 };
 
 function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
@@ -102,6 +104,12 @@ export function AppShell() {
               label="Suites"
             />
             <NavItem to="/failures" icon={NAV_ICONS.failures} label="Failures" />
+            <NavItem
+              to={project ? `/projects/${project.id}/policy` : '/policy'}
+              icon={NAV_ICONS.policy}
+              label="Quality policy"
+            />
+            <NavItem to="/quarantines" icon={NAV_ICONS.quarantines} label="Quarantines" />
             <NavItem to="/workers" icon={NAV_ICONS.workers} label="Workers" />
           </div>
         </nav>

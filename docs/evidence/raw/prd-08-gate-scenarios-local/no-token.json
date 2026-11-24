@@ -1,0 +1,10 @@
+{
+  "command": "run",
+  "exitCode": 3,
+  "outcome": null,
+  "error": {
+    "message": "POST /projects/00000000-0000-4000-8000-000000000001/runs: 401 a trigger: CI run needs an Authorization: Bearer token with runs:write (check TESTGRID_TOKEN and its scopes)",
+    "status": 401,
+    "problemType": "unauthorized"
+  }
+}

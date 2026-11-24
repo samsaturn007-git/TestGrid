@@ -1,0 +1,10 @@
+{
+  "command": "run",
+  "exitCode": 3,
+  "outcome": null,
+  "error": {
+    "message": "POST /projects/00000000-0000-4000-8000-000000000001/runs: 422 suite not-in-the-manifest is not an enabled suite in the manifest — suiteKey: unknown suite",
+    "status": 422,
+    "problemType": "unknown-suite"
+  }
+}

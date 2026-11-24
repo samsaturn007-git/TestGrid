@@ -66,10 +66,25 @@
 | PRD-03 | + worker unit tests, single-engine E2E |
 | PRD-04 | + queue integration tests (multi-engine matrix nightly) |
 | PRD-05 | + web unit tests, axe checks, dashboard E2E |
-| PRD-08 | + TestGrid quality-gate workflow on itself |
+| PRD-08 | + TestGrid quality-gate workflow on itself (gate, scripted scenarios, deploy veto), workflow permissions audit |
 | PRD-12 | + gitleaks, Trivy, dependency audit, CodeQL (if public) |
 
 Chaos and benchmark suites run on demand or nightly; document the schedule. CI uses least-privilege permissions and SHA-pinned actions.
+
+## CI gate security (PRD-08)
+
+The `testgrid-gate` workflow runs TestGrid inside the GitHub runner and gates the PR on its own quality evaluation. What keeps that safe:
+
+- **Trigger.** `pull_request` only, never `pull_request_target`. A fork's PR runs the fork's code with GitHub's read-only token and no repository secrets; `pull_request_target` would run with the base repository's secrets and a write token, which is how CI secrets usually leak. GitHub also holds first-time contributors' runs until a maintainer approves them.
+- **No secrets at all.** The CI token is generated per job (`openssl rand -hex 32`), masked with `::add-mask::`, given to the API through `.env` and to the CLI as `TESTGRID_TOKEN`, and thrown away with the runner. A fork has nothing to exfiltrate, and nothing has to be stored in the repository's settings.
+- **Least privilege.** `permissions: contents: read` at the top, and no job widens it. `actions/checkout` runs with `persist-credentials: false`, so the token isn't left in `.git/config` for later steps.
+- **Pinned actions.** Every `uses:` is a 40-hex commit SHA, re-checked against the action's release (docs/VERSIONS.md §1.1); a tag can be moved, a commit can't.
+- **No script injection.** No `${{ github.event.* }}` or `${{ inputs.* }}` inside a `run:` script, where a crafted branch name or PR title would become shell; the `workflow_dispatch` input is a choice list passed through `env:`.
+- **Manifest only.** The CLI and the API accept suite keys and enums, never URLs, paths, flags or code (ADR-003): `--suite not-in-the-manifest` is `422 unknown-suite`, exit 3. What a PR *can* change is the repository itself, including the manifest and the specs; that code runs only in GitHub's throwaway sandbox with the read-only token.
+- **Nothing published.** Compose binds every port to `127.0.0.1` of a runner that is discarded; uploaded artifacts are the run's own reports, screenshots, traces and logs, which the worker redacts (PRD-06).
+- **Gate bypass.** The CI token's scopes (`runs:write runs:read quality:read`) can't change the policy or create quarantines (`403`). Quarantines need a reason, expire within 30 days, are capped by the policy, audited, and always reported as `QUARANTINED_FAIL`.
+
+`scripts/workflow-audit.sh` (`make workflow-audit`, in `ci.yml`) fails a workflow that breaks the trigger, permission, pinning, credential or run-script rules. `gitleaks git` over the full history is clean; the six reviewed false positives are listed by fingerprint in `.gitleaksignore` (PRD-12 adds gitleaks to CI, SEC-003).
 
 ## Release requirements
 

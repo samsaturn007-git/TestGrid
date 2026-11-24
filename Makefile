@@ -118,6 +118,12 @@ sigterm-check: ## SIGTERM the worker mid-run; grace period, then INFRA_ERROR/WOR
 scan-canary: env ## Canary secret in worker, API and page; scan everything stored or served for it (PRD-06 AC-4)
 	@bash scripts/scan-canary.sh
 
+gate-scenarios: ## PRD-08 T7: pass, fail, infra, bad token, bad suite, quarantined (needs make up and TESTGRID_TOKEN)
+	@bash scripts/gate-scenarios.sh
+
+workflow-audit: ## Audit workflow permissions, triggers and action pins (PRD-08 AC-5)
+	@bash scripts/workflow-audit.sh
+
 doctor: ## Check the local toolchain against docs/VERSIONS.md
 	@bash scripts/doctor.sh
 
