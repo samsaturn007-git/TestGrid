@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T16:24:36+00:00",
+  "updated_at": "2026-11-24T16:44:15+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -367,7 +367,7 @@
         },
         "T4": {
           "label": "Add CI-scoped API token and protect write endpoints used by the CLI.",
-          "done": false
+          "done": true
         },
         "T5": {
           "label": "Create GitHub Actions gate workflow with step summary, artifacts and deploy veto.",
