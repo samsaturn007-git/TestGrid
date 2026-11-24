@@ -54,3 +54,4 @@ progress.json.tmp
 # PRD-08 gate workflow outputs
 /gate.json
 /gate-artifacts/
+/gate-scenarios/
