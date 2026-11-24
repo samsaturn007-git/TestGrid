@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T15:37:21+00:00",
+  "updated_at": "2026-11-24T16:12:56+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -359,7 +359,7 @@
         },
         "T2": {
           "label": "Implement quarantine API, expiry, auto/suggest modes and audit events.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Build CLI with run/status/gate/compare, polling deadline and documented exit codes.",
