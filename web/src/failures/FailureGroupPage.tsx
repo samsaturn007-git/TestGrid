@@ -39,7 +39,7 @@ function ArtifactButton({ artifact }: { artifact: ArtifactView }) {
   return (
     <button
       type="button"
-      className="font-mono text-[11px] text-info underline-offset-2 hover:underline aria-busy:opacity-70"
+      className="whitespace-nowrap font-mono text-[11px] text-info underline-offset-2 hover:underline aria-busy:opacity-70"
       aria-busy={state === 'busy'}
       onClick={() => {
         setState('busy');
@@ -99,11 +99,11 @@ function Evidence({ group }: { group: FailureGroupView }) {
 function OccurrenceRow({ o }: { o: FailureOccurrence }) {
   return (
     <tr className="border-b border-hairline-soft align-top last:border-b-0">
-      <td className="px-3 py-2 font-mono">
+      <td className="whitespace-nowrap px-3 py-2 font-mono">
         <Link to={`/runs/${o.runId}`}>{o.runId.slice(0, 8)}</Link>
       </td>
-      <td className="px-3 py-2 font-mono">{o.engine}</td>
-      <td className="px-3 py-2 font-mono">
+      <td className="whitespace-nowrap px-3 py-2 font-mono">{o.engine}</td>
+      <td className="whitespace-nowrap px-3 py-2 font-mono">
         {o.caseKey ? (
           <Link
             to={`/cases/${encodeURIComponent(o.caseKey)}?suiteKey=${encodeURIComponent(o.suiteKey)}`}
@@ -114,11 +114,13 @@ function OccurrenceRow({ o }: { o: FailureOccurrence }) {
           <span className="text-text-muted">whole target</span>
         )}
       </td>
-      <td className="px-3 py-2 font-mono">
+      <td className="whitespace-nowrap px-3 py-2 font-mono">
         {o.status}
         {o.attemptNo > 1 ? <span className="text-text-muted"> · attempt {o.attemptNo}</span> : null}
       </td>
-      <td className="px-3 py-2 text-text-secondary">{formatAbsolute(o.occurredAt)}</td>
+      <td className="whitespace-nowrap px-3 py-2 text-text-secondary">
+        {formatAbsolute(o.occurredAt)}
+      </td>
       <td className="px-3 py-2">
         <span className="flex flex-col items-start gap-1">
           {o.artifacts.length === 0 ? (
