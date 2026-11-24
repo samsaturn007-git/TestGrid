@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T14:57:07+00:00",
+  "updated_at": "2026-11-24T15:37:21+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -344,7 +344,7 @@
     "PRD-08": {
       "title": "CLI, quality gate, flaky quarantine and GitHub Actions deployment veto",
       "filename": "prds/PRD-08-ci-quality-gates.md",
-      "status": "not_started",
+      "status": "in_progress",
       "deps": [
         "PRD-07"
       ],
