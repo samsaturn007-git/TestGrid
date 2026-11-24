@@ -45,6 +45,8 @@ jobs:
         run: make test
       - name: Vocabulary check
         run: bash tools/vocab_check.sh
+      - name: Workflow permissions and pinning audit (PRD-08 AC-5)
+        run: bash scripts/workflow-audit.sh
       - name: Contract drift check (OpenAPI spec and TypeScript types)
         run: make contracts-check
 

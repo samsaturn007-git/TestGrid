@@ -1,0 +1,104 @@
+# PRD-08 FR-6: TestGrid gating TestGrid. The whole stack starts inside this runner with Compose,
+# the CLI submits a run and waits, and its exit code is the check: 0 PASS, 1 FAIL,
+# 2 INDETERMINATE (infra or deadline), 3 configuration or auth. A deploy job needs the gate, so a
+# FAIL or INDETERMINATE vetoes it.
+#
+# Security (PRD-08 AC-5):
+# - pull_request, never pull_request_target: a fork's PR runs its own code with a read-only token
+#   and no secrets, and none are needed. The CI token is random per job and never leaves it.
+# - permissions: contents: read for every job; every action pinned to a commit SHA
+#   (docs/VERSIONS.md §1.1); checkout without persisted credentials.
+# - Nothing is published: Compose binds ports to 127.0.0.1 of a runner that is thrown away.
+# - Clients choose only manifest suite keys and enums (ADR-003). The workflow_dispatch input is a
+#   choice list, passed through env rather than interpolated into a script.
+name: testgrid-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Demo-shop fixture mode the gate runs (PASS for a real gate)
+        type: choice
+        options: [PASS, PRODUCT_DEFECT, AUTOMATION_FLAKE, SELECTOR_DRIFT, TIMEOUT]
+        default: PASS
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testgrid-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: quality gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GATE_FIXTURE: ${{ inputs.fixture || 'PASS' }}
+      GATE_ENGINES: chromium,firefox
+      TESTGRID_WORKER_ENGINES: chromium,firefox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Enable pnpm through Corepack
+        run: |
+          npm install -g corepack@0.36.0
+          corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate this job's CI token
+        # A fresh random value per job: masked in logs, given to the API through .env and to the
+        # CLI as TESTGRID_TOKEN. Nothing to steal from a fork, nothing stored in the repository.
+        run: |
+          token=$(openssl rand -hex 32)
+          echo "::add-mask::$token"
+          cp .env.example .env
+          sed -i "s/^TESTGRID_CI_TOKEN=.*/TESTGRID_CI_TOKEN=$token/" .env
+          echo "TESTGRID_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: make up (all services healthy)
+        run: make up
+      - name: testgrid run --wait
+        run: |
+          set -o pipefail
+          node cli/src/main.ts run --project demo --suite checkout-smoke \
+            --engines "$GATE_ENGINES" --fixture "$GATE_FIXTURE" \
+            --wait --timeout 15m --json --summary-file "$GITHUB_STEP_SUMMARY" | tee gate.json
+      - name: Collect failure artifacts
+        if: failure()
+        run: |
+          mkdir -p gate-artifacts/logs
+          run_id=$(jq -r '.runId // empty' gate.json 2>/dev/null || true)
+          if [ -n "$run_id" ]; then
+            node scripts/gate-artifacts.ts --run "$run_id" --out gate-artifacts
+          fi
+          cp gate.json gate-artifacts/ 2>/dev/null || true
+          docker compose -f infra/compose/compose.yaml --env-file .env logs --no-color \
+            > gate-artifacts/logs/compose.log 2>&1 || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: testgrid-gate
+          path: gate-artifacts
+          retention-days: 7
+          if-no-files-found: warn
+      - name: make down
+        if: always()
+        run: make down
+
+  deploy-demo:
+    name: deploy demo (simulated)
+    # The veto: this job runs only when the gate exited 0. A FAIL (1), INDETERMINATE (2) or
+    # configuration error (3) fails the gate job, and GitHub skips everything that needs it.
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Deploy (simulated)
+        run: |
+          echo "The quality gate passed for $GITHUB_SHA, so a deploy may proceed."
+          echo "Nothing is deployed: paid hosting is out of scope; PRD-12 adds the deployable demo."
