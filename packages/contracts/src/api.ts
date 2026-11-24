@@ -81,6 +81,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cases/{caseKey}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A case's recent results and health label per engine
+         * @description Results are newest first. health is the rolling window (FR-4) with its label and reason, or null before the case's first result on that engine. Without engine, every engine the suite allows is listed.
+         */
+        get: operations["getCaseHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/failure-groups/{id}": {
         parameters: {
             query?: never;
@@ -428,6 +448,67 @@ export interface components {
         Capabilities: {
             fixturesAllowed: boolean;
         };
+        CaseEngineHistory: {
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            health: components["schemas"]["CaseHealth"] | null;
+            results: components["schemas"]["CaseHistoryResult"][];
+        };
+        CaseHealth: {
+            /** Format: date-time */
+            computedAt: string;
+            /** Format: int32 */
+            failCount: number;
+            /** Format: int32 */
+            flakyCount: number;
+            /** Format: int32 */
+            flipCount: number;
+            flipRate: number;
+            /** @enum {string} */
+            label: "STABLE" | "FLAKY" | "FAILING" | "INSUFFICIENT_DATA";
+            /** Format: int32 */
+            observed: number;
+            /** Format: int32 */
+            passCount: number;
+            reason: string;
+            recentOutcomes: string;
+            /** Format: int32 */
+            windowSize: number;
+        };
+        CaseHistoryResult: {
+            /** Format: uuid */
+            attemptId: string;
+            /** Format: int32 */
+            attemptNo: number;
+            branch: string | null;
+            commitSha: string | null;
+            /** Format: int32 */
+            durationMs: number;
+            /** @enum {string|null} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN" | null;
+            /** Format: uuid */
+            fingerprintId: string | null;
+            /** Format: date-time */
+            finishedAt: string;
+            /** Format: int32 */
+            retryCount: number;
+            /** Format: uuid */
+            runId: string;
+            /** @enum {string} */
+            runStatus: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
+            /** @enum {string} */
+            status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
+            /** Format: uuid */
+            targetId: string;
+            /** @enum {string} */
+            trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
+        };
+        CaseHistoryView: {
+            caseKey: string;
+            engines: components["schemas"]["CaseEngineHistory"][];
+            suiteKey: string;
+            title: string;
+        };
         CaseResult: {
             caseKey: string;
             /** Format: int32 */
@@ -442,15 +523,6 @@ export interface components {
             /** @enum {string} */
             status: "PASSED" | "FAILED" | "TIMED_OUT" | "SKIPPED" | "FLAKY";
         };
-        ConfidenceWork: {
-            agreement: number;
-            base: number;
-            cap: number;
-            disagreementPenalty: number;
-            floor: number;
-            occurrenceBonus: number;
-            value: number;
-        };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
             idempotencyKey: string;
@@ -461,19 +533,29 @@ export interface components {
             /** @enum {string} */
             trigger: "MANUAL" | "CI" | "RERUN" | "BENCHMARK" | "CHAOS";
         };
-        Evidence: {
+        FailureConfidence: {
+            agreement: number;
+            base: number;
+            cap: number;
+            disagreementPenalty: number;
+            floor: number;
+            occurrenceBonus: number;
+            value: number;
+        };
+        FailureEvidence: {
             /** @enum {string} */
             category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
-            confidence: components["schemas"]["ConfidenceWork"];
+            confidence: components["schemas"]["FailureConfidence"];
             explanation: string;
-            facts: components["schemas"]["Facts"];
+            facts: components["schemas"]["FailureFacts"];
             ruleId: string;
             ruleName: string;
-            rulesTried: components["schemas"]["RuleCheck"][];
+            rulesTried: components["schemas"]["FailureRuleCheck"][];
         };
-        Facts: {
+        FailureFacts: {
             /** Format: int32 */
             attempts: number;
+            casesLabelledFlaky: string[];
             /** Format: int32 */
             engines: number;
             /** @enum {string} */
@@ -494,7 +576,7 @@ export interface components {
             confidence: number;
             /** @enum {string} */
             errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN";
-            evidence: components["schemas"]["Evidence"];
+            evidence: components["schemas"]["FailureEvidence"];
             fingerprint: string;
             /** Format: date-time */
             firstSeenAt: string;
@@ -505,10 +587,44 @@ export interface components {
             normalisedMessage: string;
             /** Format: int32 */
             occurrenceCount: number;
-            occurrences: components["schemas"]["Occurrence"][];
-            override: components["schemas"]["Override"] | null;
+            occurrences: components["schemas"]["FailureOccurrence"][];
+            override: components["schemas"]["FailureOverride"] | null;
             /** @enum {string} */
             ruleCategory: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            ruleId: string;
+        };
+        FailureOccurrence: {
+            /** Format: uuid */
+            attemptId: string;
+            /** Format: int32 */
+            attemptNo: number;
+            caseKey: string | null;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            errorMessage: string | null;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            runId: string;
+            status: string;
+            suiteKey: string;
+            /** Format: uuid */
+            targetId: string;
+        };
+        FailureOverride: {
+            /** Format: date-time */
+            at: string;
+            by: string;
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            reason: string;
+        };
+        FailureRuleCheck: {
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            matched: boolean;
+            name: string;
+            reason: string;
             ruleId: string;
         };
         FieldError: {
@@ -533,32 +649,6 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             url: string;
-        };
-        Occurrence: {
-            /** Format: uuid */
-            attemptId: string;
-            /** Format: int32 */
-            attemptNo: number;
-            caseKey: string | null;
-            /** @enum {string} */
-            engine: "chromium" | "firefox" | "webkit";
-            errorMessage: string | null;
-            /** Format: date-time */
-            occurredAt: string;
-            /** Format: uuid */
-            runId: string;
-            status: string;
-            suiteKey: string;
-            /** Format: uuid */
-            targetId: string;
-        };
-        Override: {
-            /** Format: date-time */
-            at: string;
-            by: string;
-            /** @enum {string} */
-            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
-            reason: string;
         };
         OverrideRequest: {
             /** @enum {string} */
@@ -608,14 +698,6 @@ export interface components {
         };
         ResourceLinks: {
             self: string;
-        };
-        RuleCheck: {
-            /** @enum {string} */
-            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
-            matched: boolean;
-            name: string;
-            reason: string;
-            ruleId: string;
         };
         RunCounts: {
             /** Format: date-time */
@@ -1027,6 +1109,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Capabilities"];
+                };
+            };
+        };
+    };
+    getCaseHistory: {
+        parameters: {
+            query?: {
+                /** @description The suite the case belongs to */
+                suiteKey?: string;
+                /** @description chromium, firefox or webkit; every allowed engine if absent */
+                engine?: string;
+                /** @description Results per engine, 1-100, default 20 */
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                caseKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseHistoryView"];
+                };
+            };
+            /** @description validation-failed (a key, engine, limit or an unknown parameter) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (no revision of the suite has this case) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

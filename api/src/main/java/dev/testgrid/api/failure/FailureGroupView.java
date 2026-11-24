@@ -6,6 +6,7 @@ import dev.testgrid.api.domain.Engine;
 import dev.testgrid.api.domain.ErrorClass;
 import dev.testgrid.api.domain.FailureCategory;
 import dev.testgrid.api.failure.FailureClassifier.Evidence;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -34,12 +35,14 @@ public record FailureGroupView(
     List<Occurrence> occurrences,
     List<AuditEntry> audit) {
 
+  @Schema(name = "FailureOverride")
   public record Override(FailureCategory category, String reason, String by, Instant at) {}
 
   /**
    * One failure in the group: a case result, or a whole attempt (N25) with {@code caseKey: null}.
    * {@code status} is the case status, or the attempt status for an attempt-level failure.
    */
+  @Schema(name = "FailureOccurrence")
   public record Occurrence(
       UUID runId,
       UUID targetId,

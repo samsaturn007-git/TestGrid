@@ -151,6 +151,58 @@ paths:
       summary: What this deployment accepts
       tags:
       - meta
+  /api/v1/cases/{caseKey}/history:
+    get:
+      description: "Results are newest first. health is the rolling window (FR-4)\
+        \ with its label and reason, or null before the case's first result on that\
+        \ engine. Without engine, every engine the suite allows is listed."
+      operationId: getCaseHistory
+      parameters:
+      - in: path
+        name: caseKey
+        required: true
+        schema:
+          type: string
+      - description: The suite the case belongs to
+        in: query
+        name: suiteKey
+        required: false
+        schema:
+          type: string
+      - description: "chromium, firefox or webkit; every allowed engine if absent"
+        in: query
+        name: engine
+        required: false
+        schema:
+          type: string
+      - description: "Results per engine, 1-100, default 20"
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseHistoryView"
+          description: The history
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "validation-failed (a key, engine, limit or an unknown parameter)"
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found (no revision of the suite has this case)
+      summary: A case's recent results and health label per engine
+      tags:
+      - cases
   /api/v1/failure-groups/{id}:
     get:
       description: "category is the override when there is one, otherwise the rule's\
@@ -909,6 +961,189 @@ components:
           type: boolean
       required:
       - fixturesAllowed
+    CaseEngineHistory:
+      type: object
+      properties:
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        health:
+          oneOf:
+          - $ref: "#/components/schemas/CaseHealth"
+          - type: "null"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseHistoryResult"
+      required:
+      - engine
+      - health
+      - results
+    CaseHealth:
+      type: object
+      properties:
+        computedAt:
+          type: string
+          format: date-time
+        failCount:
+          type: integer
+          format: int32
+        flakyCount:
+          type: integer
+          format: int32
+        flipCount:
+          type: integer
+          format: int32
+        flipRate:
+          type: number
+        label:
+          type: string
+          enum:
+          - STABLE
+          - FLAKY
+          - FAILING
+          - INSUFFICIENT_DATA
+        observed:
+          type: integer
+          format: int32
+        passCount:
+          type: integer
+          format: int32
+        reason:
+          type: string
+        recentOutcomes:
+          type: string
+        windowSize:
+          type: integer
+          format: int32
+      required:
+      - computedAt
+      - failCount
+      - flakyCount
+      - flipCount
+      - flipRate
+      - label
+      - observed
+      - passCount
+      - reason
+      - recentOutcomes
+      - windowSize
+    CaseHistoryResult:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        attemptNo:
+          type: integer
+          format: int32
+        branch:
+          type:
+          - string
+          - "null"
+        commitSha:
+          type:
+          - string
+          - "null"
+        durationMs:
+          type: integer
+          format: int32
+        errorClass:
+          type:
+          - string
+          - "null"
+          enum:
+          - ASSERTION
+          - TEST_TIMEOUT
+          - SELECTOR_NOT_FOUND
+          - BROWSER_LAUNCH
+          - WORKER_LOST
+          - WORKER_SHUTDOWN
+          - LEASE_EXPIRED
+          - NETWORK
+          - ARTIFACT_STORE
+          - CONFIG
+          - CANCELLED
+          - UNKNOWN
+        fingerprintId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        finishedAt:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+          format: int32
+        runId:
+          type: string
+          format: uuid
+        runStatus:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+        status:
+          type: string
+          enum:
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - SKIPPED
+          - FLAKY
+        targetId:
+          type: string
+          format: uuid
+        trigger:
+          type: string
+          enum:
+          - MANUAL
+          - CI
+          - RERUN
+          - BENCHMARK
+          - CHAOS
+      required:
+      - attemptId
+      - attemptNo
+      - branch
+      - commitSha
+      - durationMs
+      - errorClass
+      - fingerprintId
+      - finishedAt
+      - retryCount
+      - runId
+      - runStatus
+      - status
+      - targetId
+      - trigger
+    CaseHistoryView:
+      type: object
+      properties:
+        caseKey:
+          type: string
+        engines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseEngineHistory"
+        suiteKey:
+          type: string
+        title:
+          type: string
+      required:
+      - caseKey
+      - engines
+      - suiteKey
+      - title
     CaseResult:
       type: object
       properties:
@@ -962,31 +1197,6 @@ components:
       - retryCount
       - startOffsetMs
       - status
-    ConfidenceWork:
-      type: object
-      properties:
-        agreement:
-          type: number
-        base:
-          type: number
-        cap:
-          type: number
-        disagreementPenalty:
-          type: number
-        floor:
-          type: number
-        occurrenceBonus:
-          type: number
-        value:
-          type: number
-      required:
-      - agreement
-      - base
-      - cap
-      - disagreementPenalty
-      - floor
-      - occurrenceBonus
-      - value
     CreateRunRequest:
       type: object
       properties:
@@ -1023,7 +1233,32 @@ components:
       - suiteKey
       - targets
       - trigger
-    Evidence:
+    FailureConfidence:
+      type: object
+      properties:
+        agreement:
+          type: number
+        base:
+          type: number
+        cap:
+          type: number
+        disagreementPenalty:
+          type: number
+        floor:
+          type: number
+        occurrenceBonus:
+          type: number
+        value:
+          type: number
+      required:
+      - agreement
+      - base
+      - cap
+      - disagreementPenalty
+      - floor
+      - occurrenceBonus
+      - value
+    FailureEvidence:
       type: object
       properties:
         category:
@@ -1036,11 +1271,11 @@ components:
           - ENVIRONMENT
           - UNKNOWN
         confidence:
-          $ref: "#/components/schemas/ConfidenceWork"
+          $ref: "#/components/schemas/FailureConfidence"
         explanation:
           type: string
         facts:
-          $ref: "#/components/schemas/Facts"
+          $ref: "#/components/schemas/FailureFacts"
         ruleId:
           type: string
         ruleName:
@@ -1048,7 +1283,7 @@ components:
         rulesTried:
           type: array
           items:
-            $ref: "#/components/schemas/RuleCheck"
+            $ref: "#/components/schemas/FailureRuleCheck"
       required:
       - category
       - confidence
@@ -1057,12 +1292,16 @@ components:
       - ruleId
       - ruleName
       - rulesTried
-    Facts:
+    FailureFacts:
       type: object
       properties:
         attempts:
           type: integer
           format: int32
+        casesLabelledFlaky:
+          type: array
+          items:
+            type: string
         engines:
           type: integer
           format: int32
@@ -1097,6 +1336,7 @@ components:
           uniqueItems: true
       required:
       - attempts
+      - casesLabelledFlaky
       - engines
       - errorClass
       - occurrences
@@ -1139,7 +1379,7 @@ components:
           - CANCELLED
           - UNKNOWN
         evidence:
-          $ref: "#/components/schemas/Evidence"
+          $ref: "#/components/schemas/FailureEvidence"
         fingerprint:
           type: string
         firstSeenAt:
@@ -1159,10 +1399,10 @@ components:
         occurrences:
           type: array
           items:
-            $ref: "#/components/schemas/Occurrence"
+            $ref: "#/components/schemas/FailureOccurrence"
         override:
           oneOf:
-          - $ref: "#/components/schemas/Override"
+          - $ref: "#/components/schemas/FailureOverride"
           - type: "null"
         ruleCategory:
           type: string
@@ -1191,6 +1431,103 @@ components:
       - occurrences
       - override
       - ruleCategory
+      - ruleId
+    FailureOccurrence:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        attemptNo:
+          type: integer
+          format: int32
+        caseKey:
+          type:
+          - string
+          - "null"
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        errorMessage:
+          type:
+          - string
+          - "null"
+        occurredAt:
+          type: string
+          format: date-time
+        runId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        suiteKey:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+      required:
+      - attemptId
+      - attemptNo
+      - caseKey
+      - engine
+      - errorMessage
+      - occurredAt
+      - runId
+      - status
+      - suiteKey
+      - targetId
+    FailureOverride:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        reason:
+          type: string
+      required:
+      - at
+      - by
+      - category
+      - reason
+    FailureRuleCheck:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - PRODUCT_SUSPECTED
+          - TEST_BROKEN
+          - AUTOMATION_FLAKE
+          - TIMEOUT
+          - ENVIRONMENT
+          - UNKNOWN
+        matched:
+          type: boolean
+        name:
+          type: string
+        reason:
+          type: string
+        ruleId:
+          type: string
+      required:
+      - category
+      - matched
+      - name
+      - reason
       - ruleId
     FieldError:
       type: object
@@ -1248,77 +1585,6 @@ components:
       required:
       - expiresAt
       - url
-    Occurrence:
-      type: object
-      properties:
-        attemptId:
-          type: string
-          format: uuid
-        attemptNo:
-          type: integer
-          format: int32
-        caseKey:
-          type:
-          - string
-          - "null"
-        engine:
-          type: string
-          enum:
-          - chromium
-          - firefox
-          - webkit
-        errorMessage:
-          type:
-          - string
-          - "null"
-        occurredAt:
-          type: string
-          format: date-time
-        runId:
-          type: string
-          format: uuid
-        status:
-          type: string
-        suiteKey:
-          type: string
-        targetId:
-          type: string
-          format: uuid
-      required:
-      - attemptId
-      - attemptNo
-      - caseKey
-      - engine
-      - errorMessage
-      - occurredAt
-      - runId
-      - status
-      - suiteKey
-      - targetId
-    Override:
-      type: object
-      properties:
-        at:
-          type: string
-          format: date-time
-        by:
-          type: string
-        category:
-          type: string
-          enum:
-          - PRODUCT_SUSPECTED
-          - TEST_BROKEN
-          - AUTOMATION_FLAKE
-          - TIMEOUT
-          - ENVIRONMENT
-          - UNKNOWN
-        reason:
-          type: string
-      required:
-      - at
-      - by
-      - category
-      - reason
     OverrideRequest:
       type: object
       properties:
@@ -1450,32 +1716,6 @@ components:
           type: string
       required:
       - self
-    RuleCheck:
-      type: object
-      properties:
-        category:
-          type: string
-          enum:
-          - PRODUCT_SUSPECTED
-          - TEST_BROKEN
-          - AUTOMATION_FLAKE
-          - TIMEOUT
-          - ENVIRONMENT
-          - UNKNOWN
-        matched:
-          type: boolean
-        name:
-          type: string
-        reason:
-          type: string
-        ruleId:
-          type: string
-      required:
-      - category
-      - matched
-      - name
-      - reason
-      - ruleId
     RunCounts:
       type: object
       properties:
