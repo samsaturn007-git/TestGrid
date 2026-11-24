@@ -1,5 +1,6 @@
 package dev.testgrid.api.failure;
 
+import dev.testgrid.api.artifact.ArtifactView;
 import dev.testgrid.api.audit.AuditRepository.AuditEntry;
 import dev.testgrid.api.common.ApiNullable;
 import dev.testgrid.api.domain.Engine;
@@ -53,5 +54,8 @@ public record FailureGroupView(
       @ApiNullable String caseKey,
       String status,
       @ApiNullable String errorMessage,
-      Instant occurredAt) {}
+      Instant occurredAt,
+      // PRD-07 FR-7: a case's screenshot and trace plus the attempt's log; the log only for an
+      // attempt-level failure. Bytes only through POST /artifacts/{id}/links.
+      List<ArtifactView> artifacts) {}
 }

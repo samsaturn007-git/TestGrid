@@ -101,6 +101,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/failure-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Failure groups, most occurrences first
+         * @description category matches the shown category (override, else rule) and may repeat or be comma-separated; engine keeps groups with an occurrence on it; from (inclusive) and to (exclusive) bound lastSeenAt. Keyset-paginated with nextCursor.
+         */
+        get: operations["listFailureGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/failure-groups/{id}": {
         parameters: {
             query?: never;
@@ -643,6 +663,37 @@ export interface components {
             runs: number;
             statusesSeen: string[];
         };
+        FailureGroupLinks: {
+            self: string;
+        };
+        FailureGroupSummary: {
+            algoVersion: string;
+            caseKeys: string[];
+            /** @enum {string} */
+            category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            confidence: number;
+            engines: ("chromium" | "firefox" | "webkit")[];
+            /** @enum {string} */
+            errorClass: "ASSERTION" | "TEST_TIMEOUT" | "SELECTOR_NOT_FOUND" | "BROWSER_LAUNCH" | "WORKER_LOST" | "WORKER_SHUTDOWN" | "LEASE_EXPIRED" | "NETWORK" | "ARTIFACT_STORE" | "CONFIG" | "CANCELLED" | "UNKNOWN";
+            fingerprint: string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            links: components["schemas"]["FailureGroupLinks"];
+            normalisedMessage: string;
+            /** Format: int32 */
+            occurrenceCount: number;
+            overridden: boolean;
+            /** @enum {string} */
+            ruleCategory: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
+            ruleId: string;
+            /** Format: int32 */
+            runCount: number;
+            wholeTarget: boolean;
+        };
         FailureGroupView: {
             algoVersion: string;
             audit: components["schemas"]["AuditEntry"][];
@@ -669,6 +720,7 @@ export interface components {
             ruleId: string;
         };
         FailureOccurrence: {
+            artifacts: components["schemas"]["ArtifactView"][];
             /** Format: uuid */
             attemptId: string;
             /** Format: int32 */
@@ -729,6 +781,10 @@ export interface components {
             /** @enum {string} */
             category: "PRODUCT_SUSPECTED" | "TEST_BROKEN" | "AUTOMATION_FLAKE" | "TIMEOUT" | "ENVIRONMENT" | "UNKNOWN";
             reason: string;
+        };
+        PageFailureGroupSummary: {
+            items: components["schemas"]["FailureGroupSummary"][];
+            nextCursor: string | null;
         };
         PageProject: {
             items: components["schemas"]["Project"][];
@@ -1236,6 +1292,59 @@ export interface operations {
                 };
             };
             /** @description not-found (no revision of the suite has this case) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listFailureGroups: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the caller's project */
+                projectId?: string;
+                /** @description FailureCategory; repeat or comma-separate for several */
+                category?: string[];
+                /** @description chromium, firefox or webkit */
+                engine?: string;
+                /** @description ISO-8601 instant, inclusive */
+                from?: string;
+                /** @description ISO-8601 instant, exclusive */
+                to?: string;
+                /** @description 1-100, default 20 */
+                limit?: string;
+                /** @description Opaque; from a previous page's nextCursor */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of groups */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFailureGroupSummary"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found (projectId outside the caller's scope) */
             404: {
                 headers: {
                     [name: string]: unknown;
