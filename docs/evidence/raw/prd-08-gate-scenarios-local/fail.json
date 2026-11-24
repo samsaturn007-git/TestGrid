@@ -1,0 +1,121 @@
+{
+  "command": "run",
+  "runId": "3aeed8a6-614c-4994-93a9-779313bdcd15",
+  "runStatus": "FAILED",
+  "suiteKey": "checkout-smoke",
+  "outcome": "FAIL",
+  "exitCode": 1,
+  "reason": "blocking rules failed: critical-cases, max-failed-cases",
+  "deadlineReached": false,
+  "policy": { "id": "918ed9bf-3c43-4405-8b54-9939a1464ac7", "version": 1 },
+  "evaluatedAt": "2026-11-24T19:06:57.360955Z",
+  "rules": [
+    {
+      "ruleId": "required-targets",
+      "observed": 1,
+      "threshold": 1,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": [
+        {
+          "target": "local:chromium:0",
+          "engine": "chromium",
+          "caseKey": null,
+          "status": "FAILED",
+          "counted": true,
+          "detail": "ended FAILED with test results"
+        }
+      ]
+    },
+    {
+      "ruleId": "infra-error",
+      "observed": 0,
+      "threshold": 0,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "critical-cases",
+      "observed": 1,
+      "threshold": 0,
+      "outcome": "FAIL",
+      "blocking": true,
+      "evidence": [
+        {
+          "target": "local:chromium:0",
+          "engine": "chromium",
+          "caseKey": "cart-total",
+          "status": "FAILED",
+          "counted": true,
+          "detail": "critical case FAILED"
+        }
+      ]
+    },
+    {
+      "ruleId": "max-failed-cases",
+      "observed": 1,
+      "threshold": 0,
+      "outcome": "FAIL",
+      "blocking": true,
+      "evidence": [
+        {
+          "target": "local:chromium:0",
+          "engine": "chromium",
+          "caseKey": "cart-total",
+          "status": "FAILED",
+          "counted": true,
+          "detail": "FAILED"
+        }
+      ]
+    },
+    {
+      "ruleId": "max-flaky-rate",
+      "observed": 0,
+      "threshold": 0.2,
+      "outcome": "PASS",
+      "blocking": true,
+      "evidence": []
+    },
+    {
+      "ruleId": "duration-regression",
+      "observed": 1,
+      "threshold": 0,
+      "outcome": "FAIL",
+      "blocking": false,
+      "evidence": [
+        {
+          "target": null,
+          "engine": "chromium",
+          "caseKey": "cart-total",
+          "status": "FAILED",
+          "counted": true,
+          "detail": "2133 ms -> 13537 ms against run bd96ceaa-edab-48c4-8beb-4095df31e4e9"
+        }
+      ]
+    },
+    {
+      "ruleId": "quarantine-honored",
+      "observed": 0,
+      "threshold": null,
+      "outcome": "PASS",
+      "blocking": false,
+      "evidence": []
+    }
+  ],
+  "failedCases": [
+    {
+      "caseKey": "cart-total",
+      "engine": "chromium",
+      "status": "FAILED",
+      "target": "local:chromium:0",
+      "critical": true,
+      "detail": "FAILED"
+    }
+  ],
+  "quarantinedFailures": [],
+  "links": {
+    "run": "http://127.0.0.1:8080/api/v1/runs/3aeed8a6-614c-4994-93a9-779313bdcd15",
+    "quality": "http://127.0.0.1:8080/api/v1/runs/3aeed8a6-614c-4994-93a9-779313bdcd15/quality"
+  }
+}

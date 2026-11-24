@@ -1,0 +1,14 @@
+
+## Gate scenarios (PRD-08 T7)
+
+```text
+pass (CI-001)                expected 0  got 0  ok         outcome PASS
+fail (CI-002)                expected 1  got 1  ok         failed: cart-total@chromium critical
+bad token (CI-004)           expected 3  got 3  ok         401 unauthorized
+no token on a CI run (CI-004) expected 3  got 3  ok         401 unauthorized
+suite outside the manifest   expected 3  got 3  ok         422 unknown-suite
+workers stopped (CI-003)     expected 2  got 2  ok         deadlineReached true, run QUEUED
+quarantined (QUA-001)        expected 0  got 0  ok         quarantinedFailures: cart-total@chromium QUARANTINED_FAIL
+quarantine expired (QUA-002) expected 1  got 1  ok         outcome FAIL
+both changes audited (AC-4)  expected 2  got 2  ok         QUARANTINE_CREATED by local, QUARANTINE_EXPIRED by system
+```

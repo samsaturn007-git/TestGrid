@@ -1,0 +1,19 @@
+{
+  "command": "run",
+  "runId": "7da5a1be-150a-4ced-a6cc-f8d3b5e739c0",
+  "runStatus": "QUEUED",
+  "suiteKey": "checkout-smoke",
+  "outcome": "INDETERMINATE",
+  "exitCode": 2,
+  "reason": "the run did not finish and get evaluated before the deadline (last status QUEUED)",
+  "deadlineReached": true,
+  "policy": null,
+  "evaluatedAt": null,
+  "rules": [],
+  "failedCases": [],
+  "quarantinedFailures": [],
+  "links": {
+    "run": "http://127.0.0.1:8080/api/v1/runs/7da5a1be-150a-4ced-a6cc-f8d3b5e739c0",
+    "quality": "http://127.0.0.1:8080/api/v1/runs/7da5a1be-150a-4ced-a6cc-f8d3b5e739c0/quality"
+  }
+}

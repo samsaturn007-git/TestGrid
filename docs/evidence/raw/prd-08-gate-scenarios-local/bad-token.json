@@ -1,0 +1,10 @@
+{
+  "command": "run",
+  "exitCode": 3,
+  "outcome": null,
+  "error": {
+    "message": "GET /projects: 401 the token is not valid (check TESTGRID_TOKEN and its scopes)",
+    "status": 401,
+    "problemType": "unauthorized"
+  }
+}
