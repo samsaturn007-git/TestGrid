@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { classifyFailure, stripAnsi } from './classify.ts';
 import type { ErrorClass } from './classify.ts';
+import { framesOf } from './frames.ts';
 
 // FR-5: Playwright's JSON reporter output (pinned @playwright/test 1.65.1), parsed with zod
 // and mapped to contracts §7 case results by tag. Only the fields used are checked; the
@@ -15,6 +16,8 @@ export interface CaseResult {
   retryCount: number;
   errorClass: ErrorClass | null;
   errorMessage: string | null;
+  /** PRD-07 FR-1: top stack frames as `file:function` (CONFLICT_REGISTER N24); [] without one. */
+  errorFrames: string[];
   /** PRD-06 FR-7: ms after the attempt's first case started, from Playwright's own clock. */
   startOffsetMs: number | null;
 }
@@ -25,7 +28,7 @@ export class ReportError extends Error {
 
 const MAX_MESSAGE = 1000;
 
-const ErrorBody = z.looseObject({ message: z.string().optional() });
+const ErrorBody = z.looseObject({ message: z.string().optional(), stack: z.string().optional() });
 
 // PRD-06 FR-1: screenshot: 'only-on-failure' and trace: 'retain-on-failure' attach files here.
 const Attachment = z.looseObject({
@@ -109,6 +112,7 @@ function shortMessage(raw: string | undefined): string | null {
 function caseResult(
   caseKey: string,
   test: z.infer<typeof ReportTest>,
+  workerRoot: string,
 ): Omit<CaseResult, 'startOffsetMs'> {
   const results = test.results;
   const durationMs = Math.round(results.reduce((sum, r) => sum + r.duration, 0));
@@ -117,9 +121,11 @@ function caseResult(
   const last = results.at(-1);
   const failureOf = (r: z.infer<typeof TestResult> | undefined) => {
     const raw = r?.error?.message ?? r?.errors[0]?.message ?? '';
+    const stack = r?.error?.stack ?? r?.errors[0]?.stack;
     return {
       errorClass: r?.status === 'interrupted' ? 'UNKNOWN' : classifyFailure(raw, r?.status ?? ''),
       errorMessage: shortMessage(raw) ?? (r?.status === 'interrupted' ? 'interrupted' : null),
+      errorFrames: framesOf(stack, workerRoot),
     } as const;
   };
 
@@ -131,6 +137,7 @@ function caseResult(
       retryCount: 0,
       errorClass: null,
       errorMessage: null,
+      errorFrames: [],
     };
   }
   if (test.status === 'expected') {
@@ -141,6 +148,7 @@ function caseResult(
       retryCount,
       errorClass: null,
       errorMessage: null,
+      errorFrames: [],
     };
   }
   if (test.status === 'flaky') {
@@ -196,6 +204,7 @@ export function mapReport(
   report: PlaywrightReport,
   engine: string,
   caseKeys: readonly string[],
+  workerRoot: string,
 ): MappedResults {
   const claimed = new Set(caseKeys);
   const found = new Map<string, Omit<CaseResult, 'startOffsetMs'>>();
@@ -208,7 +217,7 @@ export function mapReport(
         if (test.projectName !== engine) continue;
         for (const key of keys) {
           if (found.has(key)) throw new ReportError(`case ${key} appears twice in the report`);
-          found.set(key, caseResult(key, test));
+          found.set(key, caseResult(key, test, workerRoot));
           const first = Date.parse(test.results[0]?.startTime ?? '');
           if (Number.isFinite(first)) started.set(key, first);
           const evidence = evidenceOf(key, test);
@@ -236,6 +245,7 @@ export function mapReport(
       retryCount: 0,
       errorClass: null,
       errorMessage: null,
+      errorFrames: [],
     }),
     startOffsetMs: offset(k),
   }));

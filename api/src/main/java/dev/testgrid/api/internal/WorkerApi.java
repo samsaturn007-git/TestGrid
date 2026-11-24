@@ -8,6 +8,7 @@ import dev.testgrid.api.domain.Executor;
 import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.TargetStatus;
+import dev.testgrid.api.failure.FingerprintV1;
 import dev.testgrid.api.worker.WorkerState;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -110,7 +111,16 @@ public final class WorkerApi {
       ErrorClass errorClass,
       @Size(max = 2000) String errorMessage,
       // PRD-06 FR-7: optional; ms after the attempt's first case started (Playwright's clock).
-      @Min(0) Integer startOffsetMs) {}
+      @Min(0) Integer startOffsetMs,
+      // PRD-07 FR-1: optional; the failure's top stack frames for fp_v1 (CONFLICT_REGISTER N24).
+      @Size(max = FingerprintV1.MAX_FRAMES)
+          List<@NotNull @Pattern(regexp = FingerprintV1.FRAME) String> errorFrames) {
+
+    /** Absent and {@code null} both mean "no frames". */
+    public List<String> frames() {
+      return errorFrames == null ? List.of() : errorFrames;
+    }
+  }
 
   public record WorkerError(@NotNull ErrorClass errorClass, @Size(max = 2000) String message) {}
 

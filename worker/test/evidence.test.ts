@@ -46,6 +46,7 @@ const failed: Completion = {
       retryCount: 1,
       errorClass: 'ASSERTION',
       errorMessage: 'x',
+      errorFrames: [],
       startOffsetMs: 0,
     },
     {
@@ -55,6 +56,7 @@ const failed: Completion = {
       retryCount: 0,
       errorClass: null,
       errorMessage: null,
+      errorFrames: [],
       startOffsetMs: 5,
     },
   ],

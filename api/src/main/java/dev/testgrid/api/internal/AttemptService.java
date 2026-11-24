@@ -404,11 +404,14 @@ public class AttemptService {
           errors.add(new FieldError(at + ".retryCount", "FLAKY means passed after a retry"));
         }
         boolean failed = c.status() == CaseStatus.FAILED || c.status() == CaseStatus.TIMED_OUT;
+        if (!c.frames().isEmpty() && c.errorClass() == null) {
+          errors.add(new FieldError(at + ".errorFrames", "frames need an errorClass"));
+        }
         if (failed && c.errorClass() == null) {
           errors.add(new FieldError(at + ".errorClass", "required for " + c.status()));
         }
         if ((c.status() == CaseStatus.PASSED || c.status() == CaseStatus.SKIPPED)
-            && (c.errorClass() != null || c.errorMessage() != null)) {
+            && (c.errorClass() != null || c.errorMessage() != null || !c.frames().isEmpty())) {
           errors.add(new FieldError(at, "a " + c.status() + " case has no error"));
         }
       }

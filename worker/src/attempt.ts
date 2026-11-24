@@ -147,7 +147,7 @@ export async function executeAttempt(
     const outputDir = path.join(dir, 'output');
     const { completion, cases } = outcome.stoppedBy
       ? { completion: STOPPED[outcome.stoppedBy](claim.timeoutMs), cases: [] }
-      : fromReport(claim, outcome, reportFile, deps.secrets);
+      : fromReport(claim, outcome, reportFile, deps.secrets, deps.workerRoot);
     if (onEvidence) {
       try {
         await onEvidence({ outputDir, cases, logTail: outcome.logTail }, completion);
@@ -166,8 +166,9 @@ function fromReport(
   outcome: RunOutcome,
   reportFile: string,
   secrets: readonly string[],
+  workerRoot: string,
 ): { completion: Completion; cases: CaseEvidence[] } {
-  const read = readReport(claim, outcome, reportFile, secrets);
+  const read = readReport(claim, outcome, reportFile, secrets, workerRoot);
   // Early exits (no report, unreadable report, nothing ran) are a bare completion with no files.
   return 'completion' in read ? read : { completion: read, cases: [] };
 }
@@ -177,6 +178,7 @@ function readReport(
   outcome: RunOutcome,
   reportFile: string,
   secrets: readonly string[],
+  workerRoot: string,
 ): Completion | { completion: Completion; cases: CaseEvidence[] } {
   let text: string;
   try {
@@ -191,7 +193,7 @@ function readReport(
   }
   let mapped;
   try {
-    mapped = mapReport(parseReport(text), claim.engine, claim.caseKeys);
+    mapped = mapReport(parseReport(text), claim.engine, claim.caseKeys, workerRoot);
   } catch (e) {
     if (!(e instanceof ReportError)) throw e;
     return infra('UNKNOWN', `${e.message} (exit code ${outcome.exitCode})`, secrets);
