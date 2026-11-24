@@ -1,5 +1,7 @@
 package dev.testgrid.api.run;
 
+import dev.testgrid.api.auth.ApiPrincipal;
+import dev.testgrid.api.auth.ApiScope;
 import dev.testgrid.api.common.Page;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.Trigger;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -187,6 +190,16 @@ public class RunController {
       description = "validation-failed",
       content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
   @ApiResponse(
+      responseCode = "401",
+      description =
+          "unauthorized: a trigger CI run without a token, or a malformed, unknown, revoked or"
+              + " expired token",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
+      responseCode = "403",
+      description = "forbidden: the token lacks runs:write",
+      content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
+  @ApiResponse(
       responseCode = "404",
       description = "not-found (project)",
       content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
@@ -199,7 +212,13 @@ public class RunController {
       description = "unknown-suite, engine-not-allowed or fixture-not-allowed",
       content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemBody.class)))
   public ResponseEntity<RunResponse> create(
-      @PathVariable UUID projectId, @Valid @RequestBody CreateRunRequest request) {
+      @PathVariable UUID projectId,
+      @Valid @RequestBody CreateRunRequest request,
+      HttpServletRequest http) {
+    if (request.trigger() == Trigger.CI) {
+      // CONFLICT_REGISTER N33: CI runs need the CI token; dashboard runs don't until PRD-12.
+      ApiPrincipal.require(http, ApiScope.RUNS_WRITE, "a trigger: CI run");
+    }
     RunCreationService.Result result = creation.create(projectId, request);
     URI location = URI.create(result.run().links().self());
     if (result.replay()) {

@@ -40,7 +40,7 @@ class RestartPersistenceTest {
     String key = "restart-" + UUID.randomUUID();
     String body =
         "{\"suiteKey\":\"checkout-smoke\",\"targets\":[{\"executor\":\"LOCAL\",\"engine\":"
-            + "\"chromium\"},{\"executor\":\"LOCAL\",\"engine\":\"webkit\"}],\"trigger\":\"CI\","
+            + "\"chromium\"},{\"executor\":\"LOCAL\",\"engine\":\"webkit\"}],\"trigger\":\"MANUAL\","
             + "\"idempotencyKey\":\""
             + key
             + "\",\"fixture\":{\"mode\":\"PASS\",\"seed\":7}}";

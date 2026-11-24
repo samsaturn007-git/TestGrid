@@ -612,6 +612,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: validation-failed
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "unauthorized: a trigger CI run without a token, or a malformed,\
+            \ unknown, revoked or expired token"
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: "forbidden: the token lacks runs:write"
         "404":
           content:
             application/problem+json:

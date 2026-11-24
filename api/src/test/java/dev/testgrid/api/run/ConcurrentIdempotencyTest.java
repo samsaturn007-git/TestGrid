@@ -132,7 +132,7 @@ class ConcurrentIdempotencyTest {
   private static String body(String key, String engine) {
     return "{\"suiteKey\":\"checkout-smoke\",\"targets\":[{\"executor\":\"LOCAL\",\"engine\":\""
         + engine
-        + "\"}],\"trigger\":\"CI\",\"idempotencyKey\":\""
+        + "\"}],\"trigger\":\"MANUAL\",\"idempotencyKey\":\""
         + key
         + "\"}";
   }
