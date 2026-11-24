@@ -178,6 +178,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/quality-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The project's active quality policy, or one past version, with the history
+         * @description versions lists every version newest first (at most 100).
+         */
+        get: operations["getQualityPolicy"];
+        /**
+         * Create the next policy version and make it active
+         * @description Never edits a version: the current one is deactivated and the next number is created, with an audit event that carries the reason. Runs already evaluated keep the version they were evaluated with.
+         */
+        put: operations["putQualityPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/run-counts": {
         parameters: {
             query?: never;
@@ -321,6 +345,26 @@ export interface paths {
          * @description Each event: id = eventId, event = type, data = the contracts Â§5 envelope. Send Last-Event-ID to resume; without it, the first event is RESYNC.
          */
         get: operations["streamRunEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{runId}/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The run's quality evaluation and rule report
+         * @description Made once, when the run finishes, with the policy active then; a finished run without one yet is evaluated by this request. Before the run finishes outcome is null. PASS maps to CLI exit 0, FAIL to 1, INDETERMINATE to 2 (contracts Â§2.4).
+         */
+        get: operations["getRunQuality"];
         put?: never;
         post?: never;
         delete?: never;
@@ -802,6 +846,10 @@ export interface components {
             items: components["schemas"]["Suite"][];
             nextCursor: string | null;
         };
+        PolicyUpdateRequest: {
+            policy: components["schemas"]["QualityPolicy"];
+            reason: string;
+        };
         /** @description RFC 9457 Problem Details */
         Problem: {
             detail: string;
@@ -825,6 +873,78 @@ export interface components {
             links: components["schemas"]["ResourceLinks"];
             name: string;
             slug: string;
+        };
+        QualityPolicy: {
+            durationRegression: components["schemas"]["QualityPolicyDurationRegression"];
+            failOnCriticalCase: boolean;
+            failOnInfraError: boolean;
+            /** Format: int32 */
+            maxFailedCases: number;
+            /** Format: double */
+            maxFlakyRate: number;
+            quarantine: components["schemas"]["QualityPolicyQuarantine"];
+            requiredTargets: string[];
+        };
+        QualityPolicyDurationRegression: {
+            blocking: boolean;
+            enabled: boolean;
+            /** Format: double */
+            maxRatio: number;
+            /** Format: int32 */
+            minDeltaMs: number;
+        };
+        QualityPolicyQuarantine: {
+            /** @enum {string} */
+            autoMode: "OFF" | "SUGGEST" | "AUTO";
+            honor: boolean;
+            /** Format: int32 */
+            maxActive: number;
+        };
+        QualityPolicyRef: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number;
+        };
+        QualityPolicyVersion: {
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number;
+        };
+        QualityPolicyView: {
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            policy: components["schemas"]["QualityPolicy"];
+            /** Format: uuid */
+            projectId: string;
+            /** Format: int32 */
+            version: number;
+            versions: components["schemas"]["QualityPolicyVersion"][];
+        };
+        QualityRuleEvidence: {
+            caseKey: string | null;
+            counted: boolean;
+            detail: string;
+            /** @enum {string|null} */
+            engine: "chromium" | "firefox" | "webkit" | null;
+            status: string | null;
+            target: string | null;
+        };
+        QualityRuleResult: {
+            blocking: boolean;
+            evidence: components["schemas"]["QualityRuleEvidence"][];
+            observed: number | null;
+            /** @enum {string} */
+            outcome: "PASS" | "FAIL" | "INDETERMINATE";
+            ruleId: string;
+            threshold: number | null;
         };
         RerunRequest: {
             idempotencyKey: string;
@@ -859,6 +979,20 @@ export interface components {
         RunLinks: {
             self: string;
             suite: string | null;
+        };
+        RunQualityView: {
+            /** Format: date-time */
+            evaluatedAt: string | null;
+            /** Format: uuid */
+            evaluationId: string | null;
+            /** @enum {string|null} */
+            outcome: "PASS" | "FAIL" | "INDETERMINATE" | null;
+            policy: components["schemas"]["QualityPolicyRef"] | null;
+            rules: components["schemas"]["QualityRuleResult"][];
+            /** Format: uuid */
+            runId: string;
+            /** @enum {string} */
+            runStatus: "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "TIMED_OUT" | "INFRA_ERROR" | "CANCELLED";
         };
         RunResponse: {
             /** Format: date-time */
@@ -1454,6 +1588,93 @@ export interface operations {
             };
         };
     };
+    getQualityPolicy: {
+        parameters: {
+            query?: {
+                /** @description A past version number; the active one when absent */
+                version?: string;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityPolicyView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putQualityPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description The new active version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityPolicyView"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     countRuns: {
         parameters: {
             query?: {
@@ -1824,6 +2045,37 @@ export interface operations {
             };
             /** @description rate-limited: too many open streams; see Retry-After */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getRunQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The evaluation, or an empty one while the run is unfinished */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunQualityView"];
+                };
+            };
+            /** @description not-found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

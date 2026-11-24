@@ -360,6 +360,86 @@ paths:
       summary: Projects the caller can see
       tags:
       - catalog
+  /api/v1/projects/{projectId}/quality-policy:
+    get:
+      description: versions lists every version newest first (at most 100).
+      operationId: getQualityPolicy
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: A past version number; the active one when absent
+        in: query
+        name: version
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityPolicyView"
+          description: The policy
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "The project's active quality policy, or one past version, with the\
+        \ history"
+      tags:
+      - quality
+    put:
+      description: "Never edits a version: the current one is deactivated and the\
+        \ next number is created, with an audit event that carries the reason. Runs\
+        \ already evaluated keep the version they were evaluated with."
+      operationId: putQualityPolicy
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyUpdateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityPolicyView"
+          description: The new active version
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: Create the next policy version and make it active
+      tags:
+      - quality
   /api/v1/projects/{projectId}/run-counts:
     get:
       description: "Every RunStatus is listed, zeros included, in the contract's order."
@@ -738,6 +818,36 @@ paths:
       summary: Server-sent events for one run
       tags:
       - runs
+  /api/v1/runs/{runId}/quality:
+    get:
+      description: "Made once, when the run finishes, with the policy active then;\
+        \ a finished run without one yet is evaluated by this request. Before the\
+        \ run finishes outcome is null. PASS maps to CLI exit 0, FAIL to 1, INDETERMINATE\
+        \ to 2 (contracts Â§2.4)."
+      operationId: getRunQuality
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunQualityView"
+          description: "The evaluation, or an empty one while the run is unfinished"
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: The run's quality evaluation and rule report
+      tags:
+      - quality
   /api/v1/runs/{runId}/rerun:
     post:
       description: "The new run has trigger RERUN and parentRunId set, and copies\
@@ -2094,6 +2204,18 @@ components:
       required:
       - items
       - nextCursor
+    PolicyUpdateRequest:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/QualityPolicy"
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 0
+      required:
+      - policy
+      - reason
     Problem:
       type: object
       description: RFC 9457 Problem Details
@@ -2143,6 +2265,212 @@ components:
       - links
       - name
       - slug
+    QualityPolicy:
+      type: object
+      properties:
+        durationRegression:
+          $ref: "#/components/schemas/QualityPolicyDurationRegression"
+        failOnCriticalCase:
+          type: boolean
+        failOnInfraError:
+          type: boolean
+        maxFailedCases:
+          type: integer
+          format: int32
+          maximum: 1000
+          minimum: 0
+        maxFlakyRate:
+          type: number
+          format: double
+          maximum: 1
+          minimum: 0
+        quarantine:
+          $ref: "#/components/schemas/QualityPolicyQuarantine"
+        requiredTargets:
+          type: array
+          items:
+            type: string
+            pattern: local:(chromium|firefox|webkit)
+          maxItems: 3
+          minItems: 1
+      required:
+      - durationRegression
+      - failOnCriticalCase
+      - failOnInfraError
+      - maxFailedCases
+      - maxFlakyRate
+      - quarantine
+      - requiredTargets
+    QualityPolicyDurationRegression:
+      type: object
+      properties:
+        blocking:
+          type: boolean
+        enabled:
+          type: boolean
+        maxRatio:
+          type: number
+          format: double
+          exclusiveMinimum: 1
+          maximum: 10
+        minDeltaMs:
+          type: integer
+          format: int32
+          maximum: 600000
+          minimum: 0
+      required:
+      - blocking
+      - enabled
+      - maxRatio
+      - minDeltaMs
+    QualityPolicyQuarantine:
+      type: object
+      properties:
+        autoMode:
+          type: string
+          enum:
+          - "OFF"
+          - SUGGEST
+          - AUTO
+        honor:
+          type: boolean
+        maxActive:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 0
+      required:
+      - autoMode
+      - honor
+      - maxActive
+    QualityPolicyRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int32
+      required:
+      - id
+      - version
+    QualityPolicyVersion:
+      type: object
+      properties:
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int32
+      required:
+      - active
+      - createdAt
+      - id
+      - version
+    QualityPolicyView:
+      type: object
+      properties:
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        policy:
+          $ref: "#/components/schemas/QualityPolicy"
+        projectId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int32
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QualityPolicyVersion"
+      required:
+      - active
+      - createdAt
+      - id
+      - policy
+      - projectId
+      - version
+      - versions
+    QualityRuleEvidence:
+      type: object
+      properties:
+        caseKey:
+          type:
+          - string
+          - "null"
+        counted:
+          type: boolean
+        detail:
+          type: string
+        engine:
+          type:
+          - string
+          - "null"
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        status:
+          type:
+          - string
+          - "null"
+        target:
+          type:
+          - string
+          - "null"
+      required:
+      - caseKey
+      - counted
+      - detail
+      - engine
+      - status
+      - target
+    QualityRuleResult:
+      type: object
+      properties:
+        blocking:
+          type: boolean
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/QualityRuleEvidence"
+        observed:
+          type:
+          - number
+          - "null"
+        outcome:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+          - INDETERMINATE
+        ruleId:
+          type: string
+        threshold:
+          type:
+          - number
+          - "null"
+      required:
+      - blocking
+      - evidence
+      - observed
+      - outcome
+      - ruleId
+      - threshold
     RerunRequest:
       type: object
       properties:
@@ -2234,6 +2562,56 @@ components:
       required:
       - self
       - suite
+    RunQualityView:
+      type: object
+      properties:
+        evaluatedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        evaluationId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        outcome:
+          type:
+          - string
+          - "null"
+          enum:
+          - PASS
+          - FAIL
+          - INDETERMINATE
+        policy:
+          oneOf:
+          - $ref: "#/components/schemas/QualityPolicyRef"
+          - type: "null"
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/QualityRuleResult"
+        runId:
+          type: string
+          format: uuid
+        runStatus:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - PASSED
+          - FAILED
+          - TIMED_OUT
+          - INFRA_ERROR
+          - CANCELLED
+      required:
+      - evaluatedAt
+      - evaluationId
+      - outcome
+      - policy
+      - rules
+      - runId
+      - runStatus
     RunResponse:
       type: object
       properties:

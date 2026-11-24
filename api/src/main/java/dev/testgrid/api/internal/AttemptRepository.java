@@ -8,6 +8,7 @@ import dev.testgrid.api.domain.FixtureMode;
 import dev.testgrid.api.domain.RunAggregate;
 import dev.testgrid.api.domain.RunStatus;
 import dev.testgrid.api.domain.TargetStatus;
+import dev.testgrid.api.quality.QualitySignal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -27,9 +28,11 @@ import org.springframework.stereotype.Repository;
 public class AttemptRepository {
 
   private final JdbcClient jdbc;
+  private final QualitySignal quality;
 
-  public AttemptRepository(JdbcClient jdbc) {
+  public AttemptRepository(JdbcClient jdbc, QualitySignal quality) {
     this.jdbc = jdbc;
+    this.quality = quality;
   }
 
   public record ClaimTarget(
@@ -367,6 +370,11 @@ public class AttemptRepository {
             .update();
     if (updated != 1) {
       throw new IllegalStateException("run " + runId + " is already terminal (" + before + ")");
+    }
+    if (terminal) {
+      // Every RUN_FINISHED writer comes through here: evaluate once this transaction commits
+      // (CONFLICT_REGISTER N35), never inside it.
+      quality.evaluateAfterCommit(runId);
     }
     return new RunChange(after, terminal);
   }
