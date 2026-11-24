@@ -574,9 +574,11 @@ testgrid run --project demo --suite checkout-smoke --engines chromium,firefox [-
 testgrid status <runId> | testgrid gate <runId> | testgrid compare --base last-green --head <runId>
 ```
 
-- Exit codes are listed in §2.4.
-- `--json` prints exactly one JSON document to stdout. Logs go to stderr.
-- The idempotency key defaults to the sha256 of `repo + commitSha + ciRef + suite + engines`, so a re-run of the same CI job reuses the same run.
+- Exit codes are listed in §2.4. `run` without `--wait`, `status` and `compare` exit 0 once the API answered; any of them is 2 when the API stays unreachable until the deadline and 3 on a `4xx` other than `429`.
+- `--json` prints exactly one JSON document to stdout, errors included (`{command, exitCode, outcome, error {message, status, problemType}}`). Logs go to stderr. `run --wait` and `gate` print `{command, runId, runStatus, suiteKey, outcome, exitCode, reason, deadlineReached, policy, evaluatedAt, rules, failedCases[], quarantinedFailures[], links}`.
+- The idempotency key is `tgcli:` + the sha256 of `repo + commitSha + ciRef + suite + engines` (sorted), plus the fixture mode and seed when given, so a retried step of the same CI job reuses the same run and one job can run several fixture scenarios. Inside GitHub Actions `ciRef` is `gh:<GITHUB_RUN_ID>/<GITHUB_RUN_ATTEMPT>`, so "Re-run jobs" starts a new run (CONFLICT_REGISTER N35). Without a CI ref the key is random.
+- `--timeout` bounds the whole command, retries included (default 15 min with `--wait`, otherwise 60 s). Polling and retries back off from 1 s doubling to 10 s with ±20 % jitter. Network errors, timeouts, `429` and `5xx` are retried until the deadline; other `4xx` are final.
+- The token comes from `TESTGRID_TOKEN` only, sent as `Authorization: Bearer`; a `--token` argument is refused. See `cli/README.md`.
 
 ---
 
