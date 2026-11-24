@@ -4,9 +4,11 @@
 # PRD-06 canary: a deliberately fake marker value that the canary scans look for (SEC-002).
 ea41bb89a34e952885991f3761f81ad1a356ff55:worker/test/config.test.ts:generic-api-key:48
 ea41bb89a34e952885991f3761f81ad1a356ff55:worker/test/config.test.ts:generic-api-key:55
-# The words "API docs, operations/troubleshooting page" in the PRD-13 T5 task text.
+# The PRD-13 T5 task text, whose words about generating the docs match generic-api-key.
 2872bf094f61d5a32841ac94ba96ee38bb8b0e90:BACKLOG.csv:generic-api-key:92
 2872bf094f61d5a32841ac94ba96ee38bb8b0e90:prds/PRD-13-portfolio-and-release.md:generic-api-key:34
 2872bf094f61d5a32841ac94ba96ee38bb8b0e90:progress.json:generic-api-key:585
 # The example idempotencyKey (a random UUID) in the create-run request of contracts §4.
 2872bf094f61d5a32841ac94ba96ee38bb8b0e90:docs/API_AND_DATA_CONTRACTS.md:generic-api-key:166
+# This file's own first wording of the comment above, in commit be4873c.
+be4873ca2a5ba00566c544911c0033053397d18f:.gitleaksignore:generic-api-key:7
