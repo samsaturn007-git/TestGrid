@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-23T17:53:54+00:00",
+  "updated_at": "2026-11-24T08:24:52+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -300,7 +300,7 @@
     "PRD-07": {
       "title": "Failure fingerprints, flaky-test analytics, case history and run comparison",
       "filename": "prds/PRD-07-failure-intelligence.md",
-      "status": "not_started",
+      "status": "in_progress",
       "deps": [
         "PRD-06"
       ],
