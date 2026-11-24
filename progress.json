@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T08:44:26+00:00",
+  "updated_at": "2026-11-24T09:56:10+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -315,7 +315,7 @@
         },
         "T2": {
           "label": "Implement rule-table classifier with confidence, evidence and audited human override.",
-          "done": false
+          "done": true
         },
         "T3": {
           "label": "Implement rolling case-health window, labels and case history API/UI.",
