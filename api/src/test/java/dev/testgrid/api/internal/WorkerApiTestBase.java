@@ -36,6 +36,11 @@ import tools.jackson.databind.json.JsonMapper;
 abstract class WorkerApiTestBase {
 
   static final String TOKEN = "test-only-worker-token-0123456789abcdef";
+  static final String DEFAULT_POLICY =
+      "{\"requiredTargets\":[\"local:chromium\"],\"failOnCriticalCase\":true,\"maxFailedCases\":0,"
+          + "\"failOnInfraError\":true,\"maxFlakyRate\":0.2,\"durationRegression\":{\"enabled\":true,"
+          + "\"maxRatio\":1.5,\"minDeltaMs\":500,\"blocking\":false},\"quarantine\":{\"honor\":true,"
+          + "\"maxActive\":5,\"autoMode\":\"SUGGEST\"}}";
   static final String ARTIFACT_ROOT = "target/test-artifacts/worker-api";
   static final String CHECKOUT_CASES_JSON =
       "[\"add-to-cart\",\"apply-coupon\",\"browse-catalog\",\"card-declined\",\"cart-total\","
@@ -62,6 +67,14 @@ abstract class WorkerApiTestBase {
             "TRUNCATE workers, outbox_events, quality_evaluations, artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, case_health, run_events, run_targets, runs")
         .update();
     jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
+    // TRUNCATE skips the row-level guards; put back exactly the policy V14 seeds.
+    jdbc.sql("TRUNCATE quarantines, quality_policies CASCADE").update();
+    jdbc.sql(
+            "INSERT INTO quality_policies (project_id, version, policy, active)"
+                + " VALUES (:p, 1, CAST(:policy AS jsonb), true)")
+        .param("p", LocalProject.ID)
+        .param("policy", DEFAULT_POLICY)
+        .update();
   }
 
   int internalPort() {
@@ -78,6 +91,23 @@ abstract class WorkerApiTestBase {
     }
     try {
       return http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  HttpResponse<String> send(String method, String path, String body) {
+    try {
+      return http.send(
+          HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + publicPort + path))
+              .header("Content-Type", "application/json")
+              .method(
+                  method,
+                  body == null
+                      ? HttpRequest.BodyPublishers.noBody()
+                      : HttpRequest.BodyPublishers.ofString(body))
+              .build(),
+          HttpResponse.BodyHandlers.ofString());
     } catch (Exception e) {
       throw new IllegalStateException(e);
     }

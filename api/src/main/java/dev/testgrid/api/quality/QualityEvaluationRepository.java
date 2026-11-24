@@ -22,7 +22,12 @@ public class QualityEvaluationRepository {
   private static final TypeReference<List<RuleResult>> RULES = new TypeReference<>() {};
 
   public record RunRow(
-      UUID id, UUID projectId, UUID suiteId, RunStatus status, Instant finishedAt) {}
+      UUID id,
+      UUID projectId,
+      UUID suiteId,
+      String suiteKey,
+      RunStatus status,
+      Instant finishedAt) {}
 
   public record StoredEvaluation(
       UUID id,
@@ -49,8 +54,9 @@ public class QualityEvaluationRepository {
   public Optional<RunRow> lockRun(UUID runId) {
     return jdbc.sql(
             """
-            SELECT id, project_id, suite_id, status, finished_at
-            FROM runs WHERE id = :r FOR UPDATE
+            SELECT r.id, r.project_id, r.suite_id, s.suite_key, r.status, r.finished_at
+            FROM runs r JOIN suites s ON s.id = r.suite_id
+            WHERE r.id = :r FOR UPDATE OF r
             """)
         .param("r", runId)
         .query((rs, i) -> {
@@ -59,6 +65,7 @@ public class QualityEvaluationRepository {
               rs.getObject("id", UUID.class),
               rs.getObject("project_id", UUID.class),
               rs.getObject("suite_id", UUID.class),
+              rs.getString("suite_key"),
               RunStatus.valueOf(rs.getString("status")),
               finished == null ? null : finished.toInstant());
         })

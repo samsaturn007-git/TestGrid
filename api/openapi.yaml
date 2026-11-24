@@ -440,6 +440,92 @@ paths:
       summary: Create the next policy version and make it active
       tags:
       - quality
+  /api/v1/projects/{projectId}/quarantines:
+    get:
+      description: state is computed from the database clock. suggestions lists FLAKY
+        cases without an active quarantine when the policy's autoMode is SUGGEST.
+      operationId: listQuarantines
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - description: "ACTIVE, EXPIRED or REVOKED; all when absent"
+        in: query
+        name: state
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuarantineList"
+          description: The quarantines
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: "Quarantines, newest first (at most 200), with the cap and suggestions"
+      tags:
+      - quality
+    post:
+      description: "expiresAt must be in the future and at most 30 days ahead (database\
+        \ clock). Writes a QUARANTINE_CREATED audit event. 409 quarantine-conflict\
+        \ when an active quarantine already covers the case, or maxActive are active."
+      operationId: createQuarantine
+      parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuarantineRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quarantine"
+          description: The quarantine
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: validation-failed
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: quarantine-conflict
+      summary: "Quarantine a case, on one engine or all, with a reason and an expiry"
+      tags:
+      - quality
   /api/v1/projects/{projectId}/run-counts:
     get:
       description: "Every RunStatus is listed, zeros included, in the contract's order."
@@ -573,6 +659,34 @@ paths:
       summary: Current revision of each suite in the manifest
       tags:
       - catalog
+  /api/v1/quarantines/{id}:
+    delete:
+      description: Writes a QUARANTINE_REVOKED audit event. The row is kept; revoking
+        one already revoked or expired changes nothing.
+      operationId: revokeQuarantine
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quarantine"
+          description: The quarantine
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: not-found
+      summary: Revoke a quarantine now
+      tags:
+      - quality
   /api/v1/runs:
     get:
       description: "Keyset-paginated: pass nextCursor back as cursor, with the same\
@@ -1631,6 +1745,37 @@ components:
       required:
       - regressionMinDeltaMs
       - regressionRatio
+    CreateQuarantineRequest:
+      type: object
+      properties:
+        caseKey:
+          type: string
+          maxLength: 64
+          minLength: 0
+          pattern: "[a-z0-9]+(-[a-z0-9]+)*"
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        expiresAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 0
+        source:
+          type: string
+          enum:
+          - MANUAL
+          - SUGGESTED
+          - AUTO
+      required:
+      - caseKey
+      - expiresAt
+      - reason
     CreateRunRequest:
       type: object
       properties:
@@ -2471,6 +2616,129 @@ components:
       - outcome
       - ruleId
       - threshold
+    Quarantine:
+      type: object
+      properties:
+        caseKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        engine:
+          type:
+          - string
+          - "null"
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        expiresAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        revokedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        source:
+          type: string
+          enum:
+          - MANUAL
+          - SUGGESTED
+          - AUTO
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - EXPIRED
+          - REVOKED
+      required:
+      - caseKey
+      - createdAt
+      - createdBy
+      - engine
+      - expiresAt
+      - id
+      - projectId
+      - reason
+      - revokedAt
+      - source
+      - state
+    QuarantineList:
+      type: object
+      properties:
+        activeCount:
+          type: integer
+          format: int32
+        autoMode:
+          type: string
+          enum:
+          - "OFF"
+          - SUGGEST
+          - AUTO
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Quarantine"
+        maxActive:
+          type: integer
+          format: int32
+        serverNow:
+          type: string
+          format: date-time
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuarantineSuggestion"
+      required:
+      - activeCount
+      - autoMode
+      - items
+      - maxActive
+      - serverNow
+      - suggestions
+    QuarantineSuggestion:
+      type: object
+      properties:
+        caseKey:
+          type: string
+        engine:
+          type: string
+          enum:
+          - chromium
+          - firefox
+          - webkit
+        flakyCount:
+          type: integer
+          format: int32
+        flipRate:
+          type: number
+          format: double
+        observed:
+          type: integer
+          format: int32
+        reason:
+          type: string
+        suiteKey:
+          type: string
+      required:
+      - caseKey
+      - engine
+      - flakyCount
+      - flipRate
+      - observed
+      - reason
+      - suiteKey
     RerunRequest:
       type: object
       properties:

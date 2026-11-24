@@ -10,7 +10,6 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,26 +18,8 @@ import org.junit.jupiter.api.Test;
  */
 class QualityApiTest extends WorkerApiTestBase {
 
-  static final String DEFAULT_POLICY =
-      "{\"requiredTargets\":[\"local:chromium\"],\"failOnCriticalCase\":true,\"maxFailedCases\":0,"
-          + "\"failOnInfraError\":true,\"maxFlakyRate\":0.2,\"durationRegression\":{\"enabled\":true,"
-          + "\"maxRatio\":1.5,\"minDeltaMs\":500,\"blocking\":false},\"quarantine\":{\"honor\":true,"
-          + "\"maxActive\":5,\"autoMode\":\"SUGGEST\"}}";
-
   private static final String POLICY_PATH =
       "/api/v1/projects/" + LocalProject.ID + "/quality-policy";
-
-  @BeforeEach
-  void resetPolicy() {
-    // TRUNCATE skips the row-level guard; put back exactly what V14 seeds.
-    jdbc.sql("TRUNCATE quality_evaluations, quality_policies").update();
-    jdbc.sql(
-            "INSERT INTO quality_policies (project_id, version, policy, active)"
-                + " VALUES (:p, 1, CAST(:policy AS jsonb), true)")
-        .param("p", LocalProject.ID)
-        .param("policy", DEFAULT_POLICY)
-        .update();
-  }
 
   private HttpResponse<String> put(String path, String body) {
     try {

@@ -8,7 +8,8 @@ import dev.testgrid.api.quality.QualityPolicyRepository.StoredPolicy;
 import dev.testgrid.api.quality.QualityRules.DurationFacts;
 import dev.testgrid.api.quality.QualityRules.Regression;
 import dev.testgrid.api.quality.QualityRules.RunFacts;
-import java.util.List;
+import dev.testgrid.api.quarantine.QuarantineRepository;
+import dev.testgrid.api.quarantine.QuarantineService;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -30,16 +31,22 @@ public class QualityEvaluator {
   private final QualityPolicyRepository policies;
   private final QualityFactsRepository facts;
   private final RunComparisonService comparisons;
+  private final QuarantineRepository quarantines;
+  private final QuarantineService quarantineService;
 
   public QualityEvaluator(
       QualityEvaluationRepository evaluations,
       QualityPolicyRepository policies,
       QualityFactsRepository facts,
-      RunComparisonService comparisons) {
+      RunComparisonService comparisons,
+      QuarantineRepository quarantines,
+      QuarantineService quarantineService) {
     this.evaluations = evaluations;
     this.policies = policies;
     this.facts = facts;
     this.comparisons = comparisons;
+    this.quarantines = quarantines;
+    this.quarantineService = quarantineService;
   }
 
   /**
@@ -73,8 +80,10 @@ public class QualityEvaluator {
             facts.cases(runId, run.suiteId()),
             duration(run, policy.policy()));
     QualityRules.Evaluation evaluation =
-        QualityRules.evaluate(policy.policy(), runFacts, List.of());
-    evaluations.insert(runId, policy.id(), policy.version(), evaluation);
+        QualityRules.evaluate(policy.policy(), runFacts, quarantines.activeFacts(run.projectId()));
+    if (evaluations.insert(runId, policy.id(), policy.version(), evaluation)) {
+      quarantineService.autoQuarantine(run.projectId(), run.suiteKey(), runId, policy.policy());
+    }
     log.info(
         "quality evaluated run={} outcome={} policyVersion={}",
         runId,

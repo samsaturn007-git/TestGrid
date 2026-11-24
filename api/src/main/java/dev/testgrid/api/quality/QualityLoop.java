@@ -1,5 +1,6 @@
 package dev.testgrid.api.quality;
 
+import dev.testgrid.api.quarantine.QuarantineService;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ public class QualityLoop implements SmartLifecycle {
   private final QualityEvaluator evaluator;
   private final QualityEvaluationRepository evaluations;
   private final QualityProperties properties;
+  private final QuarantineService quarantines;
   private final AtomicBoolean running = new AtomicBoolean();
   private Thread thread;
 
@@ -34,11 +36,13 @@ public class QualityLoop implements SmartLifecycle {
       QualitySignal signal,
       QualityEvaluator evaluator,
       QualityEvaluationRepository evaluations,
-      QualityProperties properties) {
+      QualityProperties properties,
+      QuarantineService quarantines) {
     this.signal = signal;
     this.evaluator = evaluator;
     this.evaluations = evaluations;
     this.properties = properties;
+    this.quarantines = quarantines;
   }
 
   @Override
@@ -92,6 +96,11 @@ public class QualityLoop implements SmartLifecycle {
   }
 
   private void sweep() {
+    try {
+      quarantines.recordExpiries();
+    } catch (RuntimeException e) {
+      log.warn("quarantine expiry pass failed; retrying next interval: {}", e.toString());
+    }
     try {
       evaluations
           .unevaluatedFinishedRuns(properties.sweepBatchSize())

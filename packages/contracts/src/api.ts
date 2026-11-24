@@ -202,6 +202,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/quarantines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quarantines, newest first (at most 200), with the cap and suggestions
+         * @description state is computed from the database clock. suggestions lists FLAKY cases without an active quarantine when the policy's autoMode is SUGGEST.
+         */
+        get: operations["listQuarantines"];
+        put?: never;
+        /**
+         * Quarantine a case, on one engine or all, with a reason and an expiry
+         * @description expiresAt must be in the future and at most 30 days ahead (database clock). Writes a QUARANTINE_CREATED audit event. 409 quarantine-conflict when an active quarantine already covers the case, or maxActive are active.
+         */
+        post: operations["createQuarantine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/run-counts": {
         parameters: {
             query?: never;
@@ -251,6 +275,26 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quarantines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a quarantine now
+         * @description Writes a QUARANTINE_REVOKED audit event. The row is kept; revoking one already revoked or expired changes nothing.
+         */
+        delete: operations["revokeQuarantine"];
         options?: never;
         head?: never;
         patch?: never;
@@ -666,6 +710,16 @@ export interface components {
             /** Format: double */
             regressionRatio: number;
         };
+        CreateQuarantineRequest: {
+            caseKey: string;
+            /** @enum {string} */
+            engine?: "chromium" | "firefox" | "webkit";
+            /** Format: date-time */
+            expiresAt: string;
+            reason: string;
+            /** @enum {string} */
+            source?: "MANUAL" | "SUGGESTED" | "AUTO";
+        };
         CreateRunRequest: {
             fixture?: components["schemas"]["Fixture"];
             idempotencyKey: string;
@@ -945,6 +999,52 @@ export interface components {
             outcome: "PASS" | "FAIL" | "INDETERMINATE";
             ruleId: string;
             threshold: number | null;
+        };
+        Quarantine: {
+            caseKey: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            /** @enum {string|null} */
+            engine: "chromium" | "firefox" | "webkit" | null;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            reason: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+            /** @enum {string} */
+            source: "MANUAL" | "SUGGESTED" | "AUTO";
+            /** @enum {string} */
+            state: "ACTIVE" | "EXPIRED" | "REVOKED";
+        };
+        QuarantineList: {
+            /** Format: int32 */
+            activeCount: number;
+            /** @enum {string} */
+            autoMode: "OFF" | "SUGGEST" | "AUTO";
+            items: components["schemas"]["Quarantine"][];
+            /** Format: int32 */
+            maxActive: number;
+            /** Format: date-time */
+            serverNow: string;
+            suggestions: components["schemas"]["QuarantineSuggestion"][];
+        };
+        QuarantineSuggestion: {
+            caseKey: string;
+            /** @enum {string} */
+            engine: "chromium" | "firefox" | "webkit";
+            /** Format: int32 */
+            flakyCount: number;
+            /** Format: double */
+            flipRate: number;
+            /** Format: int32 */
+            observed: number;
+            reason: string;
+            suiteKey: string;
         };
         RerunRequest: {
             idempotencyKey: string;
@@ -1675,6 +1775,102 @@ export interface operations {
             };
         };
     };
+    listQuarantines: {
+        parameters: {
+            query?: {
+                /** @description ACTIVE, EXPIRED or REVOKED; all when absent */
+                state?: string;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quarantines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineList"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createQuarantine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuarantineRequest"];
+            };
+        };
+        responses: {
+            /** @description The quarantine */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quarantine"];
+                };
+            };
+            /** @description validation-failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description quarantine-conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     countRuns: {
         parameters: {
             query?: {
@@ -1813,6 +2009,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageSuite"];
+                };
+            };
+            /** @description not-found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revokeQuarantine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quarantine */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quarantine"];
                 };
             };
             /** @description not-found */
