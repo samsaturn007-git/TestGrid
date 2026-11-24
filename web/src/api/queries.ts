@@ -20,6 +20,7 @@ import type {
   RunTimeline,
   ArtifactLink,
   CaseHistoryView,
+  RunComparisonView,
   SuiteDetail,
   WorkersResponse,
 } from './types.ts';
@@ -53,6 +54,7 @@ export const queryKeys = {
   artifactText: (artifactId: string) => ['artifacts', artifactId, 'text'] as const,
   runCounts: (projectId: string, hours: number) => ['run-counts', projectId, hours] as const,
   workers: ['workers'] as const,
+  comparison: (base: string, head: string) => ['runs', 'compare', base, head] as const,
   caseHistory: (suiteKey: string, caseKey: string) =>
     ['cases', suiteKey, caseKey, 'history'] as const,
 };
@@ -295,5 +297,18 @@ export function useCaseHistory(caseKey: string, suiteKey: string | null) {
         signal,
       ),
     enabled: suiteKey !== null && suiteKey !== '',
+  });
+}
+
+/** PRD-07 FR-6: `base` is a run ID or `last-green`. */
+export function useComparison(base: string | null, head: string | null) {
+  return useQuery({
+    queryKey: queryKeys.comparison(base ?? '', head ?? ''),
+    queryFn: ({ signal }) =>
+      apiGet<RunComparisonView>(
+        `/runs/compare?base=${encodeURIComponent(base ?? '')}&head=${encodeURIComponent(head ?? '')}`,
+        signal,
+      ),
+    enabled: Boolean(base) && Boolean(head),
   });
 }

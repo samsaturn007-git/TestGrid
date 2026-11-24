@@ -229,3 +229,12 @@ describe('case drawer link to the case history (PRD-07 FR-5)', () => {
     expect(link).toHaveAttribute('href', `/cases/cart-total?suiteKey=${failedRun.suiteKey}`);
   });
 });
+
+describe('compare with last green (PRD-07 FR-6)', () => {
+  it('links from the run header to the comparison with the last green run', async () => {
+    stubApi(catalogApi(), api(withArtifacts));
+    renderApp(`/runs/${failedRun.id}`);
+    const link = await screen.findByRole('link', { name: 'Compare with last green' });
+    expect(link).toHaveAttribute('href', `/compare?base=last-green&head=${failedRun.id}`);
+  });
+});

@@ -54,3 +54,7 @@ export type EngineHistory = Schemas['CaseEngineHistory'];
 export type CaseHealth = Schemas['CaseHealth'];
 export type CaseHealthLabel = Schemas['CaseHealth']['label'];
 export type CaseHistoryResult = Schemas['CaseHistoryResult'];
+export type RunComparisonView = Schemas['RunComparisonView'];
+export type ComparisonRow = Schemas['ComparisonRow'];
+export type ComparisonRun = Schemas['ComparisonRun'];
+export type ComparisonCategory = Schemas['ComparisonRow']['category'];
