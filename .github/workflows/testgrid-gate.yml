@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      GATE_FIXTURE: ${{ inputs.fixture || 'PASS' }}
+      GATE_FIXTURE: ${{ inputs.fixture || 'PRODUCT_DEFECT' }}
       GATE_ENGINES: chromium,firefox
       TESTGRID_WORKER_ENGINES: chromium,firefox
     steps:
