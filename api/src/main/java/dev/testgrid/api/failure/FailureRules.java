@@ -60,13 +60,15 @@ public record FailureRules(int version, Confidence confidence, List<Rule> rules)
       List<ErrorClass> errorClassIn,
       String statusSeen,
       Integer minPassedOnRetry,
-      Integer minAttempts) {
+      Integer minAttempts,
+      Boolean caseHealthFlaky) {
 
     boolean always() {
       return errorClassIn == null
           && statusSeen == null
           && minPassedOnRetry == null
-          && minAttempts == null;
+          && minAttempts == null
+          && caseHealthFlaky == null;
     }
   }
 

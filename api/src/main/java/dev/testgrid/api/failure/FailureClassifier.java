@@ -5,6 +5,7 @@ import dev.testgrid.api.domain.FailureCategory;
 import dev.testgrid.api.failure.FailureRules.Agreeing;
 import dev.testgrid.api.failure.FailureRules.Condition;
 import dev.testgrid.api.failure.FailureRules.Rule;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.Set;
 public final class FailureClassifier {
 
   /** What is known about one failure group, counted over all its occurrences. */
+  @Schema(name = "FailureFacts")
   public record Facts(
       ErrorClass errorClass,
       int occurrences,
@@ -26,18 +28,23 @@ public final class FailureClassifier {
       int runs,
       int engines,
       int passedOnRetry,
-      Set<String> statusesSeen) {
+      Set<String> statusesSeen,
+      // PRD-07 FR-4: the group's cases that case_health labels FLAKY, as "case on engine".
+      List<String> casesLabelledFlaky) {
 
     public Facts {
       statusesSeen = Set.copyOf(statusesSeen);
+      casesLabelledFlaky = List.copyOf(casesLabelledFlaky);
     }
   }
 
   /** One rule as it was tried, in order, up to and including the one that matched. */
+  @Schema(name = "FailureRuleCheck")
   public record RuleCheck(
       String ruleId, String name, FailureCategory category, boolean matched, String reason) {}
 
   /** {@code value = clamp(base + occurrenceBonus − disagreementPenalty, floor, cap)}. */
+  @Schema(name = "FailureConfidence")
   public record ConfidenceWork(
       BigDecimal base,
       BigDecimal occurrenceBonus,
@@ -47,6 +54,7 @@ public final class FailureClassifier {
       BigDecimal cap,
       BigDecimal value) {}
 
+  @Schema(name = "FailureEvidence")
   public record Evidence(
       String ruleId,
       String ruleName,
@@ -56,6 +64,7 @@ public final class FailureClassifier {
       List<RuleCheck> rulesTried,
       ConfidenceWork confidence) {}
 
+  @Schema(name = "FailureClassification")
   public record Classification(
       String ruleId, FailureCategory category, BigDecimal confidence, Evidence evidence) {}
 
@@ -123,6 +132,12 @@ public final class FailureClassifier {
     if (c.minAttempts() != null && f.attempts() < c.minAttempts()) {
       return "seen in " + f.attempts() + " attempt(s) (needs " + c.minAttempts() + ")";
     }
+    if (Boolean.TRUE.equals(c.caseHealthFlaky()) && f.casesLabelledFlaky().isEmpty()) {
+      return "no case of the group is labelled FLAKY by its history";
+    }
+    if (Boolean.FALSE.equals(c.caseHealthFlaky()) && !f.casesLabelledFlaky().isEmpty()) {
+      return "case history labels " + String.join(", ", f.casesLabelledFlaky()) + " FLAKY";
+    }
     return null;
   }
 
@@ -139,6 +154,9 @@ public final class FailureClassifier {
     }
     if (c.minAttempts() != null) {
       parts.add("seen in " + f.attempts() + " attempts across " + f.runs() + " run(s)");
+    }
+    if (Boolean.TRUE.equals(c.caseHealthFlaky())) {
+      parts.add("case history labels " + String.join(", ", f.casesLabelledFlaky()) + " FLAKY");
     }
     return parts.isEmpty() ? "matches every failure" : String.join(", ", parts);
   }

@@ -50,7 +50,7 @@ class RunEventStreamTest {
   @BeforeEach
   void setUp() {
     jdbc.sql(
-            "TRUNCATE artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, run_events, run_targets, runs")
+            "TRUNCATE artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, case_health, run_events, run_targets, runs")
         .update();
     runId = insertRun();
   }

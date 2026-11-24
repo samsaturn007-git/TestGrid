@@ -59,7 +59,7 @@ abstract class WorkerApiTestBase {
   @BeforeEach
   void clean() {
     jdbc.sql(
-            "TRUNCATE workers, outbox_events, artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, run_events, run_targets, runs")
+            "TRUNCATE workers, outbox_events, artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, case_health, run_events, run_targets, runs")
         .update();
     jdbc.sql("UPDATE scheduler_settings SET global_max_sessions = 3").update();
   }

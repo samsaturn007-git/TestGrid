@@ -1,6 +1,9 @@
 package dev.testgrid.api.internal;
 
 import dev.testgrid.api.artifact.ArtifactRepository;
+import dev.testgrid.api.casehealth.CaseHealthRecorder;
+import dev.testgrid.api.casehealth.CaseHealthRepository;
+import dev.testgrid.api.casehealth.CaseHealthWindow;
 import dev.testgrid.api.common.Hashing;
 import dev.testgrid.api.common.LogContext;
 import dev.testgrid.api.common.Redactor;
@@ -61,6 +64,7 @@ public class AttemptService {
   private final DispatchRepository dispatch;
   private final ArtifactRepository artifactRows;
   private final FailureRecorder failures;
+  private final CaseHealthRecorder caseHealth;
 
   public AttemptService(
       AttemptRepository attempts,
@@ -70,7 +74,8 @@ public class AttemptService {
       DispatchSignal signal,
       DispatchRepository dispatch,
       ArtifactRepository artifactRows,
-      FailureRecorder failures) {
+      FailureRecorder failures,
+      CaseHealthRecorder caseHealth) {
     this.attempts = attempts;
     this.properties = properties;
     this.settings = settings;
@@ -79,6 +84,7 @@ public class AttemptService {
     this.dispatch = dispatch;
     this.artifactRows = artifactRows;
     this.failures = failures;
+    this.caseHealth = caseHealth;
   }
 
   /**
@@ -282,7 +288,8 @@ public class AttemptService {
 
       // PRD-07 FR-1: colours off before redaction (the redactor drops ESC but keeps "[31m"), and
       // redaction before fingerprinting, so a secret is masked before its digits become <N>.
-      UUID projectId = attempts.projectOf(attempt.runId());
+      AttemptRepository.AttemptScope where = attempts.scopeOf(attempt.targetId());
+      UUID projectId = where.projectId();
       Map<String, String> messages = new HashMap<>();
       List<FailureRecorder.CaseFailure> caseFailures = new ArrayList<>();
       for (CaseResult c : request.caseResults()) {
@@ -333,6 +340,19 @@ public class AttemptService {
       if (attempts.finishTarget(attempt.targetId(), result.status()) != 1) {
         throw new IllegalStateException("target of an active attempt was already terminal");
       }
+      // FR-4: each case's window, before the groups are relabelled, so rule R4 sees the label
+      // this result produces.
+      Map<CaseHealthRepository.Key, Character> outcomes = new HashMap<>();
+      for (CaseResult c : request.caseResults()) {
+        Character letter = CaseHealthWindow.letter(c.status());
+        if (letter != null) {
+          outcomes.put(
+              new CaseHealthRepository.Key(
+                  projectId, where.suiteKey(), c.caseKey(), where.engine()),
+              letter);
+        }
+      }
+      caseHealth.record(outcomes);
       List<UUID> touched = new ArrayList<>(fingerprintOf.values());
       if (attemptFingerprint != null) {
         touched.add(attemptFingerprint);

@@ -5,6 +5,8 @@
 #   statusSeen:       at least one occurrence has this case or attempt status
 #   minPassedOnRetry: at least this many occurrences passed on a Playwright retry (status FLAKY)
 #   minAttempts:      the group was seen in at least this many distinct attempts (any run)
+#   caseHealthFlaky:  true: case_health labels at least one of the group's cases FLAKY (FR-4);
+#                     false: none of them
 # Confidence = baseConfidence + perExtraOccurrence × min(occurrences − 1, maxExtraOccurrences)
 #   − disagreementPenalty × (1 − agreement), kept between floor and cap and rounded to 0.01.
 # agreement is the share of occurrences that fit the rule: by default those that did not pass on
@@ -43,14 +45,16 @@ rules:
     when:
       - errorClassIn: [BROWSER_LAUNCH, WORKER_LOST, NETWORK]
   - id: R4
-    name: assertion-passed-on-retry
+    name: assertion-flaky
     category: AUTOMATION_FLAKE
     baseConfidence: 0.60
     agreeing: passedOnRetry
-    explanation: The same assertion failure passed when Playwright retried it, so it is likely timing in the test.
+    explanation: The assertion passed when Playwright retried it, or the case's recent history flips between passing and failing, so it is likely timing in the test.
     when:
       - errorClassIn: [ASSERTION]
         minPassedOnRetry: 1
+      - errorClassIn: [ASSERTION]
+        caseHealthFlaky: true
   - id: R5
     name: assertion-reproduced
     category: PRODUCT_SUSPECTED

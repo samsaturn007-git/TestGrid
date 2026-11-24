@@ -301,10 +301,22 @@ public class AttemptRepository {
    * {@link #recomputeRun} does) is a lock upgrade, and two transactions upgrading on the same run
    * deadlock. Call it right after locking the target, so the order stays target before run.
    */
-  public UUID projectOf(UUID runId) {
-    return jdbc.sql("SELECT project_id FROM runs WHERE id = :r")
-        .param("r", runId)
-        .query(UUID.class)
+  /** Where an attempt's results belong: its project, suite key and engine. */
+  public record AttemptScope(UUID projectId, String suiteKey, Engine engine) {}
+
+  public AttemptScope scopeOf(UUID targetId) {
+    return jdbc.sql(
+            """
+            SELECT r.project_id, s.suite_key, t.engine
+            FROM run_targets t JOIN runs r ON r.id = t.run_id JOIN suites s ON s.id = r.suite_id
+            WHERE t.id = :t
+            """)
+        .param("t", targetId)
+        .query((rs, i) ->
+            new AttemptScope(
+                rs.getObject("project_id", UUID.class),
+                rs.getString("suite_key"),
+                Engine.fromWireName(rs.getString("engine"))))
         .single();
   }
 

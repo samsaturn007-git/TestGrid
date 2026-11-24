@@ -7,6 +7,7 @@ import dev.testgrid.api.failure.FingerprintV1.Fingerprint;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -97,8 +98,30 @@ public class FailureRepository {
                 rs.getInt("runs"),
                 rs.getInt("engines"),
                 rs.getInt("passed_on_retry"),
-                strings(rs.getArray("statuses"))))
+                strings(rs.getArray("statuses")),
+                flakyCases(fingerprintId)))
         .single();
+  }
+
+  /** The group's cases that case_health currently labels FLAKY, as "case on engine", sorted. */
+  private List<String> flakyCases(UUID fingerprintId) {
+    return jdbc.sql(
+            """
+            SELECT DISTINCT cr.case_key || ' on ' || t.engine AS k
+            FROM case_results cr
+            JOIN attempts a ON a.id = cr.attempt_id
+            JOIN run_targets t ON t.id = a.target_id
+            JOIN runs r ON r.id = t.run_id
+            JOIN suites s ON s.id = r.suite_id
+            JOIN case_health h
+              ON h.project_id = r.project_id AND h.suite_key = s.suite_key
+             AND h.case_key = cr.case_key AND h.engine = t.engine
+            WHERE cr.fingerprint_id = :id AND h.label = 'FLAKY'
+            ORDER BY k
+            """)
+        .param("id", fingerprintId)
+        .query(String.class)
+        .list();
   }
 
   public void classify(UUID fingerprintId, Classification c) {

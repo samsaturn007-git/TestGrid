@@ -19,7 +19,7 @@ class FailureClassifierTest {
   private static Facts facts(
       ErrorClass errorClass, int occurrences, int attempts, int passedOnRetry, String... statuses) {
     return new Facts(
-        errorClass, occurrences, attempts, attempts, 1, passedOnRetry, Set.of(statuses));
+        errorClass, occurrences, attempts, attempts, 1, passedOnRetry, Set.of(statuses), List.of());
   }
 
   private static BigDecimal d(String value) {
@@ -83,7 +83,9 @@ class FailureClassifierTest {
     assertThat(c.evidence().rulesTried().get(1).reason())
         .isEqualTo("error class ASSERTION is not [TEST_TIMEOUT] or no occurrence is TIMED_OUT");
     assertThat(c.evidence().rulesTried().get(3).reason())
-        .isEqualTo("0 of 3 occurrences passed on a retry (needs 1)");
+        .isEqualTo(
+            "0 of 3 occurrences passed on a retry (needs 1) or no case of the group is labelled"
+                + " FLAKY by its history");
     assertThat(c.evidence().explanation()).contains("may be wrong");
   }
 
@@ -116,6 +118,27 @@ class FailureClassifierTest {
   }
 
   @Test
+  void anAssertionWhoseCaseHistoryIsFlakyIsAFlakeEvenWithoutARetry() {
+    Facts history =
+        new Facts(
+            ErrorClass.ASSERTION,
+            3,
+            3,
+            3,
+            1,
+            0,
+            Set.of("FAILED"),
+            List.of("checkout-happy-path on firefox"));
+    Classification c = classifier.classify(history);
+    assertThat(c.category()).isEqualTo(FailureCategory.AUTOMATION_FLAKE);
+    assertThat(c.evidence().rulesTried().getLast().reason())
+        .isEqualTo(
+            "error class ASSERTION, case history labels checkout-happy-path on firefox FLAKY");
+    // History alone is weaker evidence than a retry: no occurrence agrees, 0.60 + 0.04 − 0.30.
+    assertThat(c.confidence()).isEqualByComparingTo(d("0.34"));
+  }
+
+  @Test
   void int002NoInfrastructureFaultIsEverLabelledProductSuspected() {
     // Every infrastructure error class against every combination of the facts the rules read.
     List<String> violations = new ArrayList<>();
@@ -129,7 +152,16 @@ class FailureClassifierTest {
                     Set.of("INFRA_ERROR"),
                     Set.of("FAILED", "FLAKY"),
                     Set.of("TIMED_OUT"))) {
-              Facts f = new Facts(errorClass, occurrences, attempts, attempts, 3, flaky, statuses);
+              Facts f =
+                  new Facts(
+                      errorClass,
+                      occurrences,
+                      attempts,
+                      attempts,
+                      3,
+                      flaky,
+                      statuses,
+                      List.of("cart-total on chromium"));
               if (classifier.classify(f).category() == FailureCategory.PRODUCT_SUSPECTED) {
                 violations.add(f.toString());
               }

@@ -14,7 +14,7 @@ final class RunTestSupport {
   static void clearRuns(JdbcClient jdbc) {
     // TRUNCATE doesn't fire run_events' row-level append-only trigger.
     jdbc.sql(
-            "TRUNCATE artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, run_events, run_targets, runs")
+            "TRUNCATE artifacts, attempt_heartbeats, case_results, attempts, failure_fingerprints, audit_events, case_health, run_events, run_targets, runs")
         .update();
   }
 
