@@ -10,6 +10,8 @@ export interface Deps {
   env: Readonly<Record<string, string | undefined>>;
   stdout: (text: string) => void;
   stderr: (text: string) => void;
+  /** Appends to a file the caller named, such as $GITHUB_STEP_SUMMARY. */
+  appendFile: (path: string, text: string) => void;
 }
 
 const REQUEST_TIMEOUT_MS = 10_000;

@@ -25,6 +25,7 @@ export interface Common {
   json: boolean;
   wait: boolean;
   timeoutMs: number;
+  summaryFile: string | null;
 }
 
 export interface RunCommand extends Common {
@@ -58,12 +59,13 @@ export const USAGE = `usage:
   testgrid run --project demo --suite checkout-smoke --engines chromium,firefox
                [--fixture PASS [--seed 42]] [--wait] [--timeout 15m] [--json]
                [--trigger CI|MANUAL] [--repo owner/name] [--commit <sha>] [--branch <name>]
-               [--ci-ref <system>:<id>] [--idempotency-key <key>]
+               [--ci-ref <system>:<id>] [--idempotency-key <key>] [--summary-file <path>]
   testgrid status <runId> [--timeout 60s] [--json]
-  testgrid gate <runId> [--wait] [--timeout 15m] [--json]
+  testgrid gate <runId> [--wait] [--timeout 15m] [--json] [--summary-file <path>]
   testgrid compare --base last-green|<runId> --head <runId> [--timeout 60s] [--json]
 
 common: --api-url <url> (or TESTGRID_API_URL, default http://127.0.0.1:8080)
+        --summary-file appends a markdown report (run --wait, gate), e.g. $GITHUB_STEP_SUMMARY
         --timeout bounds the whole command, retries included (default 15m with --wait, else 60s)
 token:  TESTGRID_TOKEN only; it is never accepted as an argument
 exit:   0 PASS, 1 FAIL, 2 INDETERMINATE (infra, unfinished, deadline), 3 usage, config or auth
@@ -86,6 +88,7 @@ const OPTIONS = {
   branch: { type: 'string' },
   'ci-ref': { type: 'string' },
   'idempotency-key': { type: 'string' },
+  'summary-file': { type: 'string' },
   base: { type: 'string' },
   head: { type: 'string' },
   token: { type: 'string' },
@@ -110,9 +113,10 @@ const ALLOWED: Record<string, readonly (keyof typeof OPTIONS)[]> = {
     'idempotency-key',
     'wait',
     'timeout',
+    'summary-file',
   ],
   status: ['timeout'],
-  gate: ['wait', 'timeout'],
+  gate: ['wait', 'timeout', 'summary-file'],
   compare: ['base', 'head', 'timeout'],
 };
 
@@ -198,7 +202,18 @@ function commonOptions(values: Values, env: Readonly<Record<string, string | und
     timeoutMs = parsed;
   }
   const token = env.TESTGRID_TOKEN?.trim() ? env.TESTGRID_TOKEN.trim() : null;
-  return { apiUrl: url.toString(), token, json: values.json ?? false, wait, timeoutMs };
+  const summaryFile = values['summary-file'] ?? null;
+  if (summaryFile !== null && summaryFile.trim() === '') {
+    usage('--summary-file needs a path');
+  }
+  return {
+    apiUrl: url.toString(),
+    token,
+    json: values.json ?? false,
+    wait,
+    timeoutMs,
+    summaryFile,
+  };
 }
 
 function runCommand(

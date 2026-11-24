@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import { appendFileSync } from 'node:fs';
 import { parseCommand, USAGE } from './args.ts';
 import type { Command } from './args.ts';
 import type { Deps } from './client.ts';
 import { execute } from './commands.ts';
+import { errorMarkdown, gateMarkdown } from './markdown.ts';
 import { CliError, EXIT } from './exit-codes.ts';
 import type { ExitCode } from './exit-codes.ts';
 
@@ -24,10 +26,30 @@ export async function main(argv: readonly string[], deps: Deps): Promise<ExitCod
   try {
     const result = await execute(command, deps);
     deps.stdout(command.json ? JSON.stringify(result.document) + '\n' : result.text);
+    if (command.summaryFile && result.report) {
+      summary(deps, command.summaryFile, gateMarkdown(result.report));
+    }
     return result.exitCode;
   } catch (error) {
-    return fail(error, command.json, command.name, deps);
+    const code = fail(error, command.json, command.name, deps);
+    if (command.summaryFile) {
+      summary(deps, command.summaryFile, errorMarkdown(command.name, code, messageOf(error)));
+    }
+    return code;
   }
+}
+
+/** A summary that can't be written is reported, but never changes the gate's exit code. */
+function summary(deps: Deps, path: string, markdown: string): void {
+  try {
+    deps.appendFile(path, markdown);
+  } catch (error) {
+    deps.stderr(`testgrid: could not write the summary to ${path}: ${messageOf(error)}\n`);
+  }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function fail(error: unknown, json: boolean, command: string | null, deps: Deps): ExitCode {
@@ -62,6 +84,7 @@ if (isEntry) {
     env: process.env,
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),
+    appendFile: (path, text) => appendFileSync(path, text, 'utf8'),
   });
   process.exitCode = code;
 }

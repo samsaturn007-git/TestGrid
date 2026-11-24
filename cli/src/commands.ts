@@ -21,6 +21,7 @@ export interface Result {
   exitCode: ExitCode;
   document: Record<string, unknown>;
   text: string;
+  report?: GateReport;
 }
 
 export interface CaseLine {
@@ -202,6 +203,7 @@ async function report(
     exitCode: gateReport.exitCode,
     document: gateReport as unknown as Record<string, unknown>,
     text: qualityText(gateReport),
+    report: gateReport,
   };
 }
 

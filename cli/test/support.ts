@@ -25,6 +25,7 @@ export function harness(
   let out = '';
   let err = '';
   const sleeps: number[] = [];
+  const files = new Map<string, string>();
   const deps: Deps = {
     fetch: (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -62,11 +63,18 @@ export function harness(
     stderr: (text) => {
       err += text;
     },
+    appendFile: (path, text) => {
+      if (path.startsWith('/unwritable/')) {
+        throw new Error('EACCES: permission denied');
+      }
+      files.set(path, (files.get(path) ?? '') + text);
+    },
   };
   return {
     deps,
     requests,
     sleeps,
+    files,
     stdout: () => out,
     stderr: () => err,
     elapsed: () => clock - 1_000_000,

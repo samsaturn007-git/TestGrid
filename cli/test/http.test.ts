@@ -46,6 +46,7 @@ describe('over real HTTP', () => {
         out += t;
       },
       stderr: () => {},
+      appendFile: () => {},
       out: () => out,
     };
   }
