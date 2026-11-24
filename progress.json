@@ -1,7 +1,7 @@
 {
   "project": "TestGrid",
   "version": 2,
-  "updated_at": "2026-11-24T12:26:11+00:00",
+  "updated_at": "2026-11-24T14:16:08+00:00",
   "prds": {
     "PRD-00": {
       "title": "Product definition, ADRs and delivery governance",
@@ -335,7 +335,7 @@
         },
         "T7": {
           "label": "Publish confusion matrix, precision/recall per category and known ambiguous cases.",
-          "done": false
+          "done": true
         }
       },
       "evidence": null,
