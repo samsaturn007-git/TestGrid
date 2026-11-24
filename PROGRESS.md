@@ -2,7 +2,7 @@
 
 > Generated from `progress.json` by `python3 tools/progress.py report`. Status is user/agent-reported and requires independent evidence verification.
 
-**Core PRDs complete:** 8/14  |  **Core checklist progress:** 58/93 tasks (62.4%)
+**Core PRDs complete:** 8/14  |  **Core checklist progress:** 59/93 tasks (63.4%)
 
 | PRD | Status | Task progress | Effort | Dependencies | Evidence |
 |---|---|---:|---|---|---|
@@ -14,7 +14,7 @@
 | [PRD-05](prds/PRD-05-live-dashboard.md) | done | 7/7 | 14–20 h | PRD-04 | [docs/evidence/PRD-05.md](docs/evidence/PRD-05.md) |
 | [PRD-06](prds/PRD-06-artifacts-and-timeline.md) | done | 6/6 | 12–18 h | PRD-05 | [docs/evidence/PRD-06.md](docs/evidence/PRD-06.md) |
 | [PRD-07](prds/PRD-07-failure-intelligence.md) | done | 7/7 | 16–24 h | PRD-06 | [docs/evidence/PRD-07.md](docs/evidence/PRD-07.md) |
-| [PRD-08](prds/PRD-08-ci-quality-gates.md) | in_progress | 5/7 | 14–20 h | PRD-07 | — |
+| [PRD-08](prds/PRD-08-ci-quality-gates.md) | in_progress | 6/7 | 14–20 h | PRD-07 | — |
 | [PRD-09](prds/PRD-09-browserstack-adapter.md) | not_started | 0/7 | 8–14 h | PRD-08 | — |
 | [PRD-10](prds/PRD-10-chaos-and-recovery.md) | not_started | 0/6 | 12–20 h | PRD-09 | — |
 | [PRD-11](prds/PRD-11-adaptive-scheduler.md) | not_started | 0/7 | 16–24 h | PRD-10 | — |
