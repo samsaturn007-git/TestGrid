@@ -47,3 +47,10 @@ export type TimelineTarget = Schemas['TimelineTarget'];
 export type TimelineAttempt = Schemas['TimelineAttempt'];
 export type HeartbeatGap = Schemas['HeartbeatGap'];
 export type TimelineEvent = Schemas['TimelineEvent'];
+
+// PRD-07
+export type CaseHistoryView = Schemas['CaseHistoryView'];
+export type EngineHistory = Schemas['CaseEngineHistory'];
+export type CaseHealth = Schemas['CaseHealth'];
+export type CaseHealthLabel = Schemas['CaseHealth']['label'];
+export type CaseHistoryResult = Schemas['CaseHistoryResult'];

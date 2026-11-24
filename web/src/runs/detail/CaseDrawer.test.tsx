@@ -219,3 +219,13 @@ describe('attempt timeline (PRD-06 FR-7, AC-5)', () => {
     await waitFor(() => expectNoSeriousA11yViolations());
   });
 });
+
+describe('case drawer link to the case history (PRD-07 FR-5)', () => {
+  it('links to the case history of this suite', async () => {
+    const { dialog } = await openCartTotal();
+    const link = within(dialog).getByRole('link', {
+      name: 'Case history and health for cart-total',
+    });
+    expect(link).toHaveAttribute('href', `/cases/cart-total?suiteKey=${failedRun.suiteKey}`);
+  });
+});

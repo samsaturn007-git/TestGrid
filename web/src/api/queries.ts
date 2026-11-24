@@ -19,6 +19,7 @@ import type {
   RunResults,
   RunTimeline,
   ArtifactLink,
+  CaseHistoryView,
   SuiteDetail,
   WorkersResponse,
 } from './types.ts';
@@ -52,6 +53,8 @@ export const queryKeys = {
   artifactText: (artifactId: string) => ['artifacts', artifactId, 'text'] as const,
   runCounts: (projectId: string, hours: number) => ['run-counts', projectId, hours] as const,
   workers: ['workers'] as const,
+  caseHistory: (suiteKey: string, caseKey: string) =>
+    ['cases', suiteKey, caseKey, 'history'] as const,
 };
 
 export function useProjects() {
@@ -277,5 +280,20 @@ export function useWorkers(refreshMs = WORKERS_REFRESH_MS) {
     queryKey: queryKeys.workers,
     queryFn: ({ signal }) => apiGet<WorkersResponse>('/workers', signal),
     refetchInterval: refreshMs,
+  });
+}
+
+/** PRD-07 FR-5: the last 20 results per engine and each engine's health label. */
+export const CASE_HISTORY_LIMIT = 20;
+
+export function useCaseHistory(caseKey: string, suiteKey: string | null) {
+  return useQuery({
+    queryKey: queryKeys.caseHistory(suiteKey ?? '', caseKey),
+    queryFn: ({ signal }) =>
+      apiGet<CaseHistoryView>(
+        `/cases/${encodeURIComponent(caseKey)}/history?suiteKey=${encodeURIComponent(suiteKey ?? '')}&limit=${CASE_HISTORY_LIMIT}`,
+        signal,
+      ),
+    enabled: suiteKey !== null && suiteKey !== '',
   });
 }

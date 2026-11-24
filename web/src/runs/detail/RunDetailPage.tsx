@@ -131,7 +131,12 @@ export function RunDetailPage({ runId }: { runId: string }) {
       <CaseTable targets={data.targets} results={results.data} cases={suite.data?.cases} />
       {openTarget && openAttempt && openResult ? (
         <CaseDrawer
-          value={{ target: openTarget, attempt: openAttempt, result: openResult }}
+          value={{
+            suiteKey: data.suiteKey,
+            target: openTarget,
+            attempt: openAttempt,
+            result: openResult,
+          }}
           onClose={closeDrawer}
         />
       ) : null}
